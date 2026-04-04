@@ -1,0 +1,100 @@
+# ##################################################################
+# .NET / Visual Studio
+# ##################################################################
+bin/
+obj/
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/
+# Exclude sensitive appsettings
+appsettings.Development.json
+appsettings.Local.json
+
+# ##################################################################
+# Angular / Node.js
+# ##################################################################
+node_modules/
+dist/
+tmp/
+out-tsc/
+bazel-out/
+.npm/
+# Angular CLI workspace plugin
+.angular/
+# Cypress/Protractor logs
+cypress/screenshots/
+cypress/videos/
+
+# ##################################################################
+# Docker
+# ##################################################################
+.dockerignore
+# Avoid committing data persisted by Docker volumes (if mapped to host)
+docker-data/
+*.log
+
+# ##################################################################
+# Environment / OS
+# ##################################################################
+.env
+.env.local
+.env.*.local
+*.swp
+*.bak
+.DS_Store
+Thumbs.db
+
+# ##################################################################
+# IDEs — Visual Studio / VS Code / JetBrains / Rider
+# ##################################################################
+.vs/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/settings.json
+.idea/
+*.iml
+*.iws
+*.ipr
+*.rider
+
+# ##################################################################
+# macOS
+# ##################################################################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.AppleDouble
+.LSOverride
+Icon
+.DocumentRevisions-V100
+.fseventsd
+.TemporaryItems
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# ##################################################################
+# Windows
+# ##################################################################
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp

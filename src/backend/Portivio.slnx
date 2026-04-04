@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Portivio.API/Portivio.API.csproj" />
+  <Project Path="Portivio.Domain/Portivio.Domain.csproj" Id="eed1fc4a-3a3d-49bc-8ee3-4750983fb912" />
+  <Project Path="Portivio.Infrastructure/Portivio.Infrastructure.csproj" Id="abc0eaee-e1ad-4601-a7b1-68f76fc77e38" />
+  <Project Path="Portvio.Application/Portivio.Application.csproj" Id="f391a94c-88ee-4b6e-b748-64dffe7de909" />
+</Solution>
