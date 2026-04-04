@@ -8,10 +8,20 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Controllers\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Portivio.Application\Portivio.Application.csproj" />
+    <ProjectReference Include="..\Portivio.Domain\Portivio.Domain.csproj" />
+    <ProjectReference Include="..\Portivio.Infrastructure\Portivio.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

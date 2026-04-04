@@ -1,10 +1,21 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Portivio.Infrastructure.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+builder.Services.AddDbContext<PortivioDbContext>(options =>
+{
+    var cs = builder.Configuration["Postgres:ConnectionString"];
+    if (string.IsNullOrWhiteSpace(cs))
+        throw new InvalidOperationException("Postgres connection string missing");
+    options.UseNpgsql(cs);
+});
 
 var app = builder.Build();
 
