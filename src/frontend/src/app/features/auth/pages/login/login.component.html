@@ -1,0 +1,178 @@
+<div class="auth-container">
+  <div class="auth-wrapper">
+    <!-- Left side - Brand -->
+    <div class="auth-brand-section">
+      <a routerLink="/" class="brand-back-link" aria-label="Back to Portivio home">
+        <i class="fas fa-arrow-left" aria-hidden="true"></i>
+        <span>Back to home</span>
+      </a>
+      <div class="brand-content">
+        <h1 class="brand-title">
+          <i class="fas fa-chart-pie" aria-hidden="true"></i> Portivio
+        </h1>
+        <p class="brand-subtitle">
+          Intelligent Portfolio Management for Smart Investors
+        </p>
+        <div class="brand-features">
+          <div class="feature">
+            <i class="fas fa-lock" aria-hidden="true"></i>
+            <span>Enterprise Security</span>
+          </div>
+          <div class="feature">
+            <i class="fas fa-chart-line" aria-hidden="true"></i>
+            <span>Real-time Analytics</span>
+          </div>
+          <div class="feature">
+            <i class="fas fa-users" aria-hidden="true"></i>
+            <span>Multi-profile Support</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right side - Login Form -->
+    <div class="auth-form-section">
+      <div class="form-container">
+        <h2 class="form-title">Welcome Back</h2>
+        <p class="form-subtitle">Log in to your Portivio account</p>
+
+        <!-- Error Alert -->
+        <div *ngIf="errorMessage" class="alert alert-danger alert-dismissible fade show animated-alert" role="alert">
+          <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+          {{ errorMessage }}
+          <button type="button" class="btn-close" aria-label="Dismiss error" (click)="errorMessage = null"></button>
+        </div>
+
+        <!-- Success Alert -->
+        <div *ngIf="successMessage" class="alert alert-success alert-dismissible fade show animated-alert" role="status">
+          <i class="fas fa-check-circle" aria-hidden="true"></i>
+          {{ successMessage }}
+          <button type="button" class="btn-close" aria-label="Dismiss message" (click)="successMessage = null"></button>
+        </div>
+
+        <!-- Login Form -->
+        <form [formGroup]="loginForm" (ngSubmit)="onLogin()" class="login-form" novalidate>
+          <!-- Email Field -->
+          <div class="form-group mb-3">
+            <label for="email" class="form-label">Email Address</label>
+            <div class="input-group">
+              <span class="input-group-text bg-transparent" aria-hidden="true">
+                <i class="fas fa-envelope"></i>
+              </span>
+              <input
+                formControlName="email"
+                type="email"
+                class="form-control"
+                id="email"
+                placeholder="you@example.com"
+                autocomplete="email"
+                [class.is-invalid]="submitted && f['email'].errors"
+                [attr.aria-invalid]="submitted && f['email'].errors ? 'true' : 'false'"
+                aria-describedby="email-error"
+              />
+            </div>
+            <div *ngIf="submitted && f['email'].errors" id="email-error" class="invalid-feedback d-block" role="alert">
+              <span *ngIf="f['email'].errors['required']">Email is required</span>
+              <span *ngIf="f['email'].errors['email']">Please enter a valid email</span>
+            </div>
+          </div>
+
+          <!-- Password Field -->
+          <div class="form-group mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <label for="password" class="form-label mb-0">Password</label>
+            </div>
+            <div class="input-group password-input">
+              <span class="input-group-text bg-transparent" aria-hidden="true">
+                <i class="fas fa-lock"></i>
+              </span>
+              <input
+                formControlName="password"
+                [type]="showPassword ? 'text' : 'password'"
+                class="form-control"
+                id="password"
+                placeholder="Enter your password"
+                autocomplete="current-password"
+                [class.is-invalid]="submitted && f['password'].errors"
+                [attr.aria-invalid]="submitted && f['password'].errors ? 'true' : 'false'"
+                aria-describedby="password-error"
+              />
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                (click)="togglePasswordVisibility()"
+                [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
+                [attr.aria-pressed]="showPassword"
+              >
+                <i [class]="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'" aria-hidden="true"></i>
+              </button>
+            </div>
+            <div *ngIf="submitted && f['password'].errors" id="password-error" class="invalid-feedback d-block" role="alert">
+              <span *ngIf="f['password'].errors['required']">Password is required</span>
+              <span *ngIf="f['password'].errors['minlength']">Password must be at least 6 characters</span>
+            </div>
+          </div>
+
+          <!-- Remember Me & Forgot Password -->
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="form-check">
+              <input
+                formControlName="rememberMe"
+                class="form-check-input"
+                type="checkbox"
+                id="rememberMe"
+              />
+              <label class="form-check-label" for="rememberMe">
+                Remember me
+              </label>
+            </div>
+            <a href="javascript:void(0)" (click)="goToForgotPassword()" class="forgot-password-link">
+              Forgot password?
+            </a>
+          </div>
+
+          <!-- Submit Button -->
+          <button
+            type="submit"
+            class="btn btn-primary btn-login w-100 mb-3"
+            [disabled]="loading || googleLoading"
+          >
+            <span *ngIf="loading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            {{ loading ? 'Logging in...' : 'Log In' }}
+          </button>
+        </form>
+
+        <!-- Divider -->
+        <div class="divider-container mb-4" aria-hidden="true">
+          <span class="divider-text">Or continue with</span>
+        </div>
+
+        <!-- Google Identity Services button (rendered into this container by GoogleAuthService) -->
+        <div class="sso-container">
+          <div #googleBtnContainer class="google-btn-slot" aria-label="Sign in with Google"></div>
+          <p *ngIf="googleLoading" class="sso-loading">
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            Signing in with Google...
+          </p>
+        </div>
+
+        <!-- Sign Up Link -->
+        <div class="signup-prompt">
+          Don't have an account?
+          <a href="javascript:void(0)" (click)="goToSignup()" class="signup-link">
+            Sign up here
+          </a>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="auth-footer">
+        <p class="footer-text">
+          <a href="#">Privacy Policy</a> &nbsp;•&nbsp;
+          <a href="#">Terms of Service</a> &nbsp;•&nbsp;
+          <a href="#">Support</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

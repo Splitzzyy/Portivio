@@ -1,0 +1,9 @@
+# Bun configuration for Angular project
+[build]
+loader = { tsx = "tsx", ts = "tsx", jsx = "jsx", js = "jsx" }
+target = "browser"
+splitting = true
+sourcemap = "external"
+
+[dev]
+port = 4200

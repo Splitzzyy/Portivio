@@ -1,0 +1,222 @@
+<div class="auth-container">
+  <div class="auth-wrapper">
+    <!-- Brand Section -->
+    <div class="auth-brand-section">
+      <div class="brand-content">
+        <h1 class="brand-title">
+          <i class="fas fa-chart-pie"></i> Portivio
+        </h1>
+        <p class="brand-subtitle">
+          Start Your Investment Journey Today
+        </p>
+        <div class="brand-features">
+          <div class="feature">
+            <i class="fas fa-lock"></i>
+            <span>Enterprise Security</span>
+          </div>
+          <div class="feature">
+            <i class="fas fa-chart-line"></i>
+            <span>Real-time Analytics</span>
+          </div>
+          <div class="feature">
+            <i class="fas fa-users"></i>
+            <span>Multi-profile Support</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form Section -->
+    <div class="auth-form-section">
+      <div class="form-container">
+        <h2 class="form-title">Create Account</h2>
+        <p class="form-subtitle">Join thousands of smart investors</p>
+
+        <!-- Error Alert -->
+        <div *ngIf="errorMessage" class="alert alert-danger alert-dismissible fade show animated-alert" role="alert">
+          <i class="fas fa-exclamation-circle"></i>
+          {{ errorMessage }}
+          <button type="button" class="btn-close" (click)="errorMessage = null"></button>
+        </div>
+
+        <!-- Success Alert -->
+        <div *ngIf="successMessage" class="alert alert-success alert-dismissible fade show animated-alert" role="alert">
+          <i class="fas fa-check-circle"></i>
+          {{ successMessage }}
+        </div>
+
+        <!-- Signup Form -->
+        <form [formGroup]="signupForm" (ngSubmit)="onSignup()" class="signup-form" novalidate>
+          <!-- Full Name -->
+          <div class="form-group mb-3">
+            <label for="name" class="form-label">Full Name</label>
+            <div class="input-group">
+              <span class="input-group-text bg-transparent" aria-hidden="true">
+                <i class="fas fa-user"></i>
+              </span>
+              <input
+                formControlName="name"
+                type="text"
+                class="form-control"
+                id="name"
+                placeholder="Jane Doe"
+                autocomplete="name"
+                [class.is-invalid]="submitted && f['name'].errors"
+                [attr.aria-invalid]="submitted && f['name'].errors ? 'true' : 'false'"
+                aria-describedby="name-error"
+              />
+            </div>
+            <div *ngIf="submitted && f['name'].errors" id="name-error" class="invalid-feedback d-block" role="alert">
+              <span *ngIf="f['name'].errors['required']">Full name is required</span>
+              <span *ngIf="f['name'].errors['minlength']">Minimum 2 characters required</span>
+            </div>
+          </div>
+
+          <!-- Email Field -->
+          <div class="form-group mb-3">
+            <label for="email" class="form-label">Email Address</label>
+            <div class="input-group">
+              <span class="input-group-text bg-transparent">
+                <i class="fas fa-envelope"></i>
+              </span>
+              <input
+                formControlName="email"
+                type="email"
+                class="form-control"
+                id="email"
+                placeholder="you@example.com"
+                [class.is-invalid]="submitted && f['email'].errors"
+              />
+            </div>
+            <div *ngIf="submitted && f['email'].errors" class="invalid-feedback d-block">
+              <span *ngIf="f['email'].errors['required']">Email is required</span>
+              <span *ngIf="f['email'].errors['email']">Please enter a valid email</span>
+            </div>
+          </div>
+
+          <!-- Password Field -->
+          <div class="form-group mb-3">
+            <label for="password" class="form-label">Password</label>
+            <div class="input-group password-input">
+              <span class="input-group-text bg-transparent">
+                <i class="fas fa-lock"></i>
+              </span>
+              <input
+                formControlName="password"
+                [type]="showPassword ? 'text' : 'password'"
+                class="form-control"
+                id="password"
+                placeholder="Min 8 chars, uppercase, number, special char"
+                [class.is-invalid]="submitted && f['password'].errors"
+              />
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                (click)="togglePasswordVisibility()"
+              >
+                <i [class]="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+              </button>
+            </div>
+
+            <!-- Password Strength Indicator -->
+            <div *ngIf="signupForm.get('password')?.value" class="password-strength mt-2">
+              <div class="strength-bar">
+                <div
+                  class="strength-fill"
+                  [style.width.%]="passwordStrength"
+                  [style.backgroundColor]="getPasswordStrengthColor()"
+                ></div>
+              </div>
+              <small class="strength-text">
+                Strength: <span [style.color]="getPasswordStrengthColor()">{{ passwordStrengthText }}</span>
+              </small>
+            </div>
+
+            <div *ngIf="submitted && f['password'].errors" class="invalid-feedback d-block">
+              <span *ngIf="f['password'].errors['required']">Password is required</span>
+              <span *ngIf="f['password'].errors['minlength']">Password must be at least 8 characters</span>
+              <span *ngIf="f['password'].errors['weakPassword']">
+                Password must contain uppercase, lowercase, number, and special character
+              </span>
+            </div>
+          </div>
+
+          <!-- Confirm Password Field -->
+          <div class="form-group mb-3">
+            <label for="confirmPassword" class="form-label">Confirm Password</label>
+            <div class="input-group password-input">
+              <span class="input-group-text bg-transparent">
+                <i class="fas fa-lock"></i>
+              </span>
+              <input
+                formControlName="confirmPassword"
+                [type]="showConfirmPassword ? 'text' : 'password'"
+                class="form-control"
+                id="confirmPassword"
+                placeholder="Re-enter your password"
+                [class.is-invalid]="submitted && (f['confirmPassword'].errors || signupForm.errors)"
+              />
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                (click)="toggleConfirmPasswordVisibility()"
+              >
+                <i [class]="showConfirmPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+              </button>
+            </div>
+            <div *ngIf="submitted && (f['confirmPassword'].errors || signupForm.errors?.['passwordMismatch'])" class="invalid-feedback d-block">
+              <span *ngIf="f['confirmPassword'].errors?.['required']">Please confirm your password</span>
+              <span *ngIf="signupForm.errors?.['passwordMismatch']">Passwords do not match</span>
+            </div>
+          </div>
+
+          <!-- Terms & Conditions -->
+          <div class="form-check mb-4">
+            <input
+              formControlName="acceptTerms"
+              class="form-check-input"
+              type="checkbox"
+              id="acceptTerms"
+              [class.is-invalid]="submitted && f['acceptTerms'].errors"
+            />
+            <label class="form-check-label" for="acceptTerms">
+              I agree to the
+              <a href="#">Terms of Service</a> and
+              <a href="#">Privacy Policy</a>
+            </label>
+            <div *ngIf="submitted && f['acceptTerms'].errors" class="invalid-feedback d-block">
+              Please accept the terms and conditions
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <button
+            type="submit"
+            class="btn btn-primary btn-signup w-100 mb-3"
+            [disabled]="loading"
+          >
+            <span *ngIf="loading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            {{ loading ? 'Creating Account...' : 'Create Account' }}
+          </button>
+        </form>
+
+        <!-- Login Link -->
+        <div class="login-prompt">
+          Already have an account?
+          <a href="javascript:void(0)" (click)="goToLogin()" class="login-link">
+            Log in here
+          </a>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="auth-footer">
+        <p class="footer-text">
+          <a href="#">Privacy Policy</a> &nbsp;•&nbsp;
+          <a href="#">Terms of Service</a> &nbsp;•&nbsp;
+          <a href="#">Support</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

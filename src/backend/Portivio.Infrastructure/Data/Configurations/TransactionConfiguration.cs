@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Portivio.Domain.Entities;
-using Portivio.Domain.Enums;
 
 namespace Portivio.Infrastructure.Data.Configurations
 {

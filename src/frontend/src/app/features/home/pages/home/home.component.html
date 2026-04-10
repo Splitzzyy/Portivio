@@ -1,0 +1,158 @@
+<div class="main-layout">
+  <!-- Sidebar Navigation -->
+  <aside class="sidebar" [class.sidebar-open]="sidebarOpen">
+    <div class="sidebar-header">
+      <h2 class="logo">
+        <i class="fas fa-chart-pie"></i>
+        <span *ngIf="sidebarOpen">Portivio</span>
+      </h2>
+      <button class="sidebar-toggle" (click)="toggleSidebar()">
+        <i class="fas fa-chevron-left"></i>
+      </button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <ul class="nav-list">
+        <li class="nav-item">
+          <a routerLink="/dashboard" routerLinkActive="active" class="nav-link">
+            <i class="fas fa-chart-pie" aria-hidden="true"></i>
+            <span *ngIf="sidebarOpen">Dashboard</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="javascript:void(0)" class="nav-link">
+            <i class="fas fa-wallet"></i>
+            <span *ngIf="sidebarOpen">Portfolio</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="javascript:void(0)" class="nav-link">
+            <i class="fas fa-chart-line"></i>
+            <span *ngIf="sidebarOpen">Analytics</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="javascript:void(0)" class="nav-link">
+            <i class="fas fa-repeat"></i>
+            <span *ngIf="sidebarOpen">SIPs</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="javascript:void(0)" class="nav-link">
+            <i class="fas fa-users"></i>
+            <span *ngIf="sidebarOpen">Profiles</span>
+          </a>
+        </li>
+        <li class="nav-divider" *ngIf="sidebarOpen"></li>
+        <li class="nav-item">
+          <a href="javascript:void(0)" class="nav-link">
+            <i class="fas fa-cog"></i>
+            <span *ngIf="sidebarOpen">Settings</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="javascript:void(0)" class="nav-link">
+            <i class="fas fa-question-circle"></i>
+            <span *ngIf="sidebarOpen">Help</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </aside>
+
+  <!-- Main Content Area -->
+  <div class="main-content">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <button class="menu-toggle" (click)="toggleMobileMenu()">
+          <i class="fas fa-bars"></i>
+        </button>
+        <h1 class="page-title">Portivio</h1>
+      </div>
+
+      <div class="header-right">
+        <!-- Search Bar -->
+        <div class="search-bar">
+          <input type="text" placeholder="Search portfolios..." class="search-input" />
+          <i class="fas fa-search"></i>
+        </div>
+
+        <!-- Notifications -->
+        <div class="header-icons">
+          <button class="icon-btn" title="Notifications">
+            <i class="fas fa-bell"></i>
+            <span class="notification-badge">3</span>
+          </button>
+
+          <!-- User Dropdown -->
+          <div class="user-dropdown">
+            <button
+              class="icon-btn user-btn"
+              type="button"
+              (click)="toggleUserDropdown($event)"
+              [attr.aria-expanded]="dropdownOpen"
+              aria-haspopup="menu"
+              aria-label="Open user menu"
+            >
+              <div class="user-avatar">
+                {{ getUserInitials() }}
+              </div>
+            </button>
+
+            <!-- Dropdown Menu -->
+            <div class="dropdown-menu" [class.show]="dropdownOpen" role="menu">
+              <div class="dropdown-header">
+                <div class="user-info">
+                  <div class="user-avatar-large">
+                    {{ getUserInitials() }}
+                  </div>
+                  <div>
+                    <p class="user-name">{{ user?.name }}</p>
+                    <p class="user-email">{{ user?.email }}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="dropdown-divider"></div>
+
+              <ul class="dropdown-menu-items">
+                <li>
+                  <a href="javascript:void(0)" (click)="goToProfile()" class="dropdown-item">
+                    <i class="fas fa-user"></i>
+                    <span>My Profile</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="javascript:void(0)" (click)="goToSettings()" class="dropdown-item">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                  </a>
+                </li>
+              </ul>
+
+              <div class="dropdown-divider"></div>
+
+              <ul class="dropdown-menu-items">
+                <li>
+                  <a href="javascript:void(0)" (click)="logout()" class="dropdown-item logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <main class="page-content">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>
+
+<!-- Mobile Overlay -->
+<div class="mobile-overlay" *ngIf="showMobileMenu" (click)="toggleMobileMenu()"></div>

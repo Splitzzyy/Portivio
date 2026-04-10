@@ -1,0 +1,241 @@
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<!-- ============================================================= NAV == -->
+<header class="landing-nav" [class.scrolled]="scrolled">
+  <nav class="nav-inner" aria-label="Main navigation">
+    <a routerLink="/" class="nav-brand" aria-label="Portivio home">
+      <i class="fas fa-chart-pie" aria-hidden="true"></i>
+      <span>Portivio</span>
+    </a>
+
+    <ul class="nav-links" [class.open]="mobileMenuOpen">
+      <li>
+        <a href="#features" (click)="scrollToSection('features', $event)">Features</a>
+      </li>
+      <li>
+        <a href="#how-it-works" (click)="scrollToSection('how-it-works', $event)">How it works</a>
+      </li>
+      <li class="nav-cta-mobile">
+        <a routerLink="/auth/login" class="btn btn-ghost" (click)="closeMobileMenu()">Log In</a>
+      </li>
+      <li class="nav-cta-mobile">
+        <a routerLink="/auth/signup" class="btn btn-primary" (click)="closeMobileMenu()">Sign Up</a>
+      </li>
+    </ul>
+
+    <div class="nav-cta-desktop">
+      <a routerLink="/auth/login" class="btn btn-ghost">Log In</a>
+      <a routerLink="/auth/signup" class="btn btn-primary">Sign Up</a>
+    </div>
+
+    <button
+      type="button"
+      class="nav-mobile-toggle"
+      (click)="toggleMobileMenu()"
+      [attr.aria-expanded]="mobileMenuOpen"
+      aria-controls="landing-mobile-menu"
+      aria-label="Toggle menu"
+    >
+      <i [class]="mobileMenuOpen ? 'fas fa-times' : 'fas fa-bars'" aria-hidden="true"></i>
+    </button>
+  </nav>
+</header>
+
+<main id="main-content" class="landing-main">
+  <!-- ======================================================== HERO == -->
+  <section class="hero" aria-labelledby="hero-heading">
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <span class="hero-eyebrow">
+          <i class="fas fa-bolt" aria-hidden="true"></i>
+          Enterprise-grade portfolio intelligence
+        </span>
+        <h1 id="hero-heading" class="hero-headline">
+          Smart Portfolio Management
+          <span class="hero-accent">for Every Indian Investor</span>
+        </h1>
+        <p class="hero-subcopy">
+          Track investments, automate SIPs, and manage portfolios for your entire
+          family — all from one secure, intuitive dashboard built for how Indians
+          actually invest.
+        </p>
+        <div class="hero-cta-row">
+          <a routerLink="/auth/signup" class="btn btn-primary btn-lg">
+            Get Started Free
+            <i class="fas fa-arrow-right" aria-hidden="true"></i>
+          </a>
+          <a routerLink="/auth/login" class="btn btn-outline btn-lg">
+            Sign In
+          </a>
+        </div>
+        <div class="hero-trust">
+          <div class="trust-item">
+            <i class="fas fa-shield-halved" aria-hidden="true"></i>
+            <span>Bank-grade security</span>
+          </div>
+          <div class="trust-item">
+            <i class="fas fa-lock" aria-hidden="true"></i>
+            <span>Private by default</span>
+          </div>
+          <div class="trust-item">
+            <i class="fas fa-indian-rupee-sign" aria-hidden="true"></i>
+            <span>Built for INR</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-visual" aria-hidden="true">
+        <div class="visual-card visual-card-main">
+          <div class="visual-card-header">
+            <span class="visual-dot"></span>
+            <span>Total Portfolio</span>
+          </div>
+          <div class="visual-card-value">₹12,48,750</div>
+          <div class="visual-card-change positive">
+            <i class="fas fa-arrow-trend-up"></i> +24.8% YTD
+          </div>
+          <svg class="visual-chart" viewBox="0 0 260 80" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="chartGrad" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="#6366f1" stop-opacity="0.35" />
+                <stop offset="100%" stop-color="#6366f1" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M0,60 L20,55 L40,58 L60,42 L80,46 L100,32 L120,38 L140,24 L160,28 L180,18 L200,22 L220,10 L240,14 L260,4 L260,80 L0,80 Z"
+              fill="url(#chartGrad)"
+            />
+            <path
+              d="M0,60 L20,55 L40,58 L60,42 L80,46 L100,32 L120,38 L140,24 L160,28 L180,18 L200,22 L220,10 L240,14 L260,4"
+              fill="none"
+              stroke="#6366f1"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </div>
+
+        <div class="visual-card visual-card-side top">
+          <i class="fas fa-chart-pie visual-icon"></i>
+          <div>
+            <div class="visual-small-label">Allocation</div>
+            <div class="visual-small-value">Diversified</div>
+          </div>
+        </div>
+
+        <div class="visual-card visual-card-side bottom">
+          <i class="fas fa-calendar-check visual-icon"></i>
+          <div>
+            <div class="visual-small-label">Active SIPs</div>
+            <div class="visual-small-value">6 running</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================================================== FEATURES == -->
+  <section id="features" class="features-section" aria-labelledby="features-heading">
+    <div class="section-inner">
+      <div class="section-heading">
+        <h2 id="features-heading">Everything you need to invest smarter</h2>
+        <p>
+          Portivio brings portfolio tracking, SIP automation, and multi-profile
+          management together in one platform you'll actually enjoy using.
+        </p>
+      </div>
+
+      <div class="feature-grid">
+        <article class="feature-card" *ngFor="let feature of features">
+          <div class="feature-icon">
+            <i [class]="'fas ' + feature.icon" aria-hidden="true"></i>
+          </div>
+          <h3>{{ feature.title }}</h3>
+          <p>{{ feature.description }}</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ HOW IT WORKS == -->
+  <section id="how-it-works" class="how-section" aria-labelledby="how-heading">
+    <div class="section-inner">
+      <div class="section-heading">
+        <h2 id="how-heading">Three steps to financial clarity</h2>
+        <p>From signup to first insight in under five minutes.</p>
+      </div>
+
+      <ol class="step-list">
+        <li class="step-card" *ngFor="let step of steps">
+          <div class="step-number">{{ step.number }}</div>
+          <h3>{{ step.title }}</h3>
+          <p>{{ step.description }}</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ========================================================== CTA == -->
+  <section class="cta-band" aria-labelledby="cta-heading">
+    <div class="cta-inner">
+      <h2 id="cta-heading">Start managing your portfolio today</h2>
+      <p>
+        Join investors who are taking control of their wealth with Portivio.
+        Free to start — no credit card required.
+      </p>
+      <div class="cta-row">
+        <a routerLink="/auth/signup" class="btn btn-white btn-lg">
+          Create Free Account
+          <i class="fas fa-arrow-right" aria-hidden="true"></i>
+        </a>
+        <a routerLink="/auth/login" class="btn btn-outline-white btn-lg">
+          Log In
+        </a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ===================================================== FOOTER == -->
+<footer class="landing-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="footer-logo">
+        <i class="fas fa-chart-pie" aria-hidden="true"></i>
+        <span>Portivio</span>
+      </div>
+      <p>Smart portfolio management, built for India.</p>
+    </div>
+
+    <div class="footer-columns">
+      <div class="footer-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#features" (click)="scrollToSection('features', $event)">Features</a></li>
+          <li><a href="#how-it-works" (click)="scrollToSection('how-it-works', $event)">How it works</a></li>
+          <li><a routerLink="/auth/signup">Sign up</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <ul>
+          <li><a href="#">About</a></li>
+          <li><a href="#">Contact</a></li>
+          <li><a href="#">Blog</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms of Service</a></li>
+          <li><a href="#">Security</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>&copy; {{ currentYear }} Portivio. All rights reserved.</p>
+  </div>
+</footer>

@@ -1,0 +1,499 @@
+// Color Variables
+$primary-color: #6366f1;
+$primary-dark: #4f46e5;
+$secondary-color: #0ea5e9;
+$text-dark: #1f2937;
+$text-light: #6b7280;
+$border-color: #e5e7eb;
+$bg-light: #f9fafb;
+$bg-lighter: #fafbfc;
+$white: #ffffff;
+$danger-color: #ef4444;
+
+// Dimensions
+$sidebar-width: 280px;
+$sidebar-width-collapsed: 80px;
+$header-height: 64px;
+
+// Breakpoints
+$mobile: 576px;
+$tablet: 768px;
+$desktop: 992px;
+
+.main-layout {
+  display: flex;
+  height: 100vh;
+  background: $bg-light;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+// Sidebar
+.sidebar {
+  width: $sidebar-width;
+  background: $white;
+  border-right: 1px solid $border-color;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  z-index: 1000;
+
+  @media (max-width: $tablet) {
+    transform: translateX(-100%);
+
+    &.sidebar-open {
+      transform: translateX(0);
+    }
+  }
+
+  .sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px;
+    border-bottom: 1px solid $border-color;
+    height: $header-height;
+
+    .logo {
+      font-size: 24px;
+      font-weight: 700;
+      color: $primary-color;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      white-space: nowrap;
+
+      i {
+        font-size: 28px;
+      }
+    }
+
+    .sidebar-toggle {
+      display: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: $text-light;
+      font-size: 18px;
+      transition: all 0.3s ease;
+
+      &:hover {
+        color: $primary-color;
+      }
+
+      @media (min-width: $desktop) {
+        display: block;
+      }
+    }
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 0;
+
+    .nav-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+
+      .nav-item {
+        margin: 0;
+
+        .nav-link {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 12px 20px;
+          color: $text-light;
+          text-decoration: none;
+          transition: all 0.3s ease;
+          font-size: 14px;
+          font-weight: 500;
+          white-space: nowrap;
+
+          i {
+            font-size: 18px;
+            min-width: 24px;
+            text-align: center;
+          }
+
+          &:hover {
+            background: $bg-light;
+            color: $primary-color;
+          }
+
+          &.active {
+            background: rgba($primary-color, 0.1);
+            color: $primary-color;
+            border-left: 4px solid $primary-color;
+            padding-left: 16px;
+          }
+        }
+      }
+
+      .nav-divider {
+        height: 1px;
+        background: $border-color;
+        margin: 8px 0;
+      }
+    }
+  }
+
+  @media (min-width: $desktop) {
+    &:not(.sidebar-open) {
+      width: $sidebar-width-collapsed;
+
+      .sidebar-header .logo span {
+        display: none;
+      }
+
+      .sidebar-nav .nav-list .nav-item .nav-link {
+        justify-content: center;
+        padding: 12px;
+      }
+    }
+  }
+}
+
+// Main Content
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-left: $sidebar-width;
+  transition: margin-left 0.3s ease;
+
+  @media (max-width: $tablet) {
+    margin-left: 0;
+  }
+
+  @media (min-width: $desktop) {
+    &.sidebar-closed {
+      margin-left: $sidebar-width-collapsed;
+    }
+  }
+}
+
+// Header
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: $header-height;
+  background: $white;
+  border-bottom: 1px solid $border-color;
+  gap: 24px;
+
+  @media (max-width: $tablet) {
+    padding: 0 16px;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-width: 0;
+
+    .menu-toggle {
+      display: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: $text-dark;
+      font-size: 20px;
+      transition: color 0.3s ease;
+
+      &:hover {
+        color: $primary-color;
+      }
+
+      @media (max-width: $tablet) {
+        display: block;
+      }
+    }
+
+    .page-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: $text-dark;
+      margin: 0;
+      white-space: nowrap;
+    }
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex: 1;
+
+    @media (max-width: $tablet) {
+      gap: 16px;
+    }
+  }
+
+  .search-bar {
+    display: flex;
+    align-items: center;
+    background: $bg-light;
+    border: 1px solid $border-color;
+    border-radius: 8px;
+    padding: 10px 14px;
+    flex: 1;
+    max-width: 300px;
+
+    @media (max-width: $tablet) {
+      display: none;
+    }
+
+    .search-input {
+      border: none;
+      background: none;
+      outline: none;
+      font-size: 14px;
+      color: $text-dark;
+      flex: 1;
+
+      &::placeholder {
+        color: $text-light;
+      }
+    }
+
+    i {
+      color: $text-light;
+      font-size: 16px;
+      margin-left: 8px;
+    }
+  }
+
+  .header-icons {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+    .icon-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: $text-light;
+      font-size: 18px;
+      position: relative;
+      transition: color 0.3s ease;
+      padding: 8px;
+      border-radius: 6px;
+
+      &:hover {
+        color: $primary-color;
+        background: $bg-light;
+      }
+
+      .notification-badge {
+        position: absolute;
+        top: 0;
+        right: 0;
+        background: $danger-color;
+        color: $white;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 600;
+      }
+    }
+
+    .user-dropdown {
+      position: relative;
+
+      .user-btn {
+        .user-avatar {
+          width: 36px;
+          height: 36px;
+          background: linear-gradient(135deg, $primary-color, $secondary-color);
+          color: $white;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+      }
+    }
+  }
+}
+
+// Dropdown Menu
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: $white;
+  border: 1px solid $border-color;
+  border-radius: 8px;
+  min-width: 320px;
+  margin-top: 8px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.3s ease;
+  z-index: 1001;
+
+  @media (max-width: $tablet) {
+    min-width: 280px;
+    right: -16px;
+  }
+
+  &.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+
+  .dropdown-header {
+    padding: 16px;
+    border-bottom: 1px solid $border-color;
+
+    .user-info {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+
+      .user-avatar-large {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, $primary-color, $secondary-color);
+        color: $white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 16px;
+        flex-shrink: 0;
+      }
+
+      .user-name {
+        font-weight: 600;
+        color: $text-dark;
+        margin: 0;
+        font-size: 14px;
+      }
+
+      .user-email {
+        color: $text-light;
+        margin: 4px 0 0 0;
+        font-size: 12px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+  }
+
+  .dropdown-divider {
+    height: 1px;
+    background: $border-color;
+    margin: 0;
+  }
+
+  .dropdown-menu-items {
+    list-style: none;
+    margin: 0;
+    padding: 8px 0;
+
+    .dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      color: $text-dark;
+      text-decoration: none;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+
+      i {
+        font-size: 16px;
+        color: $text-light;
+        min-width: 20px;
+      }
+
+      &:hover {
+        background: $bg-light;
+        color: $primary-color;
+
+        i {
+          color: $primary-color;
+        }
+      }
+
+      &.logout {
+        color: $danger-color;
+
+        i {
+          color: $danger-color;
+        }
+
+        &:hover {
+          background: rgba($danger-color, 0.1);
+        }
+      }
+    }
+  }
+}
+
+// Page Content
+.page-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+
+  @media (max-width: $tablet) {
+    padding: 16px;
+  }
+}
+
+// Mobile Overlay
+.mobile-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  display: none;
+
+  @media (max-width: $tablet) {
+    display: block;
+  }
+}
+
+// Scrollbar Styling
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: $bg-light;
+}
+
+::-webkit-scrollbar-thumb {
+  background: $border-color;
+  border-radius: 4px;
+
+  &:hover {
+    background: $text-light;
+  }
+}

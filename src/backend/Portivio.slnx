@@ -3,4 +3,5 @@
   <Project Path="Portivio.Application/Portivio.Application.csproj" />
   <Project Path="Portivio.Domain/Portivio.Domain.csproj" Id="eed1fc4a-3a3d-49bc-8ee3-4750983fb912" />
   <Project Path="Portivio.Infrastructure/Portivio.Infrastructure.csproj" Id="abc0eaee-e1ad-4601-a7b1-68f76fc77e38" />
+  <Project Path="Portivio.Tests/Portivio.Tests.csproj" />
 </Solution>
