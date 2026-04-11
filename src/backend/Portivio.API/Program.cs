@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Portivio.API.Services;
 using Portivio.Infrastructure.Data;
 using Portivio.Application.Services;
 using System.Text;
@@ -25,6 +26,7 @@ builder.Services.AddDbContext<PortivioDbContext>(options =>
 
 // Register Auth Service
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IAuthHttpContextService, AuthHttpContextService>();
 
 // Configure JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"];

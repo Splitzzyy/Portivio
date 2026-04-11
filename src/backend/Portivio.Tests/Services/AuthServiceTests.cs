@@ -44,6 +44,7 @@ namespace Portivio.Tests.Services
                 Id = Guid.NewGuid(),
                 Email = "test@example.com",
                 Name = "Test User",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"),
                 IsVerified = true,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
@@ -56,7 +57,8 @@ namespace Portivio.Tests.Services
             var request = new LoginRequest
             {
                 Email = "test@example.com",
-                Password = "Password123"
+                Password = "Password123",
+                IssueRefreshToken = false
             };
 
             // Act
@@ -67,7 +69,78 @@ namespace Portivio.Tests.Services
             Assert.NotNull(result.Data);
             Assert.Equal("Login successful", result.Message);
             Assert.NotNull(result.Data.AccessToken);
-            Assert.NotNull(result.Data.RefreshToken);
+            Assert.Null(result.Data.RefreshToken);
+        }
+
+        [Fact]
+        public async Task LoginAsync_WithPhoneClient_ReturnsRefreshToken()
+        {
+            var context = CreateInMemoryDbContext();
+            var configMock = CreateMockConfiguration();
+
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = "phone@example.com",
+                Name = "Phone User",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"),
+                IsVerified = true,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            context.Users.Add(user);
+            await context.SaveChangesAsync();
+
+            var service = new AuthService(context, configMock.Object);
+            var request = new LoginRequest
+            {
+                Email = "phone@example.com",
+                Password = "Password123",
+                DeviceInfo = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile",
+                IssueRefreshToken = true
+            };
+
+            var result = await service.LoginAsync(request);
+
+            Assert.True(result.IsSuccess);
+            Assert.NotNull(result.Data?.AccessToken);
+            Assert.NotNull(result.Data?.RefreshToken);
+        }
+
+        [Fact]
+        public async Task LoginAsync_WithoutRefreshToken_DoesNotPersistAuthToken()
+        {
+            var context = CreateInMemoryDbContext();
+            var configMock = CreateMockConfiguration();
+
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = "desktop@example.com",
+                Name = "Desktop User",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"),
+                IsVerified = true,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            context.Users.Add(user);
+            await context.SaveChangesAsync();
+
+            var service = new AuthService(context, configMock.Object);
+            var request = new LoginRequest
+            {
+                Email = "desktop@example.com",
+                Password = "Password123",
+                DeviceInfo = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+                IssueRefreshToken = false
+            };
+
+            var result = await service.LoginAsync(request);
+
+            Assert.True(result.IsSuccess);
+            Assert.Empty(await context.AuthTokens.Where(t => t.UserId == user.Id).ToListAsync());
         }
 
         [Fact]
@@ -105,6 +178,7 @@ namespace Portivio.Tests.Services
                 Id = Guid.NewGuid(),
                 Email = "unverified@example.com",
                 Name = "Unverified User",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"),
                 IsVerified = false,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
@@ -141,6 +215,7 @@ namespace Portivio.Tests.Services
                 Id = Guid.NewGuid(),
                 Email = "inactive@example.com",
                 Name = "Inactive User",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"),
                 IsVerified = true,
                 IsActive = false,
                 CreatedAt = DateTime.UtcNow
@@ -199,6 +274,7 @@ namespace Portivio.Tests.Services
                 Id = Guid.NewGuid(),
                 Email = "test@example.com",
                 Name = "Test User",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"),
                 IsVerified = true,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
@@ -212,7 +288,8 @@ namespace Portivio.Tests.Services
             var request = new LoginRequest
             {
                 Email = "test@example.com",
-                Password = "Password123"
+                Password = "Password123",
+                IssueRefreshToken = false
             };
 
             // Act
@@ -277,6 +354,9 @@ namespace Portivio.Tests.Services
             Assert.NotNull(createdUser);
             Assert.False(createdUser.IsVerified);
             Assert.True(createdUser.IsActive);
+            Assert.False(string.IsNullOrWhiteSpace(createdUser.PasswordHash));
+            Assert.NotEqual("Password123", createdUser.PasswordHash);
+            Assert.True(BCrypt.Net.BCrypt.Verify("Password123", createdUser.PasswordHash));
         }
 
         [Fact]
@@ -742,6 +822,49 @@ namespace Portivio.Tests.Services
             Assert.True(result.IsFailure);
             Assert.Equal(401, result.StatusCode);
             Assert.Contains("Invalid", result.Message);
+        }
+
+        [Fact]
+        public async Task RefreshTokenAsync_WithInactiveUser_ReturnsForbidden()
+        {
+            var context = CreateInMemoryDbContext();
+            var configMock = CreateMockConfiguration();
+
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = "inactive@example.com",
+                Name = "Inactive User",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"),
+                IsVerified = true,
+                IsActive = false,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var refreshToken = "phone-refresh-token";
+            context.Users.Add(user);
+            context.AuthTokens.Add(new AuthToken
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                AccessTokenHash = "access-hash",
+                RefreshTokenHash = Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(refreshToken))),
+                AccessTokenExpiry = DateTime.UtcNow.AddMinutes(30),
+                RefreshTokenExpiry = DateTime.UtcNow.AddDays(7),
+                DeviceInfo = "Mozilla/5.0 (Android 14; Mobile)",
+                IpAddress = "127.0.0.1",
+                Revoked = false,
+                CreatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            var service = new AuthService(context, configMock.Object);
+
+            var result = await service.RefreshTokenAsync(refreshToken);
+
+            Assert.True(result.IsFailure);
+            Assert.Equal(403, result.StatusCode);
+            Assert.Equal("Account is inactive", result.Message);
         }
     }
 }

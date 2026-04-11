@@ -10,6 +10,9 @@ namespace Portivio.Infrastructure.Data.Configurations
         {
             builder.HasKey(a => a.Id);
             builder.HasIndex(a => a.UserId);
+            builder.HasOne(a => a.User)
+                .WithMany(u => u.AuthTokens)
+                .HasForeignKey(a => a.UserId);
         }
     }
 }
