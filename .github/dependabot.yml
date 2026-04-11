@@ -7,7 +7,7 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "06:00"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 1
     commit-message:
       prefix: "deps"
       include: "scope"
@@ -20,13 +20,13 @@ updates:
         patterns:
           - "*"
 
-  - package-ecosystem: "npm"
+  - package-ecosystem: "bun"
     directory: "/src/frontend"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "06:15"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 1
     commit-message:
       prefix: "deps"
       include: "scope"
@@ -35,13 +35,7 @@ updates:
       - "frontend"
       - "security"
     groups:
-      angular:
-        patterns:
-          - "@angular*"
-          - "zone.js"
-          - "rxjs"
-          - "typescript"
-      frontend-tooling:
+      frontend:
         patterns:
           - "*"
 
@@ -51,7 +45,7 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "06:30"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 1
     commit-message:
       prefix: "ci"
       include: "scope"
