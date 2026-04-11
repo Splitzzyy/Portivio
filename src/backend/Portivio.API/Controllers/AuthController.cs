@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Portivio.API.Services;
 using Portivio.Application.DTOs.Auth;
 using Portivio.Application.Results;
@@ -8,8 +9,11 @@ using System.Security.Claims;
 
 namespace Portivio.API.Controllers
 {
+    [Authorize]
+    [EnableRateLimiting("global")]
     [ApiController]
     [Route("api/[controller]")]
+    [Produces("application/json")]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
@@ -57,6 +61,7 @@ namespace Portivio.API.Controllers
         /// </summary>
         [HttpPost("signup")]
         [AllowAnonymous]
+        [EnableRateLimiting("login")]
         public async Task<ActionResult<AuthResponse>> Signup([FromBody] SignupRequest request)
         {
             try
@@ -204,6 +209,7 @@ namespace Portivio.API.Controllers
         /// </summary>
         [HttpPost("google-login")]
         [AllowAnonymous]
+        [EnableRateLimiting("login")]
         public async Task<ActionResult<AuthResponse>> GoogleLogin([FromBody] GoogleLoginRequest request)
         {
             try

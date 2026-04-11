@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Portivio.Application.DTOs.Home;
 using Portivio.Application.Results;
 using Portivio.Application.Services;
@@ -9,6 +10,7 @@ namespace Portivio.API.Controllers
 {
     [ApiController]
     [Authorize]
+    [EnableRateLimiting("per-user")]
     [Route("api/[controller]")]
     public class HomeController : ControllerBase
     {

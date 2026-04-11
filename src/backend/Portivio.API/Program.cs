@@ -1,17 +1,38 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using Portivio.API.Services;
-using Portivio.Infrastructure.Data;
 using Portivio.Application.Services;
+using Portivio.Infrastructure.Data;
+using Serilog;
+using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 const string FrontendCorsPolicy = "FrontendDevelopment";
 
+var configuration = builder.Configuration;
+var environment = builder.Environment;
+
+var postgresConnectionString = configuration["Postgres:ConnectionString"];
+if (string.IsNullOrWhiteSpace(postgresConnectionString))
+    throw new InvalidOperationException("Postgres connection string missing");
+
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // Clear default networks to trust all proxies, or restrict to specific IPs:
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 // Add Swagger/Swashbuckle
 builder.Services.AddSwaggerGen();
@@ -20,26 +41,31 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy(FrontendCorsPolicy, policy =>
     {
+        var allowedOrigins = environment.IsDevelopment()
+            ? ["http://localhost:4200"]
+            : configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+
+        if (allowedOrigins.Length == 0)
+            return;
         policy
-            .WithOrigins("http://localhost:4200")
+            .WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
     });
 });
 
-// Adding DB Context with PostgreSQL provider
+// Configure PostgreSQL data access.
 builder.Services.AddDbContext<PortivioDbContext>(options =>
 {
-    var cs = builder.Configuration["Postgres:ConnectionString"];
-    if (string.IsNullOrWhiteSpace(cs))
-        throw new InvalidOperationException("Postgres connection string missing");
-    options.UseNpgsql(cs);
+    options.UseNpgsql(postgresConnectionString);
 });
+
 
 // Register Auth Service
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAuthHttpContextService, AuthHttpContextService>();
+builder.Services.AddScoped<IHomeService, HomeService>();
 
 // Configure JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"];
@@ -58,27 +84,120 @@ builder.Services.AddAuthentication(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-        ValidateIssuer = !string.IsNullOrWhiteSpace(jwtIssuer),
         ValidIssuer = jwtIssuer,
-        ValidateAudience = !string.IsNullOrWhiteSpace(jwtAudience),
         ValidAudience = jwtAudience,
-        ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero
+    };
+    options.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = ctx =>
+        {
+            // Structured log instead of Console.WriteLine
+            Log.Warning("JWT authentication failed for {RequestPath}: {ErrorMessage}",
+                ctx.HttpContext.Request.Path,
+                ctx.Exception.Message);
+            return Task.CompletedTask;
+        },
+        OnTokenValidated = ctx =>
+        {
+            var userId = ctx.Principal?.FindFirstValue(ClaimTypes.NameIdentifier)
+                      ?? ctx.Principal?.FindFirstValue("sub")
+                      ?? "unknown";
+            Log.Debug("JWT token validated for UserId={UserId} on {RequestPath}",
+                userId,
+                ctx.HttpContext.Request.Path);
+            return Task.CompletedTask;
+        }
     };
 });
 
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Portivio API",
+        Version = "v1",
+        Description = "Portivio API with JWT Authentication"
+    });
+
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Bearer {your JWT token}"
+    });
+
+    c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+    });
+});
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    //Global limiter
+    options.AddFixedWindowLimiter("global", opt =>
+    {
+        opt.PermitLimit = 100; // 100 requests
+        opt.Window = TimeSpan.FromMinutes(1); // per 1 minute
+        opt.QueueLimit = 0;
+    });
+
+    // Login-specific stricter policy
+    options.AddFixedWindowLimiter("login", opt =>
+    {
+        opt.PermitLimit = 5;
+        opt.Window = TimeSpan.FromMinutes(1);
+    });
+
+    // Per-user JWT-based limiter
+    options.AddPolicy("per-user", context =>
+    {
+        // JWT subject (best)
+        var userId =
+            context.User.FindFirst("sub")?.Value
+            ?? context.User.FindFirst("userId")?.Value
+            ?? context.Connection.RemoteIpAddress?.ToString();
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            userId!,
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 60,
+                Window = TimeSpan.FromMinutes(1)
+            });
+    });
+
+    // For testing purposes
+    options.AddFixedWindowLimiter("fixed", opt =>
+    {
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.PermitLimit = 5;
+        opt.QueueLimit = 0;
+    });
+});
+
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
 
+app.UseForwardedHeaders();
+
+// Configure the HTTP request pipeline.
+app.UseStatusCodePages();
+app.MapOpenApi();
+app.UseSwagger();
+app.UseSwaggerUI();
 app.UseHttpsRedirection();
 
 app.UseCors(FrontendCorsPolicy);
@@ -87,5 +206,21 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// DB Migration on startup with error handling
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var db = scope.ServiceProvider.GetRequiredService<PortivioDbContext>();
+        db.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogCritical(ex, "Database migration failed on startup");
+        throw;
+    }
+}
 
 app.Run();
