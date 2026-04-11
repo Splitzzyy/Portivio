@@ -1,0 +1,33 @@
+:host {
+  display: inline-flex;
+}
+
+.app-spinner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #6366f1;
+
+  &.sm { --ring-size: 16px; --ring-border: 2px; font-size: 0.75rem; }
+  &.md { --ring-size: 24px; --ring-border: 3px; font-size: 0.875rem; }
+  &.lg { --ring-size: 40px; --ring-border: 4px; font-size: 1rem; }
+}
+
+.spinner-ring {
+  display: inline-block;
+  width: var(--ring-size, 24px);
+  height: var(--ring-size, 24px);
+  border: var(--ring-border, 3px) solid rgba(99, 102, 241, 0.18);
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spinner-rotate 0.8s linear infinite;
+}
+
+.spinner-label {
+  font-weight: 500;
+  color: inherit;
+}
+
+@keyframes spinner-rotate {
+  to { transform: rotate(360deg); }
+}

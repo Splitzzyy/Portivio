@@ -1,105 +1,126 @@
 <div class="auth-container">
   <div class="auth-wrapper">
-    <!-- Left side - Brand -->
-    <div class="auth-brand-section">
-      <a routerLink="/" class="brand-back-link" aria-label="Back to Portivio home">
-        <i class="fas fa-arrow-left" aria-hidden="true"></i>
-        <span>Back to home</span>
+    <!-- Mobile top bar (< 768px only) -->
+    <header class="auth-mobile-header">
+      <a routerLink="/" class="mobile-brand" aria-label="Portivio home">
+        <i class="fas fa-chart-pie" aria-hidden="true"></i>
+        <span>Portivio</span>
       </a>
-      <div class="brand-content">
-        <h1 class="brand-title">
-          <i class="fas fa-chart-pie" aria-hidden="true"></i> Portivio
-        </h1>
-        <p class="brand-subtitle">
-          Intelligent Portfolio Management for Smart Investors
-        </p>
-        <div class="brand-features">
-          <div class="feature">
-            <i class="fas fa-lock" aria-hidden="true"></i>
-            <span>Enterprise Security</span>
-          </div>
-          <div class="feature">
-            <i class="fas fa-chart-line" aria-hidden="true"></i>
-            <span>Real-time Analytics</span>
-          </div>
-          <div class="feature">
-            <i class="fas fa-users" aria-hidden="true"></i>
-            <span>Multi-profile Support</span>
-          </div>
+      <a routerLink="/" class="mobile-back" aria-label="Back to home">
+        <i class="fas fa-arrow-left" aria-hidden="true"></i>
+        <span>Home</span>
+      </a>
+    </header>
+
+    <!-- Brand pane (>= 768px only) -->
+    <aside class="auth-brand-pane" aria-hidden="true">
+      <div class="brand-top">
+        <a routerLink="/" class="brand-back-link">
+          <i class="fas fa-arrow-left"></i>
+          <span>Back to home</span>
+        </a>
+        <div class="brand-logo">
+          <i class="fas fa-chart-pie"></i>
+          <span>Portivio</span>
         </div>
       </div>
-    </div>
 
-    <!-- Right side - Login Form -->
-    <div class="auth-form-section">
-      <div class="form-container">
-        <h2 class="form-title">Welcome Back</h2>
-        <p class="form-subtitle">Log in to your Portivio account</p>
+      <div class="brand-middle">
+        <h2>Smart portfolio management, built for Indian investors.</h2>
+        <p>Track investments, automate SIPs, and manage family portfolios from one secure dashboard.</p>
+      </div>
 
-        <!-- Error Alert -->
-        <div *ngIf="errorMessage" class="alert alert-danger alert-dismissible fade show animated-alert" role="alert">
-          <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
-          {{ errorMessage }}
-          <button type="button" class="btn-close" aria-label="Dismiss error" (click)="errorMessage = null"></button>
+      <div class="brand-features">
+        <div class="feature">
+          <span class="feature-icon"><i class="fas fa-shield-halved"></i></span>
+          <span class="feature-text">
+            <strong>Bank-grade security</strong>
+            <span>End-to-end encryption on every request</span>
+          </span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon"><i class="fas fa-chart-line"></i></span>
+          <span class="feature-text">
+            <strong>Live analytics</strong>
+            <span>Real-time performance across all assets</span>
+          </span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon"><i class="fas fa-users"></i></span>
+          <span class="feature-text">
+            <strong>Multi-profile support</strong>
+            <span>One login for your whole family</span>
+          </span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Form pane -->
+    <main class="auth-form-pane">
+      <div class="auth-form-inner">
+        <div class="form-heading">
+          <h1>Welcome back</h1>
+          <p>Log in to your Portivio account to continue.</p>
         </div>
 
-        <!-- Success Alert -->
-        <div *ngIf="successMessage" class="alert alert-success alert-dismissible fade show animated-alert" role="status">
-          <i class="fas fa-check-circle" aria-hidden="true"></i>
-          {{ successMessage }}
-          <button type="button" class="btn-close" aria-label="Dismiss message" (click)="successMessage = null"></button>
+        <!-- Error alert -->
+        <div *ngIf="errorMessage" class="alert alert-error" role="alert">
+          <i class="fas fa-circle-exclamation alert-icon" aria-hidden="true"></i>
+          <span class="alert-body">{{ errorMessage }}</span>
+          <button type="button" class="alert-close" aria-label="Dismiss" (click)="errorMessage = null">
+            <i class="fas fa-times" aria-hidden="true"></i>
+          </button>
         </div>
 
-        <!-- Login Form -->
-        <form [formGroup]="loginForm" (ngSubmit)="onLogin()" class="login-form" novalidate>
-          <!-- Email Field -->
-          <div class="form-group mb-3">
-            <label for="email" class="form-label">Email Address</label>
-            <div class="input-group">
-              <span class="input-group-text bg-transparent" aria-hidden="true">
-                <i class="fas fa-envelope"></i>
-              </span>
+        <!-- Success alert -->
+        <div *ngIf="successMessage" class="alert alert-success" role="status">
+          <i class="fas fa-circle-check alert-icon" aria-hidden="true"></i>
+          <span class="alert-body">{{ successMessage }}</span>
+          <button type="button" class="alert-close" aria-label="Dismiss" (click)="successMessage = null">
+            <i class="fas fa-times" aria-hidden="true"></i>
+          </button>
+        </div>
+
+        <form [formGroup]="loginForm" (ngSubmit)="onLogin()" class="auth-form" novalidate>
+          <!-- Email -->
+          <div class="field">
+            <label for="email">Email address</label>
+            <div class="input-shell" [class.has-error]="submitted && f['email'].errors">
+              <span class="input-icon" aria-hidden="true"><i class="fas fa-envelope"></i></span>
               <input
+                id="email"
                 formControlName="email"
                 type="email"
-                class="form-control"
-                id="email"
                 placeholder="you@example.com"
                 autocomplete="email"
-                [class.is-invalid]="submitted && f['email'].errors"
+                inputmode="email"
                 [attr.aria-invalid]="submitted && f['email'].errors ? 'true' : 'false'"
                 aria-describedby="email-error"
               />
             </div>
-            <div *ngIf="submitted && f['email'].errors" id="email-error" class="invalid-feedback d-block" role="alert">
+            <div *ngIf="submitted && f['email'].errors" id="email-error" class="field-error" role="alert">
               <span *ngIf="f['email'].errors['required']">Email is required</span>
               <span *ngIf="f['email'].errors['email']">Please enter a valid email</span>
             </div>
           </div>
 
-          <!-- Password Field -->
-          <div class="form-group mb-3">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <label for="password" class="form-label mb-0">Password</label>
-            </div>
-            <div class="input-group password-input">
-              <span class="input-group-text bg-transparent" aria-hidden="true">
-                <i class="fas fa-lock"></i>
-              </span>
+          <!-- Password -->
+          <div class="field">
+            <label for="password">Password</label>
+            <div class="input-shell" [class.has-error]="submitted && f['password'].errors">
+              <span class="input-icon" aria-hidden="true"><i class="fas fa-lock"></i></span>
               <input
+                id="password"
                 formControlName="password"
                 [type]="showPassword ? 'text' : 'password'"
-                class="form-control"
-                id="password"
                 placeholder="Enter your password"
                 autocomplete="current-password"
-                [class.is-invalid]="submitted && f['password'].errors"
                 [attr.aria-invalid]="submitted && f['password'].errors ? 'true' : 'false'"
                 aria-describedby="password-error"
               />
               <button
                 type="button"
-                class="btn btn-outline-secondary"
+                class="toggle-visibility"
                 (click)="togglePasswordVisibility()"
                 [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
                 [attr.aria-pressed]="showPassword"
@@ -107,72 +128,55 @@
                 <i [class]="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'" aria-hidden="true"></i>
               </button>
             </div>
-            <div *ngIf="submitted && f['password'].errors" id="password-error" class="invalid-feedback d-block" role="alert">
+            <div *ngIf="submitted && f['password'].errors" id="password-error" class="field-error" role="alert">
               <span *ngIf="f['password'].errors['required']">Password is required</span>
               <span *ngIf="f['password'].errors['minlength']">Password must be at least 6 characters</span>
             </div>
           </div>
 
-          <!-- Remember Me & Forgot Password -->
-          <div class="d-flex justify-content-between align-items-center mb-4">
-            <div class="form-check">
-              <input
-                formControlName="rememberMe"
-                class="form-check-input"
-                type="checkbox"
-                id="rememberMe"
-              />
-              <label class="form-check-label" for="rememberMe">
-                Remember me
-              </label>
-            </div>
-            <a href="javascript:void(0)" (click)="goToForgotPassword()" class="forgot-password-link">
+          <!-- Remember + forgot -->
+          <div class="field-row">
+            <label class="check">
+              <input formControlName="rememberMe" type="checkbox" />
+              <span>Remember me</span>
+            </label>
+            <a href="javascript:void(0)" (click)="goToForgotPassword()" class="link-primary">
               Forgot password?
             </a>
           </div>
 
-          <!-- Submit Button -->
-          <button
-            type="submit"
-            class="btn btn-primary btn-login w-100 mb-3"
-            [disabled]="loading || googleLoading"
-          >
-            <span *ngIf="loading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-            {{ loading ? 'Logging in...' : 'Log In' }}
+          <!-- Submit -->
+          <button type="submit" class="btn-submit" [disabled]="loading || googleLoading">
+            <span *ngIf="loading" class="spinner" aria-hidden="true"></span>
+            <span>{{ loading ? 'Signing in…' : 'Sign in' }}</span>
+            <i *ngIf="!loading" class="fas fa-arrow-right" aria-hidden="true"></i>
           </button>
         </form>
 
         <!-- Divider -->
-        <div class="divider-container mb-4" aria-hidden="true">
-          <span class="divider-text">Or continue with</span>
-        </div>
+        <div class="divider" aria-hidden="true">Or continue with</div>
 
-        <!-- Google Identity Services button (rendered into this container by GoogleAuthService) -->
+        <!-- Google SSO -->
         <div class="sso-container">
-          <div #googleBtnContainer class="google-btn-slot" aria-label="Sign in with Google"></div>
-          <p *ngIf="googleLoading" class="sso-loading">
-            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-            Signing in with Google...
+          <div #googleBtnContainer class="google-slot" aria-label="Sign in with Google"></div>
+          <p *ngIf="googleLoading" class="sso-loading" role="status">
+            <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i>
+            Signing in with Google…
           </p>
         </div>
 
-        <!-- Sign Up Link -->
-        <div class="signup-prompt">
+        <!-- Switch to signup -->
+        <div class="auth-switch">
           Don't have an account?
-          <a href="javascript:void(0)" (click)="goToSignup()" class="signup-link">
-            Sign up here
-          </a>
+          <a href="javascript:void(0)" (click)="goToSignup()">Create one free</a>
+        </div>
+
+        <div class="auth-footer">
+          <a href="#">Privacy</a>·
+          <a href="#">Terms</a>·
+          <a href="#">Support</a>
         </div>
       </div>
-
-      <!-- Footer -->
-      <div class="auth-footer">
-        <p class="footer-text">
-          <a href="#">Privacy Policy</a> &nbsp;•&nbsp;
-          <a href="#">Terms of Service</a> &nbsp;•&nbsp;
-          <a href="#">Support</a>
-        </p>
-      </div>
-    </div>
+    </main>
   </div>
 </div>

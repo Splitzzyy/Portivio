@@ -1,11 +1,21 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
+import { LandingComponent } from './features/landing/pages/landing/landing.component';
 
+/**
+ * Root routing table.
+ *   - `/`           → public LandingComponent (from LandingModule, not lazy)
+ *   - `/auth/*`     → AuthModule (login/signup/forgot/reset)
+ *   - `/dashboard`  → HomeModule (protected authenticated shell)
+ *   - `**`          → fallback to landing, not dashboard, so unauthenticated
+ *                     deep-links don't bounce through AuthGuard → login.
+ */
 const routes: Routes = [
   {
     path: '',
-    redirectTo: '/home',
-    pathMatch: 'full'
+    component: LandingComponent,
+    pathMatch: 'full',
+    data: { title: 'Portivio - Smart Portfolio Management' }
   },
   {
     path: 'auth',
@@ -13,23 +23,19 @@ const routes: Routes = [
       import('./features/auth/auth.module').then(m => m.AuthModule)
   },
   {
-    path: 'home',
+    path: 'dashboard',
     loadChildren: () =>
       import('./features/home/home.module').then(m => m.HomeModule)
   },
   {
     path: '**',
-    redirectTo: '/home'
+    redirectTo: ''
   }
 ];
 
-/**
- * App routing module
- * Defines main routes and lazy-loaded feature modules
- */
 @NgModule({
   imports: [RouterModule.forRoot(routes, {
-    enableTracing: false, // Set to true for debugging
+    enableTracing: false,
     scrollPositionRestoration: 'enabled'
   })],
   exports: [RouterModule]

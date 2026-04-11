@@ -36,6 +36,9 @@ export class ResetPasswordComponent implements OnInit, OnDestroy {
   token = '';
   email = '';
   tokenValid = true;
+  // No pre-flight token validation endpoint — always false. Kept for
+  // template compatibility (the legacy spinner block will simply never render).
+  validatingToken = false;
   passwordStrength = 0;
   passwordStrengthText = '';
 

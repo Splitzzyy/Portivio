@@ -1,0 +1,708 @@
+// Shared design tokens and mixins for the auth pages (login, signup,
+// forgot-password, reset-password). Imported from each page's SCSS with
+// `@import '../../auth-shared';`. Keeps the visual language in sync without
+// any build config changes.
+
+// --------------------------------------------------------------------------
+// Tokens
+// --------------------------------------------------------------------------
+$auth-primary: #6366f1;
+$auth-primary-dark: #4f46e5;
+$auth-primary-darker: #4338ca;
+$auth-primary-50: #eef2ff;
+$auth-primary-100: #e0e7ff;
+$auth-accent: #0ea5e9;
+$auth-success: #10b981;
+$auth-danger: #ef4444;
+$auth-warning: #f59e0b;
+
+$auth-text: #0f172a;
+$auth-text-soft: #475569;
+$auth-text-muted: #94a3b8;
+$auth-border: #e2e8f0;
+$auth-border-strong: #cbd5e1;
+$auth-bg: #f8fafc;
+$auth-white: #ffffff;
+
+$auth-radius: 14px;
+$auth-radius-sm: 10px;
+$auth-radius-lg: 20px;
+
+$auth-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+$auth-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+$auth-shadow-lg: 0 24px 60px rgba(79, 70, 229, 0.18);
+
+// Breakpoints (mobile-first)
+$bp-sm: 480px;
+$bp-md: 768px;
+$bp-lg: 1024px;
+$bp-xl: 1280px;
+
+// --------------------------------------------------------------------------
+// Reusable layout (split brand pane + form pane)
+// --------------------------------------------------------------------------
+.auth-container {
+  min-height: 100vh;
+  min-height: 100dvh; // handles mobile browser chrome correctly
+  display: flex;
+  background: $auth-bg;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: $auth-text;
+
+  @media (min-width: $bp-md) {
+    padding: 24px;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #eef2ff 0%, #f1f5f9 50%, #ecfeff 100%);
+  }
+}
+
+.auth-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background: $auth-white;
+  overflow: hidden;
+
+  @media (min-width: $bp-md) {
+    flex-direction: row;
+    max-width: 1120px;
+    min-height: 640px;
+    border-radius: $auth-radius-lg;
+    box-shadow: $auth-shadow-lg;
+  }
+}
+
+// --------------------------------------------------------------------------
+// Mobile top bar (visible only < md)
+// --------------------------------------------------------------------------
+.auth-mobile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  background: linear-gradient(135deg, $auth-primary 0%, $auth-primary-darker 100%);
+  color: $auth-white;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+
+  @media (min-width: $bp-md) {
+    display: none;
+  }
+
+  .mobile-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: $auth-white;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 18px;
+
+    i {
+      font-size: 20px;
+    }
+  }
+
+  .mobile-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: rgba($auth-white, 0.92);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 10px;
+    border-radius: 999px;
+    background: rgba($auth-white, 0.12);
+    transition: background 0.2s ease;
+
+    &:hover { background: rgba($auth-white, 0.2); }
+  }
+}
+
+// --------------------------------------------------------------------------
+// Brand (left) pane — hidden on mobile
+// --------------------------------------------------------------------------
+.auth-brand-pane {
+  display: none;
+  position: relative;
+  overflow: hidden;
+  padding: 56px 48px;
+  color: $auth-white;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(14, 165, 233, 0.35), transparent 55%),
+    radial-gradient(circle at 85% 85%, rgba(99, 102, 241, 0.55), transparent 60%),
+    linear-gradient(160deg, $auth-primary-darker 0%, $auth-primary 50%, #7c3aed 100%);
+
+  @media (min-width: $bp-md) {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    flex: 1 1 48%;
+    min-height: 640px;
+  }
+
+  @media (min-width: $bp-lg) {
+    padding: 64px 56px;
+  }
+
+  // Decorative blobs + grid
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  &::before {
+    top: -120px;
+    right: -100px;
+    width: 360px;
+    height: 360px;
+    background: radial-gradient(circle, rgba($auth-white, 0.16), transparent 70%);
+  }
+
+  &::after {
+    bottom: -160px;
+    left: -80px;
+    width: 320px;
+    height: 320px;
+    background: radial-gradient(circle, rgba($auth-white, 0.12), transparent 70%);
+  }
+
+  .brand-top {
+    position: relative;
+    z-index: 2;
+
+    .brand-back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: rgba($auth-white, 0.92);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba($auth-white, 0.1);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba($auth-white, 0.14);
+      transition: all 0.2s ease;
+
+      &:hover { background: rgba($auth-white, 0.18); transform: translateX(-2px); }
+    }
+
+    .brand-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 36px;
+      font-size: 28px;
+      font-weight: 700;
+
+      i { font-size: 30px; }
+    }
+  }
+
+  .brand-middle {
+    position: relative;
+    z-index: 2;
+
+    h2 {
+      font-size: 36px;
+      font-weight: 700;
+      line-height: 1.15;
+      margin-bottom: 18px;
+      letter-spacing: -0.02em;
+
+      @media (min-width: $bp-lg) { font-size: 42px; }
+    }
+
+    p {
+      font-size: 16px;
+      line-height: 1.6;
+      color: rgba($auth-white, 0.85);
+      max-width: 36ch;
+    }
+  }
+
+  .brand-features {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    gap: 14px;
+    padding: 20px;
+    border-radius: $auth-radius;
+    background: rgba($auth-white, 0.08);
+    border: 1px solid rgba($auth-white, 0.14);
+    backdrop-filter: blur(8px);
+
+    .feature {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 14px;
+      color: rgba($auth-white, 0.95);
+
+      .feature-icon {
+        flex-shrink: 0;
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba($auth-white, 0.14);
+        border: 1px solid rgba($auth-white, 0.2);
+
+        i { font-size: 16px; }
+      }
+
+      .feature-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+
+        strong { font-weight: 600; }
+        span { font-size: 12px; color: rgba($auth-white, 0.72); }
+      }
+    }
+  }
+}
+
+// --------------------------------------------------------------------------
+// Form (right) pane
+// --------------------------------------------------------------------------
+.auth-form-pane {
+  flex: 1 1 52%;
+  display: flex;
+  flex-direction: column;
+  padding: 28px 20px 32px;
+
+  @media (min-width: $bp-md) {
+    padding: 48px 56px;
+    justify-content: center;
+  }
+
+  @media (min-width: $bp-lg) {
+    padding: 56px 72px;
+  }
+}
+
+.auth-form-inner {
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-heading {
+  margin-bottom: 24px;
+
+  h1 {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: $auth-text;
+    margin: 0 0 6px;
+
+    @media (min-width: $bp-md) { font-size: 30px; }
+  }
+
+  p {
+    font-size: 14px;
+    color: $auth-text-soft;
+    margin: 0;
+  }
+}
+
+// --------------------------------------------------------------------------
+// Form elements
+// --------------------------------------------------------------------------
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  label {
+    font-size: 13px;
+    font-weight: 600;
+    color: $auth-text;
+    letter-spacing: 0.01em;
+  }
+}
+
+.input-shell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: $auth-white;
+  border: 1.5px solid $auth-border;
+  border-radius: $auth-radius-sm;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+  &:focus-within {
+    border-color: $auth-primary;
+    box-shadow: 0 0 0 4px rgba($auth-primary, 0.12);
+  }
+
+  &.has-error {
+    border-color: $auth-danger;
+
+    &:focus-within { box-shadow: 0 0 0 4px rgba($auth-danger, 0.14); }
+  }
+
+  .input-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    color: $auth-text-muted;
+    font-size: 15px;
+    pointer-events: none;
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    min-height: 48px;
+    padding: 12px 14px 12px 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 15px;
+    color: $auth-text;
+    font-family: inherit;
+
+    &::placeholder { color: #cbd5e1; }
+
+    // Disable Safari autofill yellow
+    &:-webkit-autofill {
+      -webkit-box-shadow: 0 0 0 1000px $auth-white inset;
+      -webkit-text-fill-color: $auth-text;
+    }
+  }
+
+  .toggle-visibility {
+    background: transparent;
+    border: none;
+    color: $auth-text-muted;
+    padding: 0 14px;
+    height: 100%;
+    min-height: 48px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    font-size: 16px;
+    transition: color 0.2s ease;
+
+    &:hover, &:focus { color: $auth-primary; outline: none; }
+  }
+}
+
+.field-error {
+  font-size: 12px;
+  color: $auth-danger;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+
+  &::before {
+    content: '\f06a'; // fa exclamation-circle
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    font-size: 11px;
+  }
+}
+
+// --------------------------------------------------------------------------
+// Row helpers (checkbox + forgot link side-by-side)
+// --------------------------------------------------------------------------
+.field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: -2px;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  color: $auth-text-soft;
+  user-select: none;
+
+  input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: $auth-primary;
+    cursor: pointer;
+  }
+
+  a {
+    color: $auth-primary;
+    font-weight: 500;
+
+    &:hover { text-decoration: underline; }
+  }
+}
+
+.link-primary {
+  font-size: 13px;
+  font-weight: 600;
+  color: $auth-primary;
+  text-decoration: none;
+
+  &:hover { color: $auth-primary-dark; text-decoration: underline; }
+}
+
+// --------------------------------------------------------------------------
+// Primary submit button
+// --------------------------------------------------------------------------
+.btn-submit {
+  width: 100%;
+  min-height: 50px;
+  padding: 14px 20px;
+  border: none;
+  border-radius: $auth-radius-sm;
+  background: linear-gradient(135deg, $auth-primary 0%, $auth-primary-darker 100%);
+  color: $auth-white;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 8px 20px rgba($auth-primary, 0.3);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 28px rgba($auth-primary, 0.38);
+  }
+
+  &:active:not(:disabled) { transform: translateY(0); }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba($auth-white, 0.4);
+    border-top-color: $auth-white;
+    border-radius: 50%;
+    animation: auth-spin 0.7s linear infinite;
+  }
+}
+
+@keyframes auth-spin {
+  to { transform: rotate(360deg); }
+}
+
+// --------------------------------------------------------------------------
+// Ghost button (secondary actions)
+// --------------------------------------------------------------------------
+.btn-ghost {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 20px;
+  border: 1.5px solid $auth-border;
+  border-radius: $auth-radius-sm;
+  background: $auth-white;
+  color: $auth-text;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+
+  &:hover { border-color: $auth-primary; color: $auth-primary; background: $auth-primary-50; }
+}
+
+// --------------------------------------------------------------------------
+// Divider ("Or continue with")
+// --------------------------------------------------------------------------
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 6px 0;
+  color: $auth-text-muted;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+
+  &::before, &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: $auth-border;
+  }
+}
+
+// --------------------------------------------------------------------------
+// Google button slot (GIS renders into this)
+// --------------------------------------------------------------------------
+.google-slot {
+  min-height: 44px;
+  display: flex;
+  justify-content: center;
+
+  // Fallback look if GIS fails to render — an outlined box
+  &:empty::before {
+    content: 'Loading Google sign-in…';
+    font-size: 13px;
+    color: $auth-text-muted;
+    padding: 12px;
+    border: 1.5px dashed $auth-border;
+    border-radius: $auth-radius-sm;
+    width: 100%;
+    text-align: center;
+  }
+}
+
+.sso-loading {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: $auth-text-soft;
+  text-align: center;
+}
+
+// --------------------------------------------------------------------------
+// Alerts
+// --------------------------------------------------------------------------
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: $auth-radius-sm;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 18px;
+  animation: alert-slide 0.25s ease;
+
+  i.alert-icon { font-size: 15px; line-height: 1.4; margin-top: 1px; }
+
+  .alert-body { flex: 1; line-height: 1.5; }
+
+  .alert-close {
+    background: transparent;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.7;
+    padding: 0;
+    line-height: 1;
+
+    &:hover { opacity: 1; }
+  }
+
+  &.alert-error {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+  }
+
+  &.alert-success {
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+  }
+}
+
+@keyframes alert-slide {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+// --------------------------------------------------------------------------
+// Bottom nav link (signup/login prompt)
+// --------------------------------------------------------------------------
+.auth-switch {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid $auth-border;
+  font-size: 14px;
+  color: $auth-text-soft;
+  text-align: center;
+
+  a {
+    color: $auth-primary;
+    font-weight: 600;
+    margin-left: 6px;
+
+    &:hover { color: $auth-primary-dark; text-decoration: underline; }
+  }
+}
+
+.auth-footer {
+  margin-top: 18px;
+  font-size: 12px;
+  color: $auth-text-muted;
+  text-align: center;
+
+  a {
+    color: $auth-text-soft;
+    margin: 0 6px;
+
+    &:hover { color: $auth-primary; }
+  }
+}
+
+// --------------------------------------------------------------------------
+// Password strength meter
+// --------------------------------------------------------------------------
+.pw-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+
+  .bar {
+    height: 6px;
+    background: $auth-border;
+    border-radius: 999px;
+    overflow: hidden;
+
+    .fill {
+      height: 100%;
+      border-radius: inherit;
+      transition: width 0.25s ease, background-color 0.25s ease;
+    }
+  }
+
+  .meter-label {
+    font-size: 11px;
+    color: $auth-text-soft;
+
+    strong { font-weight: 700; }
+  }
+}

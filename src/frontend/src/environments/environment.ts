@@ -1,15 +1,12 @@
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:3000/api',
+  apiUrl: 'http://localhost:5274/api',
   oauth: {
     google: {
-      clientId: 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com',
-      redirectUri: 'http://localhost:4200/auth/callback'
-    },
-    microsoft: {
-      clientId: 'YOUR_MICROSOFT_CLIENT_ID',
-      authority: 'https://login.microsoftonline.com/common',
-      redirectUri: 'http://localhost:4200/auth/callback'
+      // Replace with your real OAuth 2.0 Client ID from Google Cloud Console
+      // (APIs & Services → Credentials → OAuth 2.0 Client IDs).
+      // Authorized JavaScript origin for dev: http://localhost:4200
+      clientId: 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com'
     }
   }
 };

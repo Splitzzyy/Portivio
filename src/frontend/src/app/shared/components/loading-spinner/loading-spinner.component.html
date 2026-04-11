@@ -1,0 +1,12 @@
+<div
+  *ngIf="loading"
+  class="app-spinner"
+  [class.sm]="size === 'sm'"
+  [class.md]="size === 'md'"
+  [class.lg]="size === 'lg'"
+  role="status"
+  [attr.aria-label]="label"
+>
+  <span class="spinner-ring" aria-hidden="true"></span>
+  <span *ngIf="!iconOnly" class="spinner-label">{{ label }}</span>
+</div>
