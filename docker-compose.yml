@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  db:
+    build:
+      context: .
+      dockerfile: Dockerfile.db
+    environment:
+      POSTGRES_DB: portivio
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build:
+      context: ./src/backend
+      dockerfile: Dockerfile.backend
+    depends_on:
+      - db
+    environment:
+      Postgres__ConnectionString: "Host=db;Port=5432;Database=portivio;Username=postgres;Password=postgres"
+      Jwt__Key: "ReplaceWithA32CharOrLongerKey_ChangeMe!"
+      Jwt__Issuer: "portivio"
+      Jwt__Audience: "portivio"
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5274
+    ports:
+      - "5274:5274"
+
+  frontend:
+    build:
+      context: ./src/frontend
+      dockerfile: Dockerfile
+      args:
+        API_URL: "http://backend:5274"
+    depends_on:
+      - backend
+    ports:
+      - "4200:80"
+
+volumes:
+  pgdata:

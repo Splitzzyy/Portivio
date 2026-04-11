@@ -1,0 +1,10 @@
+# Dockerfile for Postgres DB (placed at repo root)
+FROM postgres:15-alpine
+
+# Default DB settings (overrideable via docker-compose)
+ENV POSTGRES_DB=portivio
+ENV POSTGRES_USER=postgres
+ENV POSTGRES_PASSWORD=postgres
+
+VOLUME ["/var/lib/postgresql/data"]
+EXPOSE 5432
