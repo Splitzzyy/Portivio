@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Portivio.API.Services;
 using Portivio.Application.DTOs.Auth;
 using Portivio.Application.Results;
 using Portivio.Application.Services;
@@ -12,50 +13,33 @@ namespace Portivio.API.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly IAuthHttpContextService _authHttpContextService;
         private readonly ILogger<AuthController> _logger;
 
-        public AuthController(IAuthService authService, ILogger<AuthController> logger)
+        public AuthController(IAuthService authService, IAuthHttpContextService authHttpContextService, ILogger<AuthController> logger)
         {
             _authService = authService;
+            _authHttpContextService = authHttpContextService;
             _logger = logger;
         }
 
         /// <summary>
-        /// Login user with email and password
-        /// Only verified users can login. Generates access and refresh tokens.
+        /// Login user with email and password.
+        /// Refresh tokens are issued for both mobile and browser clients.
+        /// Mobile receives the token in the response body, while browsers receive it via HttpOnly cookie.
         /// </summary>
         [HttpPost("login")]
         public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
         {
             try
             {
-                var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
-                var userAgent = HttpContext.Request.Headers.UserAgent.ToString();
-
-                var loginRequest = new LoginRequest
-                {
-                    Email = request.Email,
-                    Password = request.Password,
-                    IpAddress = ipAddress,
-                    DeviceInfo = userAgent
-                };
-
-                var result = await _authService.LoginAsync(loginRequest);
+                var result = await _authService.LoginAsync(_authHttpContextService.CreateLoginRequest(HttpContext, request));
 
                 return result.Match(
                     onSuccess: () =>
                     {
-                        if (!string.IsNullOrEmpty(result.Data?.RefreshToken) && result.Data?.RefreshTokenExpiry.HasValue == true)
-                        {
-                            Response.Cookies.Append("refreshToken", result.Data.RefreshToken, new CookieOptions
-                            {
-                                HttpOnly = true,
-                                Secure = true,
-                                SameSite = SameSiteMode.Strict,
-                                Expires = result.Data.RefreshTokenExpiry
-                            });
-                        }
-                        return Ok(result.Data);
+                        _authHttpContextService.ApplyRefreshTokenCookie(Response, result.Data);
+                        return Ok(_authHttpContextService.CreateClientAuthResponse(HttpContext, result.Data));
                     },
                     onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
                 );
@@ -97,24 +81,25 @@ namespace Portivio.API.Controllers
         {
             try
             {
-                var result = await _authService.RefreshTokenAsync(request.RefreshToken);
+                var refreshToken = request.RefreshToken;
+                if (string.IsNullOrWhiteSpace(refreshToken))
+                {
+                    Request.Cookies.TryGetValue("refreshToken", out refreshToken);
+                }
+
+                var result = await _authService.RefreshTokenAsync(refreshToken ?? string.Empty);
 
                 return result.Match(
                     onSuccess: () =>
                     {
-                        if (!string.IsNullOrEmpty(result.Data?.RefreshToken) && result.Data?.RefreshTokenExpiry.HasValue == true)
-                        {
-                            Response.Cookies.Append("refreshToken", result.Data.RefreshToken, new CookieOptions
-                            {
-                                HttpOnly = true,
-                                Secure = true,
-                                SameSite = SameSiteMode.Strict,
-                                Expires = result.Data.RefreshTokenExpiry
-                            });
-                        }
-                        return Ok(result.Data);
+                        _authHttpContextService.ApplyRefreshTokenCookie(Response, result.Data);
+                        return Ok(_authHttpContextService.CreateClientAuthResponse(HttpContext, result.Data));
                     },
-                    onFailure: (error) => StatusCode(error.StatusCode ?? 401, new { success = false, message = error.Message, errors = error.Errors })
+                    onFailure: (error) =>
+                    {
+                        _authHttpContextService.ClearAuthCookies(Response);
+                        return StatusCode(error.StatusCode ?? 401, new { success = false, message = error.Message, errors = error.Errors });
+                    }
                 );
             }
             catch (Exception ex)
@@ -220,32 +205,13 @@ namespace Portivio.API.Controllers
         {
             try
             {
-                var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
-                var userAgent = HttpContext.Request.Headers.UserAgent.ToString();
-
-                var googleRequest = new GoogleLoginRequest
-                {
-                    Token = request.Token,
-                    IpAddress = ipAddress,
-                    DeviceInfo = userAgent
-                };
-
-                var result = await _authService.GoogleLoginAsync(googleRequest);
+                var result = await _authService.GoogleLoginAsync(_authHttpContextService.CreateGoogleLoginRequest(HttpContext, request));
 
                 return result.Match(
                     onSuccess: () =>
                     {
-                        if (!string.IsNullOrEmpty(result.Data?.RefreshToken) && result.Data?.RefreshTokenExpiry.HasValue == true)
-                        {
-                            Response.Cookies.Append("refreshToken", result.Data.RefreshToken, new CookieOptions
-                            {
-                                HttpOnly = true,
-                                Secure = true,
-                                SameSite = SameSiteMode.Strict,
-                                Expires = result.Data.RefreshTokenExpiry
-                            });
-                        }
-                        return Ok(result.Data);
+                        _authHttpContextService.ApplyRefreshTokenCookie(Response, result.Data);
+                        return Ok(_authHttpContextService.CreateClientAuthResponse(HttpContext, result.Data));
                     },
                     onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
                 );
@@ -276,7 +242,7 @@ namespace Portivio.API.Controllers
                 return result.Match(
                     onSuccess: () =>
                     {
-                        Response.Cookies.Delete("refreshToken");
+                        _authHttpContextService.ClearAuthCookies(Response);
                         return Ok(new { success = true, message = result.Message });
                     },
                     onFailure: (error) => StatusCode(error.StatusCode ?? 500, new { success = false, message = error.Message, errors = error.Errors })
@@ -310,5 +276,6 @@ namespace Portivio.API.Controllers
                 return StatusCode(500, new { success = false, message = "An error occurred during cleanup" });
             }
         }
+
     }
 }

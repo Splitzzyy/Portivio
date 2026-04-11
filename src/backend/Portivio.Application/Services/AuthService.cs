@@ -56,14 +56,17 @@ namespace Portivio.Application.Services
                 if (!user.IsActive)
                     return Result<AuthResponse>.Forbidden("Account is inactive");
 
-                // NOTE: In production, use a proper password hashing service (bcrypt, Argon2, etc.)
-                if (!VerifyPassword(request.Password, user.Email))
+                if (!VerifyPassword(request.Password, user.PasswordHash))
                     return Result<AuthResponse>.Unauthorized("Invalid credentials");
 
                 user.LastLoginAt = DateTime.UtcNow;
                 _context.Users.Update(user);
 
-                var tokensResult = await GenerateTokensAsync(user, request.IpAddress ?? "Unknown", request.DeviceInfo ?? "Unknown");
+                var tokensResult = await GenerateTokensAsync(
+                    user,
+                    request.IpAddress ?? "Unknown",
+                    request.DeviceInfo ?? "Unknown",
+                    request.IssueRefreshToken);
                 if (tokensResult.IsFailure)
                     return Result<AuthResponse>.Failure(tokensResult.Message, tokensResult.Errors, tokensResult.StatusCode ?? 500);
 
@@ -124,6 +127,7 @@ namespace Portivio.Application.Services
                     Id = Guid.NewGuid(),
                     Email = request.Email,
                     Name = request.Name,
+                    PasswordHash = HashPassword(request.Password),
                     IsVerified = false,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
@@ -175,7 +179,13 @@ namespace Portivio.Application.Services
                     return Result<AuthResponse>.Unauthorized("Refresh token has expired");
 
                 var user = authToken.User;
-                var tokensResult = await GenerateTokensAsync(user, authToken.IpAddress, authToken.DeviceInfo);
+                if (!user.IsActive)
+                    return Result<AuthResponse>.Forbidden("Account is inactive");
+
+                if (!user.IsVerified)
+                    return Result<AuthResponse>.Unauthorized("User is not eligible for token refresh");
+
+                var tokensResult = await GenerateTokensAsync(user, authToken.IpAddress, authToken.DeviceInfo, issueRefreshToken: true);
 
                 if (tokensResult.IsFailure)
                     return Result<AuthResponse>.Failure(tokensResult.Message, tokensResult.Errors, tokensResult.StatusCode ?? 500);
@@ -330,6 +340,7 @@ namespace Portivio.Application.Services
 
                 // TODO: Validate reset token
 
+                user.PasswordHash = HashPassword(request.NewPassword);
                 user.IsActive = true;
                 _context.Users.Update(user);
                 await _context.SaveChangesAsync();
@@ -413,38 +424,44 @@ namespace Portivio.Application.Services
             }
         }
 
-        private async Task<Result<TokenData>> GenerateTokensAsync(User user, string ipAddress, string deviceInfo)
+        private async Task<Result<TokenData>> GenerateTokensAsync(User user, string ipAddress, string deviceInfo, bool issueRefreshToken)
         {
             try
             {
                 var accessTokenExpiry = DateTime.UtcNow.AddHours(1);
-                var refreshTokenExpiry = DateTime.UtcNow.AddDays(7);
 
                 var accessTokenResult = GenerateJwtToken(user, accessTokenExpiry);
                 if (accessTokenResult.IsFailure)
                     return Result<TokenData>.Failure(accessTokenResult.Message, accessTokenResult.Errors, 500);
 
-                var refreshToken = GenerateRefreshToken();
+                string? refreshToken = null;
+                DateTime? refreshTokenExpiry = null;
 
-                var authToken = new AuthToken
+                if (issueRefreshToken)
                 {
-                    Id = Guid.NewGuid(),
-                    UserId = user.Id,
-                    AccessTokenHash = HashToken(accessTokenResult.Data ?? ""),
-                    RefreshTokenHash = HashToken(refreshToken),
-                    AccessTokenExpiry = accessTokenExpiry,
-                    RefreshTokenExpiry = refreshTokenExpiry,
-                    DeviceInfo = deviceInfo,
-                    IpAddress = ipAddress,
-                    Revoked = false,
-                    CreatedAt = DateTime.UtcNow
-                };
+                    refreshToken = GenerateRefreshToken();
+                    refreshTokenExpiry = DateTime.UtcNow.AddDays(7);
 
-                _context.AuthTokens.Add(authToken);
+                    var authToken = new AuthToken
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = user.Id,
+                        AccessTokenHash = HashToken(accessTokenResult.Data ?? string.Empty),
+                        RefreshTokenHash = HashToken(refreshToken),
+                        AccessTokenExpiry = accessTokenExpiry,
+                        RefreshTokenExpiry = refreshTokenExpiry.Value,
+                        DeviceInfo = deviceInfo,
+                        IpAddress = ipAddress,
+                        Revoked = false,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    _context.AuthTokens.Add(authToken);
+                }
 
                 var tokenData = new TokenData
                 {
-                    AccessToken = accessTokenResult.Data ?? "",
+                    AccessToken = accessTokenResult.Data ?? string.Empty,
                     RefreshToken = refreshToken,
                     AccessTokenExpiry = accessTokenExpiry,
                     RefreshTokenExpiry = refreshTokenExpiry
@@ -512,18 +529,27 @@ namespace Portivio.Application.Services
             }
         }
 
-        private bool VerifyPassword(string password, string email)
+        private static string HashPassword(string password)
         {
-            // TODO: Implement proper password verification with bcrypt or similar
-            return true;
+            return BCrypt.Net.BCrypt.HashPassword(password);
+        }
+
+        private static bool VerifyPassword(string password, string? passwordHash)
+        {
+            if (string.IsNullOrWhiteSpace(passwordHash))
+            {
+                return false;
+            }
+
+            return BCrypt.Net.BCrypt.Verify(password, passwordHash);
         }
     }
 
     public class TokenData
     {
         public string AccessToken { get; set; } = null!;
-        public string RefreshToken { get; set; } = null!;
+        public string? RefreshToken { get; set; }
         public DateTime AccessTokenExpiry { get; set; }
-        public DateTime RefreshTokenExpiry { get; set; }
+        public DateTime? RefreshTokenExpiry { get; set; }
     }
 }

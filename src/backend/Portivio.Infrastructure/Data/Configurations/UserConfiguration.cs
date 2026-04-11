@@ -10,13 +10,12 @@ namespace Portivio.Infrastructure.Data.Configurations
         {
             builder.HasKey(u => u.Id);
             builder.HasIndex(u => u.Email).IsUnique();
+            builder.Property(u => u.PasswordHash)
+                .HasMaxLength(255);
             builder.HasMany(u => u.Profiles)
                 .WithOne(p => p.User)
                 .HasForeignKey(p => p.UserId);
             builder.HasMany(u => u.AuthProviders)
-                .WithOne()
-                .HasForeignKey(a => a.UserId);
-            builder.HasMany(u => u.AuthTokens)
                 .WithOne()
                 .HasForeignKey(a => a.UserId);
             builder.HasMany(u => u.AuditLogs)

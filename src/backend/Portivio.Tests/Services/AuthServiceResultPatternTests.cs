@@ -44,6 +44,7 @@ namespace Portivio.Tests.Services
                 Id = Guid.NewGuid(),
                 Email = "test@example.com",
                 Name = "Test User",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"),
                 IsVerified = true,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
@@ -56,7 +57,8 @@ namespace Portivio.Tests.Services
             var request = new LoginRequest
             {
                 Email = "test@example.com",
-                Password = "Password123"
+                Password = "Password123",
+                IssueRefreshToken = false
             };
 
             // Act
@@ -186,6 +188,7 @@ namespace Portivio.Tests.Services
                 Id = Guid.NewGuid(),
                 Email = "test@example.com",
                 Name = "Test User",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"),
                 IsVerified = true,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
@@ -216,6 +219,7 @@ namespace Portivio.Tests.Services
                 Id = Guid.NewGuid(),
                 Email = "test@example.com",
                 Name = "Test User",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"),
                 IsVerified = true,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
@@ -290,7 +294,7 @@ namespace Portivio.Tests.Services
         }
 
         [Fact]
-        public async Task SuccessfulLogin_TokensAreNotEmpty()
+        public async Task SuccessfulLogin_AccessTokenIsNotEmpty()
         {
             // Arrange
             var context = CreateInMemoryDbContext();
@@ -301,6 +305,7 @@ namespace Portivio.Tests.Services
                 Id = Guid.NewGuid(),
                 Email = "test@example.com",
                 Name = "Test User",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"),
                 IsVerified = true,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
@@ -313,7 +318,8 @@ namespace Portivio.Tests.Services
             var request = new LoginRequest
             {
                 Email = "test@example.com",
-                Password = "Password123"
+                Password = "Password123",
+                IssueRefreshToken = false
             };
 
             // Act
@@ -323,12 +329,11 @@ namespace Portivio.Tests.Services
             Assert.True(result.IsSuccess);
             Assert.NotNull(result.Data);
             Assert.False(string.IsNullOrEmpty(result.Data.AccessToken));
-            Assert.False(string.IsNullOrEmpty(result.Data.RefreshToken));
-            Assert.NotEqual(result.Data.AccessToken, result.Data.RefreshToken);
+            Assert.True(string.IsNullOrEmpty(result.Data.RefreshToken));
         }
 
         [Fact]
-        public async Task TokensArePersisted_AfterSuccessfulLogin()
+        public async Task TokensArePersisted_AfterSuccessfulPhoneLogin()
         {
             // Arrange
             var context = CreateInMemoryDbContext();
@@ -339,6 +344,7 @@ namespace Portivio.Tests.Services
                 Id = Guid.NewGuid(),
                 Email = "test@example.com",
                 Name = "Test User",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"),
                 IsVerified = true,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
@@ -351,7 +357,9 @@ namespace Portivio.Tests.Services
             var request = new LoginRequest
             {
                 Email = "test@example.com",
-                Password = "Password123"
+                Password = "Password123",
+                DeviceInfo = "Mozilla/5.0 (Android 14; Mobile)",
+                IssueRefreshToken = true
             };
 
             // Act
