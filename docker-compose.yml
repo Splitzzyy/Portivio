@@ -1,32 +1,36 @@
-version: '3.8'
-
 services:
   db:
-    build:
-      context: .
-      dockerfile: Dockerfile.db
+    image: postgres:15-alpine
+    container_name: portivio-db
     environment:
       POSTGRES_DB: portivio
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-    volumes:
-      - pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d portivio"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   backend:
     build:
       context: ./src/backend
-      dockerfile: Dockerfile.backend
+      dockerfile: Dockerfile
+    container_name: portivio-backend
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5274
       Postgres__ConnectionString: "Host=db;Port=5432;Database=portivio;Username=postgres;Password=postgres"
       Jwt__Key: "ReplaceWithA32CharOrLongerKey_ChangeMe!"
       Jwt__Issuer: "portivio"
       Jwt__Audience: "portivio"
-      ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: http://+:5274
     ports:
       - "5274:5274"
 
@@ -36,6 +40,7 @@ services:
       dockerfile: Dockerfile
       args:
         API_URL: "http://backend:5274"
+    container_name: portivio-frontend
     depends_on:
       - backend
     ports:
