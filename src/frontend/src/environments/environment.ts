@@ -1,6 +1,6 @@
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:5274/api',
+  apiUrl: 'https://localhost:7241/api',
   oauth: {
     google: {
       // Replace with your real OAuth 2.0 Client ID from Google Cloud Console

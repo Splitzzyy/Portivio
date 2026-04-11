@@ -7,6 +7,7 @@ using Portivio.Application.Services;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+const string FrontendCorsPolicy = "FrontendDevelopment";
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -14,6 +15,18 @@ builder.Services.AddOpenApi();
 
 // Add Swagger/Swashbuckle
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(FrontendCorsPolicy, policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:4200")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
 
 // Adding DB Context with PostgreSQL provider
 builder.Services.AddDbContext<PortivioDbContext>(options =>
@@ -67,6 +80,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors(FrontendCorsPolicy);
 
 app.UseAuthentication();
 app.UseAuthorization();
