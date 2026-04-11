@@ -97,6 +97,14 @@ export class AuthService {
     return this.http.post<SimpleResponse>(`${this.API_URL}/forgot-password`, request);
   }
 
+  resendVerificationEmail(email: string): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(
+      `${this.API_URL}/resend-verification`,
+      null,
+      { params: { email } }
+    );
+  }
+
   resetPassword(reset: ResetPassword): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.API_URL}/reset-password`, reset);
   }

@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
 using Portivio.Application.DTOs.Auth;
 
 namespace Portivio.API.Services

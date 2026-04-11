@@ -610,7 +610,30 @@ $bp-xl: 1280px;
 
   i.alert-icon { font-size: 15px; line-height: 1.4; margin-top: 1px; }
 
-  .alert-body { flex: 1; line-height: 1.5; }
+  .alert-body {
+    flex: 1;
+    line-height: 1.5;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .alert-action {
+    align-self: flex-start;
+    border: none;
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+  }
 
   .alert-close {
     background: transparent;

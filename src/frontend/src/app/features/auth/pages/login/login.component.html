@@ -1,6 +1,5 @@
 <div class="auth-container">
   <div class="auth-wrapper">
-    <!-- Mobile top bar (< 768px only) -->
     <header class="auth-mobile-header">
       <a routerLink="/" class="mobile-brand" aria-label="Portivio home">
         <i class="fas fa-chart-pie" aria-hidden="true"></i>
@@ -12,7 +11,6 @@
       </a>
     </header>
 
-    <!-- Brand pane (>= 768px only) -->
     <aside class="auth-brand-pane" aria-hidden="true">
       <div class="brand-top">
         <a routerLink="/" class="brand-back-link">
@@ -55,7 +53,6 @@
       </div>
     </aside>
 
-    <!-- Form pane -->
     <main class="auth-form-pane">
       <div class="auth-form-inner">
         <div class="form-heading">
@@ -63,16 +60,25 @@
           <p>Log in to your Portivio account to continue.</p>
         </div>
 
-        <!-- Error alert -->
         <div *ngIf="errorMessage" class="alert alert-error" role="alert">
           <i class="fas fa-circle-exclamation alert-icon" aria-hidden="true"></i>
-          <span class="alert-body">{{ errorMessage }}</span>
-          <button type="button" class="alert-close" aria-label="Dismiss" (click)="errorMessage = null">
+          <div class="alert-body">
+            <span>{{ errorMessage }}</span>
+            <button
+              *ngIf="pendingVerificationEmail"
+              type="button"
+              class="alert-action"
+              [disabled]="resendLoading"
+              (click)="resendVerificationEmail()"
+            >
+              {{ resendLoading ? 'Sending verification email...' : 'Resend verification email' }}
+            </button>
+          </div>
+          <button type="button" class="alert-close" aria-label="Dismiss" (click)="errorMessage = null; pendingVerificationEmail = null">
             <i class="fas fa-times" aria-hidden="true"></i>
           </button>
         </div>
 
-        <!-- Success alert -->
         <div *ngIf="successMessage" class="alert alert-success" role="status">
           <i class="fas fa-circle-check alert-icon" aria-hidden="true"></i>
           <span class="alert-body">{{ successMessage }}</span>
@@ -82,7 +88,6 @@
         </div>
 
         <form [formGroup]="loginForm" (ngSubmit)="onLogin()" class="auth-form" novalidate>
-          <!-- Email -->
           <div class="field">
             <label for="email">Email address</label>
             <div class="input-shell" [class.has-error]="submitted && f['email'].errors">
@@ -96,15 +101,15 @@
                 inputmode="email"
                 [attr.aria-invalid]="submitted && f['email'].errors ? 'true' : 'false'"
                 aria-describedby="email-error"
+                (blur)="normalizeEmailField()"
               />
             </div>
             <div *ngIf="submitted && f['email'].errors" id="email-error" class="field-error" role="alert">
               <span *ngIf="f['email'].errors['required']">Email is required</span>
-              <span *ngIf="f['email'].errors['email']">Please enter a valid email</span>
+              <span *ngIf="f['email'].errors['emailFormat']">Enter a valid email address</span>
             </div>
           </div>
 
-          <!-- Password -->
           <div class="field">
             <label for="password">Password</label>
             <div class="input-shell" [class.has-error]="submitted && f['password'].errors">
@@ -134,7 +139,6 @@
             </div>
           </div>
 
-          <!-- Remember + forgot -->
           <div class="field-row">
             <label class="check">
               <input formControlName="rememberMe" type="checkbox" />
@@ -145,35 +149,31 @@
             </a>
           </div>
 
-          <!-- Submit -->
           <button type="submit" class="btn-submit" [disabled]="loading || googleLoading">
             <span *ngIf="loading" class="spinner" aria-hidden="true"></span>
-            <span>{{ loading ? 'Signing in…' : 'Sign in' }}</span>
+            <span>{{ loading ? 'Signing in...' : 'Sign in' }}</span>
             <i *ngIf="!loading" class="fas fa-arrow-right" aria-hidden="true"></i>
           </button>
         </form>
 
-        <!-- Divider -->
         <div class="divider" aria-hidden="true">Or continue with</div>
 
-        <!-- Google SSO -->
         <div class="sso-container">
           <div #googleBtnContainer class="google-slot" aria-label="Sign in with Google"></div>
           <p *ngIf="googleLoading" class="sso-loading" role="status">
             <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i>
-            Signing in with Google…
+            Signing in with Google...
           </p>
         </div>
 
-        <!-- Switch to signup -->
         <div class="auth-switch">
           Don't have an account?
           <a href="javascript:void(0)" (click)="goToSignup()">Create one free</a>
         </div>
 
         <div class="auth-footer">
-          <a href="#">Privacy</a>·
-          <a href="#">Terms</a>·
+          <a href="#">Privacy</a> �
+          <a href="#">Terms</a> �
           <a href="#">Support</a>
         </div>
       </div>

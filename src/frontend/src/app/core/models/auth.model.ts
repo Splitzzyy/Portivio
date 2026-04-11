@@ -64,3 +64,7 @@ export interface ApiError {
   message: string;
   errors: string[];
 }
+
+export interface ApiErrorResponse extends ApiError {
+  status?: number;
+}

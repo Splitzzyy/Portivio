@@ -3,10 +3,10 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-import { ToastrService } from 'ngx-toastr';
 import { AuthService } from '../../../../core/services/auth.service';
 import { GoogleAuthService } from '../../../../core/services/google-auth.service';
-import { LoginCredentials } from '../../../../core/models/auth.model';
+import { ApiErrorResponse, LoginCredentials } from '../../../../core/models/auth.model';
+import { emailFormatValidator, normalizeEmailControl, normalizeEmailValue } from '../../auth-form.utils';
 
 /**
  * Login page. Supports email/password and Google Identity Services SSO.
@@ -23,11 +23,13 @@ export class LoginComponent implements OnInit, OnDestroy, AfterViewInit {
   loginForm: FormGroup;
   loading = false;
   googleLoading = false;
+  resendLoading = false;
   submitted = false;
   errorMessage: string | null = null;
   successMessage: string | null = null;
   showPassword = false;
   returnUrl = '/dashboard';
+  pendingVerificationEmail: string | null = null;
 
   private destroy$ = new Subject<void>();
 
@@ -36,11 +38,10 @@ export class LoginComponent implements OnInit, OnDestroy, AfterViewInit {
     private authService: AuthService,
     private googleAuth: GoogleAuthService,
     private router: Router,
-    private route: ActivatedRoute,
-    private toastr: ToastrService
+    private route: ActivatedRoute
   ) {
     this.loginForm = this.formBuilder.group({
-      email: ['', [Validators.required, Validators.email]],
+      email: ['', [Validators.required, emailFormatValidator()]],
       password: ['', [Validators.required, Validators.minLength(6)]],
       rememberMe: [false]
     });
@@ -48,19 +49,24 @@ export class LoginComponent implements OnInit, OnDestroy, AfterViewInit {
 
   ngOnInit(): void {
     this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/dashboard';
+    const prefilledEmail = this.route.snapshot.queryParams['email'];
 
     if (this.route.snapshot.queryParams['resetSuccess']) {
       this.successMessage = 'Password reset successful. Please log in.';
     }
 
-    // Listen for Google ID tokens emitted by GIS and exchange for a session.
+    if (prefilledEmail) {
+      this.loginForm.patchValue({
+        email: normalizeEmailValue(prefilledEmail)
+      });
+    }
+
     this.googleAuth.idToken$
       .pipe(takeUntil(this.destroy$))
       .subscribe(idToken => this.exchangeGoogleToken(idToken));
   }
 
   ngAfterViewInit(): void {
-    // Render the official Google button once GIS finishes loading.
     if (this.googleBtnContainer) {
       this.googleAuth.renderButton(this.googleBtnContainer.nativeElement);
     }
@@ -79,6 +85,8 @@ export class LoginComponent implements OnInit, OnDestroy, AfterViewInit {
     this.submitted = true;
     this.errorMessage = null;
     this.successMessage = null;
+    this.pendingVerificationEmail = null;
+    this.normalizeEmailField();
 
     if (this.loginForm.invalid) {
       return;
@@ -86,7 +94,7 @@ export class LoginComponent implements OnInit, OnDestroy, AfterViewInit {
 
     this.loading = true;
     const credentials: LoginCredentials = {
-      email: this.f['email'].value,
+      email: normalizeEmailValue(this.f['email'].value),
       password: this.f['password'].value,
       rememberMe: this.f['rememberMe'].value
     };
@@ -97,6 +105,7 @@ export class LoginComponent implements OnInit, OnDestroy, AfterViewInit {
       .subscribe({
         next: response => {
           this.loading = false;
+          this.pendingVerificationEmail = null;
           if (response.success) {
             this.router.navigate([this.returnUrl]);
           } else {
@@ -105,8 +114,30 @@ export class LoginComponent implements OnInit, OnDestroy, AfterViewInit {
         },
         error: error => {
           this.loading = false;
-          // Error interceptor already fired a toast; keep an inline message too.
-          this.errorMessage = error?.error?.message || 'Login failed. Please try again.';
+          this.handleAuthError(error, credentials.email, 'Login failed. Please try again.');
+        }
+      });
+  }
+
+  resendVerificationEmail(): void {
+    if (!this.pendingVerificationEmail || this.resendLoading) {
+      return;
+    }
+
+    this.resendLoading = true;
+    this.errorMessage = null;
+
+    this.authService
+      .resendVerificationEmail(this.pendingVerificationEmail)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: response => {
+          this.resendLoading = false;
+          this.successMessage = response.message || 'Verification email sent. Please check your inbox.';
+        },
+        error: error => {
+          this.resendLoading = false;
+          this.errorMessage = error?.error?.message || 'Could not resend verification email right now.';
         }
       });
   }
@@ -128,7 +159,6 @@ export class LoginComponent implements OnInit, OnDestroy, AfterViewInit {
         },
         error: error => {
           this.googleLoading = false;
-          // 501 Not Implemented surfaces here — toast already shown by error interceptor.
           this.errorMessage = error?.error?.message || 'Google sign-in is not available right now.';
         }
       });
@@ -138,11 +168,28 @@ export class LoginComponent implements OnInit, OnDestroy, AfterViewInit {
     this.showPassword = !this.showPassword;
   }
 
+  normalizeEmailField(): void {
+    normalizeEmailControl(this.loginForm.get('email'));
+  }
+
   goToForgotPassword(): void {
     this.router.navigate(['/auth/forgot-password']);
   }
 
   goToSignup(): void {
     this.router.navigate(['/auth/signup']);
+  }
+
+  private handleAuthError(
+    error: { status?: number; error?: ApiErrorResponse },
+    email: string,
+    fallbackMessage: string
+  ): void {
+    const backendMessage = error?.error?.message;
+    this.errorMessage = backendMessage || fallbackMessage;
+
+    if (backendMessage?.includes('Email not verified')) {
+      this.pendingVerificationEmail = normalizeEmailValue(email);
+    }
   }
 }

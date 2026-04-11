@@ -33,10 +33,24 @@ export class ErrorInterceptor implements HttpInterceptor {
   ): Observable<HttpEvent<unknown>> {
     return next.handle(request).pipe(
       catchError((error: HttpErrorResponse) => {
-        this.report(error);
+        if (!this.shouldHandleInline(request, error)) {
+          this.report(error);
+        }
         return throwError(() => error);
       })
     );
+  }
+
+  private shouldHandleInline(request: HttpRequest<unknown>, error: HttpErrorResponse): boolean {
+    if (!this.isAuthRequest(request.url)) {
+      return false;
+    }
+
+    return error.status >= 400 && error.status < 500;
+  }
+
+  private isAuthRequest(url: string): boolean {
+    return url.includes('/auth/');
   }
 
   private report(error: HttpErrorResponse): void {

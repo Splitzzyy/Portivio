@@ -4,9 +4,9 @@ import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { AuthService } from '../../../../core/services/auth.service';
-import { SignupForm } from '../../../../core/models/auth.model';
+import { ApiErrorResponse, SignupForm } from '../../../../core/models/auth.model';
+import { emailFormatValidator, normalizeEmailControl, normalizeEmailValue } from '../../auth-form.utils';
 
-/** Cross-field validator: password and confirmPassword must match. */
 function passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
   const password = control.get('password');
   const confirmPassword = control.get('confirmPassword');
@@ -14,12 +14,6 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
   return password.value === confirmPassword.value ? null : { passwordMismatch: true };
 }
 
-/**
- * Signup page. Form shape matches the backend SignupRequest
- * (Email, Name, Password, ConfirmPassword). Single `name` field rather than
- * split first/last so we don't have to guess how the backend will collate
- * them.
- */
 @Component({
   selector: 'app-signup',
   templateUrl: './signup.component.html',
@@ -28,6 +22,7 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
 export class SignupComponent implements OnInit, OnDestroy {
   signupForm: FormGroup;
   loading = false;
+  resendLoading = false;
   submitted = false;
   errorMessage: string | null = null;
   successMessage: string | null = null;
@@ -35,6 +30,8 @@ export class SignupComponent implements OnInit, OnDestroy {
   showConfirmPassword = false;
   passwordStrength = 0;
   passwordStrengthText = '';
+  pendingVerificationEmail: string | null = null;
+  existingAccountEmail: string | null = null;
 
   private destroy$ = new Subject<void>();
 
@@ -45,7 +42,7 @@ export class SignupComponent implements OnInit, OnDestroy {
   ) {
     this.signupForm = this.formBuilder.group({
       name: ['', [Validators.required, Validators.minLength(2)]],
-      email: ['', [Validators.required, Validators.email]],
+      email: ['', [Validators.required, emailFormatValidator()]],
       password: ['', [Validators.required, Validators.minLength(8), this.passwordValidator.bind(this)]],
       confirmPassword: ['', Validators.required],
       acceptTerms: [false, Validators.requiredTrue]
@@ -67,7 +64,6 @@ export class SignupComponent implements OnInit, OnDestroy {
     return this.signupForm.controls;
   }
 
-  /** Enforce uppercase + lowercase + digit + special char. */
   private passwordValidator(control: AbstractControl): ValidationErrors | null {
     const value = control.value;
     if (!value) return null;
@@ -104,15 +100,19 @@ export class SignupComponent implements OnInit, OnDestroy {
     this.submitted = true;
     this.errorMessage = null;
     this.successMessage = null;
+    this.pendingVerificationEmail = null;
+    this.existingAccountEmail = null;
+    this.normalizeEmailField();
 
     if (this.signupForm.invalid) {
       return;
     }
 
     this.loading = true;
+    const email = normalizeEmailValue(this.f['email'].value);
     const signupData: SignupForm = {
-      email: this.f['email'].value,
-      name: this.f['name'].value,
+      email,
+      name: this.f['name'].value.trim(),
       password: this.f['password'].value,
       confirmPassword: this.f['confirmPassword'].value,
       acceptTerms: this.f['acceptTerms'].value
@@ -125,14 +125,11 @@ export class SignupComponent implements OnInit, OnDestroy {
         next: response => {
           this.loading = false;
           if (response.success) {
-            // If the backend auto-logs-the-user-in (accessToken present), jump
-            // straight to the dashboard. Otherwise land on login so the user
-            // can verify email and sign in.
             if (response.accessToken) {
               this.router.navigate(['/dashboard']);
             } else {
-              this.successMessage = 'Account created. Please verify your email and log in.';
-              setTimeout(() => this.router.navigate(['/auth/login']), 2000);
+              this.pendingVerificationEmail = email;
+              this.successMessage = response.message || 'Account created. Please verify your email and log in.';
             }
           } else {
             this.errorMessage = response.message || 'Signup failed. Please try again.';
@@ -140,7 +137,30 @@ export class SignupComponent implements OnInit, OnDestroy {
         },
         error: error => {
           this.loading = false;
-          this.errorMessage = error?.error?.message || 'Signup failed. Please try again.';
+          this.handleSignupError(error, email);
+        }
+      });
+  }
+
+  resendVerificationEmail(): void {
+    if (!this.pendingVerificationEmail || this.resendLoading) {
+      return;
+    }
+
+    this.resendLoading = true;
+    this.errorMessage = null;
+
+    this.authService
+      .resendVerificationEmail(this.pendingVerificationEmail)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: response => {
+          this.resendLoading = false;
+          this.successMessage = response.message || 'Verification email sent. Please check your inbox.';
+        },
+        error: error => {
+          this.resendLoading = false;
+          this.errorMessage = error?.error?.message || 'Could not resend verification email right now.';
         }
       });
   }
@@ -153,6 +173,10 @@ export class SignupComponent implements OnInit, OnDestroy {
     this.showConfirmPassword = !this.showConfirmPassword;
   }
 
+  normalizeEmailField(): void {
+    normalizeEmailControl(this.signupForm.get('email'));
+  }
+
   getPasswordStrengthColor(): string {
     if (this.passwordStrength <= 20) return '#ef4444';
     if (this.passwordStrength <= 50) return '#f97316';
@@ -161,6 +185,17 @@ export class SignupComponent implements OnInit, OnDestroy {
   }
 
   goToLogin(): void {
-    this.router.navigate(['/auth/login']);
+    this.router.navigate(['/auth/login'], this.existingAccountEmail
+      ? { queryParams: { email: this.existingAccountEmail } }
+      : undefined);
+  }
+
+  private handleSignupError(error: { status?: number; error?: ApiErrorResponse }, email: string): void {
+    const backendMessage = error?.error?.message;
+    this.errorMessage = backendMessage || 'Signup failed. Please try again.';
+
+    if (backendMessage?.includes('Email already registered')) {
+      this.existingAccountEmail = email;
+    }
   }
 }

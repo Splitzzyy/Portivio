@@ -38,7 +38,7 @@ namespace Portivio.Tests.Services
             // Arrange
             var context = CreateInMemoryDbContext();
             var configMock = CreateMockConfiguration();
-            
+
             var user = new User
             {
                 Id = Guid.NewGuid(),
@@ -349,7 +349,7 @@ namespace Portivio.Tests.Services
             Assert.NotNull(result.Data);
             Assert.Equal(201, result.StatusCode);
             Assert.Equal("Signup successful", result.Message);
-            
+
             var createdUser = await context.Users.FirstOrDefaultAsync(u => u.Email == "newuser@example.com");
             Assert.NotNull(createdUser);
             Assert.False(createdUser.IsVerified);

@@ -1,6 +1,5 @@
 <div class="auth-container">
   <div class="auth-wrapper">
-    <!-- Mobile top bar -->
     <header class="auth-mobile-header">
       <a routerLink="/" class="mobile-brand" aria-label="Portivio home">
         <i class="fas fa-chart-pie" aria-hidden="true"></i>
@@ -12,7 +11,6 @@
       </a>
     </header>
 
-    <!-- Brand pane -->
     <aside class="auth-brand-pane" aria-hidden="true">
       <div class="brand-top">
         <a routerLink="/" class="brand-back-link">
@@ -55,29 +53,43 @@
       </div>
     </aside>
 
-    <!-- Form pane -->
     <main class="auth-form-pane">
       <div class="auth-form-inner">
         <div class="form-heading">
           <h1>Create your account</h1>
-          <p>Sign up in under a minute — no credit card required.</p>
+          <p>Sign up in under a minute - no credit card required.</p>
         </div>
 
         <div *ngIf="errorMessage" class="alert alert-error" role="alert">
           <i class="fas fa-circle-exclamation alert-icon" aria-hidden="true"></i>
-          <span class="alert-body">{{ errorMessage }}</span>
-          <button type="button" class="alert-close" aria-label="Dismiss" (click)="errorMessage = null">
+          <div class="alert-body">
+            <span>{{ errorMessage }}</span>
+            <button *ngIf="existingAccountEmail" type="button" class="alert-action" (click)="goToLogin()">
+              Go to login
+            </button>
+          </div>
+          <button type="button" class="alert-close" aria-label="Dismiss" (click)="errorMessage = null; existingAccountEmail = null">
             <i class="fas fa-times" aria-hidden="true"></i>
           </button>
         </div>
 
         <div *ngIf="successMessage" class="alert alert-success" role="status">
           <i class="fas fa-circle-check alert-icon" aria-hidden="true"></i>
-          <span class="alert-body">{{ successMessage }}</span>
+          <div class="alert-body">
+            <span>{{ successMessage }}</span>
+            <button
+              *ngIf="pendingVerificationEmail"
+              type="button"
+              class="alert-action"
+              [disabled]="resendLoading"
+              (click)="resendVerificationEmail()"
+            >
+              {{ resendLoading ? 'Sending verification email...' : 'Resend verification email' }}
+            </button>
+          </div>
         </div>
 
         <form [formGroup]="signupForm" (ngSubmit)="onSignup()" class="auth-form" novalidate>
-          <!-- Full name -->
           <div class="field">
             <label for="name">Full name</label>
             <div class="input-shell" [class.has-error]="submitted && f['name'].errors">
@@ -98,7 +110,6 @@
             </div>
           </div>
 
-          <!-- Email -->
           <div class="field">
             <label for="email">Email address</label>
             <div class="input-shell" [class.has-error]="submitted && f['email'].errors">
@@ -112,15 +123,15 @@
                 inputmode="email"
                 [attr.aria-invalid]="submitted && f['email'].errors ? 'true' : 'false'"
                 aria-describedby="signup-email-error"
+                (blur)="normalizeEmailField()"
               />
             </div>
             <div *ngIf="submitted && f['email'].errors" id="signup-email-error" class="field-error" role="alert">
               <span *ngIf="f['email'].errors['required']">Email is required</span>
-              <span *ngIf="f['email'].errors['email']">Please enter a valid email</span>
+              <span *ngIf="f['email'].errors['emailFormat']">Enter a valid email address</span>
             </div>
           </div>
 
-          <!-- Password -->
           <div class="field">
             <label for="password">Password</label>
             <div class="input-shell" [class.has-error]="submitted && f['password'].errors">
@@ -145,7 +156,6 @@
               </button>
             </div>
 
-            <!-- Strength meter -->
             <div *ngIf="signupForm.get('password')?.value" class="pw-meter" aria-live="polite">
               <div class="bar">
                 <div
@@ -166,7 +176,6 @@
             </div>
           </div>
 
-          <!-- Confirm password -->
           <div class="field">
             <label for="confirmPassword">Confirm password</label>
             <div
@@ -203,7 +212,6 @@
             </div>
           </div>
 
-          <!-- Terms -->
           <label class="check">
             <input formControlName="acceptTerms" type="checkbox" />
             <span>
@@ -214,10 +222,9 @@
             Please accept the terms and conditions
           </div>
 
-          <!-- Submit -->
           <button type="submit" class="btn-submit" [disabled]="loading">
             <span *ngIf="loading" class="spinner" aria-hidden="true"></span>
-            <span>{{ loading ? 'Creating account…' : 'Create account' }}</span>
+            <span>{{ loading ? 'Creating account...' : 'Create account' }}</span>
             <i *ngIf="!loading" class="fas fa-arrow-right" aria-hidden="true"></i>
           </button>
         </form>
@@ -228,8 +235,8 @@
         </div>
 
         <div class="auth-footer">
-          <a href="#">Privacy</a>·
-          <a href="#">Terms</a>·
+          <a href="#">Privacy</a> �
+          <a href="#">Terms</a> �
           <a href="#">Support</a>
         </div>
       </div>

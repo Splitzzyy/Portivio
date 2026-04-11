@@ -1,13 +1,13 @@
-@import '../../auth-shared';
-
-// Login-specific overrides layer on top of the shared auth layout.
-// Most of the visuals live in _auth-shared.scss — keep this file lean.
+@use '../../auth-shared' as *;
 
 :host {
   display: block;
 }
 
-// Make the Google button fill the slot once GIS renders it.
 .google-slot {
-  :host ::ng-deep & > div { width: 100% !important; }
+  width: 100%;
+
+  ::ng-deep > div {
+    width: 100% !important;
+  }
 }

@@ -1,4 +1,4 @@
-@import '../../auth-shared';
+@use '../../auth-shared' as *;
 
 :host {
   display: block;

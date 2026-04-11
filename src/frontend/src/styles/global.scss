@@ -1,3 +1,5 @@
+@use 'sass:color';
+
 // Global Variables
 $primary-color: #6366f1;
 $primary-dark: #4f46e5;
@@ -169,7 +171,7 @@ button {
     color: $text-dark;
 
     &:hover:not(:disabled) {
-      background: darken($border-color, 10%);
+      background: color.adjust($border-color, $lightness: -10%);
     }
   }
 
@@ -178,7 +180,7 @@ button {
     color: $white;
 
     &:hover:not(:disabled) {
-      background: darken($success-color, 10%);
+      background: color.adjust($success-color, $lightness: -10%);
     }
   }
 
@@ -187,7 +189,7 @@ button {
     color: $white;
 
     &:hover:not(:disabled) {
-      background: darken($danger-color, 10%);
+      background: color.adjust($danger-color, $lightness: -10%);
     }
   }
 

@@ -29,6 +29,7 @@ namespace Portivio.API.Controllers
         /// Mobile receives the token in the response body, while browsers receive it via HttpOnly cookie.
         /// </summary>
         [HttpPost("login")]
+        [AllowAnonymous]
         public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
         {
             try
@@ -55,6 +56,7 @@ namespace Portivio.API.Controllers
         /// Register a new user
         /// </summary>
         [HttpPost("signup")]
+        [AllowAnonymous]
         public async Task<ActionResult<AuthResponse>> Signup([FromBody] SignupRequest request)
         {
             try
@@ -201,6 +203,7 @@ namespace Portivio.API.Controllers
         /// Google SSO Login
         /// </summary>
         [HttpPost("google-login")]
+        [AllowAnonymous]
         public async Task<ActionResult<AuthResponse>> GoogleLogin([FromBody] GoogleLoginRequest request)
         {
             try
