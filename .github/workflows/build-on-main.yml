@@ -1,0 +1,54 @@
+name: Build On Main
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  backend-build:
+    name: Backend Build
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: src/backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore backend dependencies
+        run: dotnet restore Portivio.slnx
+
+      - name: Build backend
+        run: dotnet build Portivio.slnx --configuration Release --no-restore
+
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: src/frontend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build frontend
+        run: bun run prod

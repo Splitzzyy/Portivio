@@ -20,7 +20,7 @@ updates:
         patterns:
           - "*"
 
-  - package-ecosystem: "npm"
+  - package-ecosystem: "bun"
     directory: "/src/frontend"
     schedule:
       interval: "weekly"
@@ -35,13 +35,7 @@ updates:
       - "frontend"
       - "security"
     groups:
-      angular:
-        patterns:
-          - "@angular*"
-          - "zone.js"
-          - "rxjs"
-          - "typescript"
-      frontend-tooling:
+      frontend:
         patterns:
           - "*"
 

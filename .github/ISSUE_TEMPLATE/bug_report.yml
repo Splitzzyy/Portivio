@@ -1,0 +1,77 @@
+name: Bug report
+description: Report a reproducible problem in the application
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Provide enough detail for someone else to reproduce the problem reliably.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What is broken?
+      placeholder: A short description of the issue
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Frontend
+        - Backend
+        - API integration
+        - Authentication
+        - DevOps / CI
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the exact steps that trigger the issue
+      placeholder: |
+        1. Go to ...
+        2. Click on ...
+        3. Submit ...
+        4. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      placeholder: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      placeholder: What happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Add versions, browser, OS, or deployment context if relevant
+      placeholder: Windows 11, Chrome 135, .NET 10, Bun 1.x, local dev, etc.
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Paste any relevant logs, stack traces, or screenshots
+      render: shell
+
