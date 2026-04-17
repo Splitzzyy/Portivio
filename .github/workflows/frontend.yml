@@ -7,8 +7,8 @@ on:
         required: true
       DOCKERHUB_TOKEN:
         required: true
-      FRONTEND_API_URL:
-        required: false
+      FRONTEND_ENV:
+        required: true
 
 jobs:
   build-and-push:
@@ -22,6 +22,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Generate environment file
+        env:
+          FRONTEND_ENV: ${{ secrets.FRONTEND_ENV }}
+        run: echo "$FRONTEND_ENV" > src/environments/environment.prod.ts
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -48,10 +53,29 @@ jobs:
         with:
           context: src/frontend
           push: true
-          build-args: |
-            API_URL=${{ secrets.FRONTEND_API_URL }}
           tags: |
             rghvgrv/portifio-ui:latest
             rghvgrv/portifio-ui:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Prune old UI tags (keep 3)
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          TOKEN=$(curl -s -X POST "https://hub.docker.com/v2/users/login" \
+            -H "Content-Type: application/json" \
+            -d "{\"username\": \"${DOCKERHUB_USERNAME}\", \"password\": \"${DOCKERHUB_TOKEN}\"}" \
+            | jq -r '.token')
+
+          TAGS=$(curl -s -H "Authorization: JWT ${TOKEN}" \
+            "https://hub.docker.com/v2/repositories/${DOCKERHUB_USERNAME}/portifio-ui/tags/?page_size=100&ordering=-last_updated" \
+            | jq -r '.results[].name' | grep -v '^latest$')
+
+          echo "$TAGS" | tail -n +4 | while read -r tag; do
+            echo "Deleting old tag: $tag"
+            curl -s -X DELETE \
+              -H "Authorization: JWT ${TOKEN}" \
+              "https://hub.docker.com/v2/repositories/${DOCKERHUB_USERNAME}/portifio-ui/tags/${tag}/"
+          done
