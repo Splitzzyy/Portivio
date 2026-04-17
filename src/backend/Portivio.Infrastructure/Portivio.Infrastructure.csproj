@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
     <ProjectReference Include="..\Portivio.Domain\Portivio.Domain.csproj" />
   </ItemGroup>
 
