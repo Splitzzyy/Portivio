@@ -1,4 +1,4 @@
-name: Build On Main
+name: Build & Push on Main
 
 on:
   push:
@@ -7,48 +7,18 @@ on:
   workflow_dispatch:
 
 jobs:
-  backend-build:
-    name: Backend Build
-    runs-on: ubuntu-latest
+  backend:
+    name: Backend
+    uses: ./.github/workflows/backend.yml
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      APP_SETTINGS: ${{ secrets.APP_SETTINGS }}
 
-    defaults:
-      run:
-        working-directory: src/backend
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: 10.0.x
-
-      - name: Restore backend dependencies
-        run: dotnet restore Portivio.slnx
-
-      - name: Build backend
-        run: dotnet build Portivio.slnx --configuration Release --no-restore
-
-  frontend-build:
-    name: Frontend Build
-    runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: src/frontend
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install frontend dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build frontend
-        run: bun run prod
+  frontend:
+    name: Frontend
+    uses: ./.github/workflows/frontend.yml
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      FRONTEND_API_URL: ${{ secrets.FRONTEND_API_URL }}
