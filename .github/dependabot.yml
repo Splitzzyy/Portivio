@@ -1,12 +1,16 @@
 version: 2
 
+# Manual trigger: GitHub UI → Security tab → Dependabot → "Check for updates"
+# Or via API: gh api -X POST /repos/rghvgrv/Portivio/vulnerability-alerts
+
 updates:
   - package-ecosystem: "nuget"
     directory: "/src/backend"
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "06:00"
+      time: "09:00"
+      timezone: "Asia/Kolkata"
     open-pull-requests-limit: 1
     commit-message:
       prefix: "deps"
@@ -20,12 +24,13 @@ updates:
         patterns:
           - "*"
 
-  - package-ecosystem: "bun"
+  - package-ecosystem: "npm"
     directory: "/src/frontend"
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "06:15"
+      time: "09:15"
+      timezone: "Asia/Kolkata"
     open-pull-requests-limit: 1
     commit-message:
       prefix: "deps"
@@ -44,7 +49,8 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "06:30"
+      time: "09:30"
+      timezone: "Asia/Kolkata"
     open-pull-requests-limit: 1
     commit-message:
       prefix: "ci"
