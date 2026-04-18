@@ -14,33 +14,39 @@
     <nav class="sidebar-nav">
       <ul class="nav-list">
         <li class="nav-item">
-          <a routerLink="/dashboard" routerLinkActive="active" class="nav-link">
+          <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link">
             <i class="fas fa-chart-pie" aria-hidden="true"></i>
             <span *ngIf="sidebarOpen">Dashboard</span>
           </a>
         </li>
         <li class="nav-item">
-          <a href="javascript:void(0)" class="nav-link">
-            <i class="fas fa-wallet"></i>
-            <span *ngIf="sidebarOpen">Portfolio</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="javascript:void(0)" class="nav-link">
-            <i class="fas fa-chart-line"></i>
-            <span *ngIf="sidebarOpen">Analytics</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="javascript:void(0)" class="nav-link">
-            <i class="fas fa-repeat"></i>
-            <span *ngIf="sidebarOpen">SIPs</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="javascript:void(0)" class="nav-link">
+          <a routerLink="/dashboard/profiles" routerLinkActive="active" class="nav-link">
             <i class="fas fa-users"></i>
             <span *ngIf="sidebarOpen">Profiles</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a routerLink="/dashboard/holdings" routerLinkActive="active" class="nav-link">
+            <i class="fas fa-wallet"></i>
+            <span *ngIf="sidebarOpen">Holdings</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a routerLink="/dashboard/transactions" routerLinkActive="active" class="nav-link">
+            <i class="fas fa-exchange-alt"></i>
+            <span *ngIf="sidebarOpen">Transactions</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a routerLink="/dashboard/sip-plans" routerLinkActive="active" class="nav-link">
+            <i class="fas fa-repeat"></i>
+            <span *ngIf="sidebarOpen">SIP Plans</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a routerLink="/dashboard/instruments" routerLinkActive="active" class="nav-link">
+            <i class="fas fa-list"></i>
+            <span *ngIf="sidebarOpen">Instruments</span>
           </a>
         </li>
         <li class="nav-divider" *ngIf="sidebarOpen"></li>

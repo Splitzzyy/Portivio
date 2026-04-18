@@ -1,0 +1,67 @@
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-heading">Profiles</h1>
+      <p class="page-subtitle">Each profile holds its own holdings, transactions, and SIPs.</p>
+    </div>
+    <button class="btn btn-primary" (click)="openCreate()" *ngIf="!showForm">
+      <i class="fas fa-plus"></i> New Profile
+    </button>
+  </div>
+
+  <div *ngIf="showForm" class="form-card">
+    <h2 class="form-title">{{ editingId ? 'Edit profile' : 'Create profile' }}</h2>
+    <form (ngSubmit)="submit()" #f="ngForm" class="form-grid">
+      <div class="form-field">
+        <label>Name</label>
+        <input type="text" name="name" [(ngModel)]="form.name" required maxlength="120" />
+      </div>
+      <div class="form-field">
+        <label>Base Currency</label>
+        <input type="text" name="baseCurrency" [(ngModel)]="form.baseCurrency" required maxlength="10" />
+      </div>
+      <div class="form-field full">
+        <label>Description</label>
+        <textarea name="description" rows="2" [(ngModel)]="form.description" maxlength="500"></textarea>
+      </div>
+      <div class="form-actions full">
+        <button type="button" class="btn btn-secondary" (click)="cancelForm()">Cancel</button>
+        <button type="submit" class="btn btn-primary" [disabled]="saving || !f.valid">
+          {{ saving ? 'Saving…' : (editingId ? 'Update' : 'Create') }}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div *ngIf="loading" class="state-message">Loading profiles…</div>
+  <div *ngIf="error && !loading" class="state-message error">{{ error }}</div>
+
+  <div *ngIf="!loading && !error" class="data-card">
+    <table class="table" *ngIf="profiles.length; else empty">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Currency</th>
+          <th>Description</th>
+          <th>Created</th>
+          <th class="actions"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let p of profiles">
+          <td class="strong">{{ p.name }}</td>
+          <td>{{ p.baseCurrency }}</td>
+          <td class="muted">{{ p.description || '—' }}</td>
+          <td class="muted">{{ formatDate(p.createdAt) }}</td>
+          <td class="actions">
+            <button class="icon-btn" title="Edit" (click)="openEdit(p)"><i class="fas fa-pen"></i></button>
+            <button class="icon-btn danger" title="Delete" (click)="delete(p)"><i class="fas fa-trash"></i></button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <ng-template #empty>
+      <div class="empty-hint">No profiles yet. Click <strong>New Profile</strong> to create one.</div>
+    </ng-template>
+  </div>
+</div>

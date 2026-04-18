@@ -1,0 +1,108 @@
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-heading">Instruments</h1>
+      <p class="page-subtitle">Catalog of securities and asset types.</p>
+    </div>
+    <button class="btn btn-primary" (click)="openCreate()"
+            *ngIf="!showForm && assetTypes.length">
+      <i class="fas fa-plus"></i> New Instrument
+    </button>
+  </div>
+
+  <div class="form-card" style="margin-bottom: 24px;">
+    <h2 class="form-title">Asset Types</h2>
+    <div class="form-grid">
+      <div class="form-field" style="grid-column: span 2;">
+        <label>New Asset Type</label>
+        <input type="text" name="newAssetTypeName" [(ngModel)]="newAssetTypeName"
+               placeholder="e.g. Stock, Mutual Fund, Bond" maxlength="100" />
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" (click)="addAssetType()" [disabled]="savingAssetType">
+          {{ savingAssetType ? 'Adding…' : 'Add' }}
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="assetTypes.length" style="margin-top: 16px; display:flex; flex-wrap:wrap; gap:8px;">
+      <span *ngFor="let at of assetTypes" class="pill pill-primary" style="display:inline-flex;align-items:center;gap:8px;">
+        {{ at.name }}
+        <button class="icon-btn danger" (click)="deleteAssetType(at)" title="Delete asset type"
+                style="width:22px;height:22px;">
+          <i class="fas fa-times"></i>
+        </button>
+      </span>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <label for="atFilter">Filter by Asset Type</label>
+    <select id="atFilter" [(ngModel)]="filterAssetTypeId" (change)="onFilterChange()" name="atFilter">
+      <option value="">All</option>
+      <option *ngFor="let at of assetTypes" [ngValue]="at.id">{{ at.name }}</option>
+    </select>
+  </div>
+
+  <div *ngIf="showForm" class="form-card">
+    <h2 class="form-title">{{ editingId ? 'Edit instrument' : 'New instrument' }}</h2>
+    <form (ngSubmit)="submit()" #f="ngForm" class="form-grid">
+      <div class="form-field">
+        <label>Asset Type</label>
+        <select name="assetTypeId" [(ngModel)]="form.assetTypeId" required [disabled]="!!editingId">
+          <option *ngFor="let at of assetTypes" [ngValue]="at.id">{{ at.name }}</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Symbol</label>
+        <input type="text" name="symbol" [(ngModel)]="form.symbol" required maxlength="50" />
+      </div>
+      <div class="form-field">
+        <label>Name</label>
+        <input type="text" name="name" [(ngModel)]="form.name" required maxlength="200" />
+      </div>
+      <div class="form-field">
+        <label>Currency</label>
+        <input type="text" name="currency" [(ngModel)]="form.currency" required maxlength="10" />
+      </div>
+      <div class="form-actions full">
+        <button type="button" class="btn btn-secondary" (click)="cancelForm()">Cancel</button>
+        <button type="submit" class="btn btn-primary" [disabled]="saving || !f.valid">
+          {{ saving ? 'Saving…' : (editingId ? 'Update' : 'Create') }}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div *ngIf="loading" class="state-message">Loading instruments…</div>
+  <div *ngIf="error && !loading" class="state-message error">{{ error }}</div>
+
+  <div *ngIf="!loading && !error" class="data-card">
+    <table class="table" *ngIf="instruments.length; else empty">
+      <thead>
+        <tr>
+          <th>Symbol</th>
+          <th>Name</th>
+          <th>Asset Type</th>
+          <th>Currency</th>
+          <th class="actions"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let i of instruments">
+          <td class="strong">{{ i.symbol }}</td>
+          <td>{{ i.name }}</td>
+          <td class="muted">{{ i.assetTypeName }}</td>
+          <td>{{ i.currency }}</td>
+          <td class="actions">
+            <button class="icon-btn" title="Edit" (click)="openEdit(i)"><i class="fas fa-pen"></i></button>
+            <button class="icon-btn danger" title="Delete" (click)="delete(i)"><i class="fas fa-trash"></i></button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <ng-template #empty>
+      <div class="empty-hint">No instruments yet. Add asset types first, then create instruments.</div>
+    </ng-template>
+  </div>
+</div>

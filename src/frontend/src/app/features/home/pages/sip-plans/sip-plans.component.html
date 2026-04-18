@@ -1,0 +1,108 @@
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-heading">SIP Plans</h1>
+      <p class="page-subtitle">Automate recurring investments on a fixed day each month.</p>
+    </div>
+    <button class="btn btn-primary" (click)="openCreate()"
+            *ngIf="!showForm && selectedProfileId && instruments.length">
+      <i class="fas fa-plus"></i> New SIP
+    </button>
+  </div>
+
+  <div class="toolbar">
+    <label for="profileSelect">Profile</label>
+    <select id="profileSelect" [(ngModel)]="selectedProfileId" (change)="onProfileChange()" name="profileSelect">
+      <option *ngIf="!profiles.length" [ngValue]="null">No profiles yet</option>
+      <option *ngFor="let p of profiles" [ngValue]="p.id">{{ p.name }} ({{ p.baseCurrency }})</option>
+    </select>
+
+    <label class="checkbox-inline" style="display:flex;gap:6px;align-items:center;min-width:auto;text-transform:none;font-weight:500;">
+      <input type="checkbox" name="activeOnly" [(ngModel)]="activeOnly" (change)="fetch()" />
+      Active only
+    </label>
+  </div>
+
+  <div *ngIf="!profiles.length" class="state-message">
+    Create a profile first on the <a routerLink="/dashboard/profiles">Profiles page</a>.
+  </div>
+
+  <div *ngIf="showForm" class="form-card">
+    <h2 class="form-title">{{ editingId ? 'Edit SIP' : 'New SIP' }}</h2>
+    <form (ngSubmit)="submit()" #f="ngForm" class="form-grid">
+      <div class="form-field">
+        <label>Instrument</label>
+        <select name="instrumentId" [(ngModel)]="form.instrumentId" required [disabled]="!!editingId">
+          <option *ngFor="let i of instruments" [ngValue]="i.id">
+            {{ i.symbol }} — {{ i.name }}
+          </option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Amount</label>
+        <input type="number" step="any" name="amount" [(ngModel)]="form.amount" required min="1" />
+      </div>
+      <div class="form-field">
+        <label>SIP Day (1–28)</label>
+        <input type="number" name="sipDay" [(ngModel)]="form.sipDay" required min="1" max="28" />
+      </div>
+      <div class="form-field">
+        <label>Start Date</label>
+        <input type="date" name="startDate" [(ngModel)]="form.startDate" required />
+      </div>
+      <div class="form-field">
+        <label>End Date</label>
+        <input type="date" name="endDate" [(ngModel)]="form.endDate" required />
+      </div>
+      <div class="form-actions full">
+        <button type="button" class="btn btn-secondary" (click)="cancelForm()">Cancel</button>
+        <button type="submit" class="btn btn-primary" [disabled]="saving || !f.valid">
+          {{ saving ? 'Saving…' : (editingId ? 'Update' : 'Create') }}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div *ngIf="loading" class="state-message">Loading SIP plans…</div>
+  <div *ngIf="error && !loading" class="state-message error">{{ error }}</div>
+
+  <div *ngIf="!loading && !error && selectedProfileId" class="data-card">
+    <table class="table" *ngIf="plans.length; else empty">
+      <thead>
+        <tr>
+          <th>Symbol</th>
+          <th class="num">Amount</th>
+          <th class="num">Day</th>
+          <th>Start</th>
+          <th>End</th>
+          <th>Status</th>
+          <th class="actions"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let sip of plans">
+          <td class="strong">{{ sip.instrumentSymbol }}</td>
+          <td class="num strong">{{ formatCurrency(sip.amount) }}</td>
+          <td class="num">{{ sip.sipDay }}</td>
+          <td class="muted">{{ formatDate(sip.startDate) }}</td>
+          <td class="muted">{{ formatDate(sip.endDate) }}</td>
+          <td>
+            <span class="pill" [class.pill-success]="sip.isActive" [class.pill-muted]="!sip.isActive">
+              {{ sip.isActive ? 'Active' : 'Inactive' }}
+            </span>
+          </td>
+          <td class="actions">
+            <button class="icon-btn" title="Edit" (click)="openEdit(sip)"><i class="fas fa-pen"></i></button>
+            <button class="icon-btn" [title]="sip.isActive ? 'Deactivate' : 'Activate'" (click)="toggleActive(sip)">
+              <i class="fas" [class.fa-pause]="sip.isActive" [class.fa-play]="!sip.isActive"></i>
+            </button>
+            <button class="icon-btn danger" title="Delete" (click)="delete(sip)"><i class="fas fa-trash"></i></button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <ng-template #empty>
+      <div class="empty-hint">No SIP plans in this profile yet.</div>
+    </ng-template>
+  </div>
+</div>

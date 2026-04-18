@@ -1,0 +1,102 @@
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-heading">Holdings</h1>
+      <p class="page-subtitle">Current positions per profile.</p>
+    </div>
+    <button class="btn btn-primary" (click)="openCreate()"
+            *ngIf="!showForm && selectedProfileId && instruments.length">
+      <i class="fas fa-plus"></i> Add / Update Holding
+    </button>
+  </div>
+
+  <div class="toolbar">
+    <label for="profileSelect">Profile</label>
+    <select id="profileSelect" [(ngModel)]="selectedProfileId" (change)="onProfileChange()" name="profileSelect">
+      <option *ngIf="!profiles.length" [ngValue]="null">No profiles yet</option>
+      <option *ngFor="let p of profiles" [ngValue]="p.id">{{ p.name }} ({{ p.baseCurrency }})</option>
+    </select>
+  </div>
+
+  <div *ngIf="!profiles.length" class="state-message">
+    Create a profile first on the <a routerLink="/dashboard/profiles">Profiles page</a>.
+  </div>
+
+  <div *ngIf="!instruments.length && profiles.length" class="state-message">
+    No instruments defined. Add them on the <a routerLink="/dashboard/instruments">Instruments page</a>.
+  </div>
+
+  <div *ngIf="showForm" class="form-card">
+    <h2 class="form-title">{{ editingId ? 'Update holding' : 'Add / update holding' }}</h2>
+    <form (ngSubmit)="submit()" #f="ngForm" class="form-grid">
+      <div class="form-field">
+        <label>Instrument</label>
+        <select name="instrumentId" [(ngModel)]="form.instrumentId" required>
+          <option *ngFor="let i of instruments" [ngValue]="i.id">
+            {{ i.symbol }} — {{ i.name }} ({{ i.assetTypeName }})
+          </option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Quantity</label>
+        <input type="number" step="any" name="quantity" [(ngModel)]="form.quantity" required />
+      </div>
+      <div class="form-field">
+        <label>Avg Price</label>
+        <input type="number" step="any" name="avgPrice" [(ngModel)]="form.avgPrice" required />
+      </div>
+      <div class="form-field">
+        <label>Current Price</label>
+        <input type="number" step="any" name="currentPrice" [(ngModel)]="form.currentPrice" required />
+      </div>
+      <div class="form-actions full">
+        <button type="button" class="btn btn-secondary" (click)="cancelForm()">Cancel</button>
+        <button type="submit" class="btn btn-primary" [disabled]="saving || !f.valid">
+          {{ saving ? 'Saving…' : 'Save' }}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div *ngIf="loading" class="state-message">Loading holdings…</div>
+  <div *ngIf="error && !loading" class="state-message error">{{ error }}</div>
+
+  <div *ngIf="!loading && !error && selectedProfileId" class="data-card">
+    <table class="table" *ngIf="holdings.length; else empty">
+      <thead>
+        <tr>
+          <th>Symbol</th>
+          <th>Name</th>
+          <th>Asset</th>
+          <th class="num">Qty</th>
+          <th class="num">Avg</th>
+          <th class="num">Current</th>
+          <th class="num">Market Value</th>
+          <th class="num">P&amp;L</th>
+          <th class="actions"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let h of holdings">
+          <td class="strong">{{ h.instrumentSymbol }}</td>
+          <td>{{ h.instrumentName }}</td>
+          <td class="muted">{{ h.assetTypeName }}</td>
+          <td class="num">{{ formatNumber(h.quantity, 4) }}</td>
+          <td class="num">{{ formatCurrency(h.avgPrice) }}</td>
+          <td class="num">{{ formatCurrency(h.currentPrice) }}</td>
+          <td class="num strong">{{ formatCurrency(h.marketValue) }}</td>
+          <td class="num" [class.positive]="h.unrealizedPnL >= 0" [class.negative]="h.unrealizedPnL < 0">
+            {{ h.unrealizedPnL >= 0 ? '+' : '' }}{{ formatCurrency(h.unrealizedPnL) }}
+          </td>
+          <td class="actions">
+            <button class="icon-btn" title="Edit" (click)="openEdit(h)"><i class="fas fa-pen"></i></button>
+            <button class="icon-btn danger" title="Delete" (click)="delete(h)"><i class="fas fa-trash"></i></button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <ng-template #empty>
+      <div class="empty-hint">No holdings in this profile yet.</div>
+    </ng-template>
+  </div>
+</div>

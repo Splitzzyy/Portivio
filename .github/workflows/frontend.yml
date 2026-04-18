@@ -10,6 +10,10 @@ on:
       FRONTEND_ENV:
         required: true
 
+concurrency:
+  group: frontend-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-push:
     name: Frontend Build & Push
@@ -26,7 +30,9 @@ jobs:
       - name: Generate environment file
         env:
           FRONTEND_ENV: ${{ secrets.FRONTEND_ENV }}
-        run: echo "$FRONTEND_ENV" > src/environments/environment.prod.ts
+        run: |
+          mkdir -p src/environments
+          printf '%s' "$FRONTEND_ENV" > src/environments/environment.prod.ts
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -64,16 +70,23 @@ jobs:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
+          set -euo pipefail
           TOKEN=$(curl -s -X POST "https://hub.docker.com/v2/users/login" \
             -H "Content-Type: application/json" \
             -d "{\"username\": \"${DOCKERHUB_USERNAME}\", \"password\": \"${DOCKERHUB_TOKEN}\"}" \
             | jq -r '.token')
 
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "Failed to obtain Docker Hub token; skipping prune."
+            exit 0
+          fi
+
           TAGS=$(curl -s -H "Authorization: JWT ${TOKEN}" \
             "https://hub.docker.com/v2/repositories/${DOCKERHUB_USERNAME}/portifio-ui/tags/?page_size=100&ordering=-last_updated" \
-            | jq -r '.results[].name' | grep -v '^latest$')
+            | jq -r '.results[].name' | grep -v '^latest$' || true)
 
           echo "$TAGS" | tail -n +4 | while read -r tag; do
+            [ -z "$tag" ] && continue
             echo "Deleting old tag: $tag"
             curl -s -X DELETE \
               -H "Authorization: JWT ${TOKEN}" \

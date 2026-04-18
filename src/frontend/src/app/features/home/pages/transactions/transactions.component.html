@@ -1,0 +1,116 @@
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-heading">Transactions</h1>
+      <p class="page-subtitle">Buys, sells, SIP contributions, dividends.</p>
+    </div>
+    <button class="btn btn-primary" (click)="openCreate()"
+            *ngIf="!showForm && selectedProfileId && instruments.length">
+      <i class="fas fa-plus"></i> New Transaction
+    </button>
+  </div>
+
+  <div class="toolbar">
+    <label for="profileSelect">Profile</label>
+    <select id="profileSelect" [(ngModel)]="selectedProfileId" (change)="onProfileChange()" name="profileSelect">
+      <option *ngIf="!profiles.length" [ngValue]="null">No profiles yet</option>
+      <option *ngFor="let p of profiles" [ngValue]="p.id">{{ p.name }} ({{ p.baseCurrency }})</option>
+    </select>
+
+    <div class="pagination-controls" *ngIf="selectedProfileId">
+      <span>Page {{ page }}</span>
+      <button class="btn btn-secondary" (click)="prevPage()" [disabled]="page <= 1">Prev</button>
+      <button class="btn btn-secondary" (click)="nextPage()" [disabled]="transactions.length < pageSize">Next</button>
+    </div>
+  </div>
+
+  <div *ngIf="!profiles.length" class="state-message">
+    Create a profile first on the <a routerLink="/dashboard/profiles">Profiles page</a>.
+  </div>
+
+  <div *ngIf="showForm" class="form-card">
+    <h2 class="form-title">{{ editingId ? 'Edit transaction' : 'New transaction' }}</h2>
+    <form (ngSubmit)="submit()" #f="ngForm" class="form-grid">
+      <div class="form-field">
+        <label>Instrument</label>
+        <select name="instrumentId" [(ngModel)]="form.instrumentId" required [disabled]="!!editingId">
+          <option *ngFor="let i of instruments" [ngValue]="i.id">
+            {{ i.symbol }} — {{ i.name }}
+          </option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Type</label>
+        <select name="type" [(ngModel)]="form.type" required [disabled]="!!editingId">
+          <option *ngFor="let t of types" [ngValue]="t">{{ t }}</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Date</label>
+        <input type="date" name="transactionDate" [(ngModel)]="form.transactionDate" required />
+      </div>
+      <div class="form-field">
+        <label>Quantity</label>
+        <input type="number" step="any" name="quantity" [(ngModel)]="form.quantity"
+               (ngModelChange)="onQuantityOrPriceChange()" required />
+      </div>
+      <div class="form-field">
+        <label>Price</label>
+        <input type="number" step="any" name="price" [(ngModel)]="form.price"
+               (ngModelChange)="onQuantityOrPriceChange()" required />
+      </div>
+      <div class="form-field">
+        <label>Amount</label>
+        <input type="number" step="any" name="amount" [(ngModel)]="form.amount" required />
+      </div>
+      <div class="form-field full">
+        <label>Notes</label>
+        <textarea name="notes" rows="2" [(ngModel)]="form.notes" maxlength="500"></textarea>
+      </div>
+      <div class="form-actions full">
+        <button type="button" class="btn btn-secondary" (click)="cancelForm()">Cancel</button>
+        <button type="submit" class="btn btn-primary" [disabled]="saving || !f.valid">
+          {{ saving ? 'Saving…' : (editingId ? 'Update' : 'Create') }}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div *ngIf="loading" class="state-message">Loading transactions…</div>
+  <div *ngIf="error && !loading" class="state-message error">{{ error }}</div>
+
+  <div *ngIf="!loading && !error && selectedProfileId" class="data-card">
+    <table class="table" *ngIf="transactions.length; else empty">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Type</th>
+          <th>Symbol</th>
+          <th class="num">Qty</th>
+          <th class="num">Price</th>
+          <th class="num">Amount</th>
+          <th>Notes</th>
+          <th class="actions"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let tx of transactions">
+          <td class="muted">{{ formatDate(tx.transactionDate) }}</td>
+          <td><span class="pill" [class]="typeClass(tx.type)">{{ tx.type }}</span></td>
+          <td class="strong">{{ tx.instrumentSymbol }}</td>
+          <td class="num">{{ formatNumber(tx.quantity, 4) }}</td>
+          <td class="num">{{ formatCurrency(tx.price) }}</td>
+          <td class="num strong">{{ formatCurrency(tx.amount) }}</td>
+          <td class="muted">{{ tx.notes || '—' }}</td>
+          <td class="actions">
+            <button class="icon-btn" title="Edit" (click)="openEdit(tx)"><i class="fas fa-pen"></i></button>
+            <button class="icon-btn danger" title="Delete" (click)="delete(tx)"><i class="fas fa-trash"></i></button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <ng-template #empty>
+      <div class="empty-hint">No transactions on this page.</div>
+    </ng-template>
+  </div>
+</div>

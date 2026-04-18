@@ -1,14 +1,25 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { SharedModule } from '../../shared/shared.module';
 import { HomeRoutingModule } from './home-routing.module';
 import { HomeComponent } from './pages/home/home.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
+import { ProfilesComponent } from './pages/profiles/profiles.component';
+import { HoldingsComponent } from './pages/holdings/holdings.component';
+import { TransactionsComponent } from './pages/transactions/transactions.component';
+import { SipPlansComponent } from './pages/sip-plans/sip-plans.component';
+import { InstrumentsComponent } from './pages/instruments/instruments.component';
 
-/**
- * Home/Dashboard module for authenticated users
- */
 @NgModule({
-  declarations: [HomeComponent, DashboardComponent],
-  imports: [CommonModule, HomeRoutingModule]
+  declarations: [
+    HomeComponent,
+    DashboardComponent,
+    ProfilesComponent,
+    HoldingsComponent,
+    TransactionsComponent,
+    SipPlansComponent,
+    InstrumentsComponent
+  ],
+  imports: [CommonModule, SharedModule, HomeRoutingModule]
 })
 export class HomeModule {}

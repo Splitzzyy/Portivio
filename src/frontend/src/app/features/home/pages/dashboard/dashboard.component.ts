@@ -1,141 +1,145 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Subject } from 'rxjs';
+import { finalize, takeUntil } from 'rxjs/operators';
 import { User } from '../../../../core/models/auth.model';
 import { AuthService } from '../../../../core/services/auth.service';
+import { HomeService } from '../../../../core/services/home.service';
+import {
+  HomeProfile,
+  HomeResponse,
+  HomeTransaction,
+  PortfolioSummary
+} from '../../../../core/models/portfolio.model';
 
-/**
- * Dashboard component - Main portfolio overview
- */
+interface AllocationRow {
+  name: string;
+  value: number;
+  percentage: number;
+}
+
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   user: User | null = null;
-  
-  // Portfolio statistics (mock data)
-  portfolioStats = {
-    totalInvestment: 500000,
-    currentValue: 625000,
-    totalReturns: 125000,
-    returnPercentage: 25
-  };
+  home: HomeResponse | null = null;
+  summary: PortfolioSummary | null = null;
+  profiles: HomeProfile[] = [];
+  allocation: AllocationRow[] = [];
+  recentTransactions: (HomeTransaction & { profileName: string })[] = [];
 
-  // Asset allocation
-  assetAllocation = [
-    { name: 'Stocks', percentage: 45, value: 281250 },
-    { name: 'Mutual Funds', percentage: 30, value: 187500 },
-    { name: 'Bonds', percentage: 15, value: 93750 },
-    { name: 'Cash', percentage: 10, value: 62500 }
-  ];
+  loading = true;
+  error: string | null = null;
 
-  // Recent transactions
-  recentTransactions = [
-    {
-      id: 1,
-      type: 'BUY',
-      security: 'TCS Stock',
-      amount: 50000,
-      date: new Date('2024-04-10'),
-      status: 'Completed'
-    },
-    {
-      id: 2,
-      type: 'SIP',
-      security: 'Axis Growth Fund',
-      amount: 5000,
-      date: new Date('2024-04-09'),
-      status: 'Completed'
-    },
-    {
-      id: 3,
-      type: 'SELL',
-      security: 'Infosys Stock',
-      amount: 30000,
-      date: new Date('2024-04-08'),
-      status: 'Completed'
-    },
-    {
-      id: 4,
-      type: 'DIVIDEND',
-      security: 'HDFC Bank',
-      amount: 2500,
-      date: new Date('2024-04-07'),
-      status: 'Received'
-    }
-  ];
+  private destroy$ = new Subject<void>();
+  private readonly allocationColors = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
-  // Portfolio performance (mock data)
-  portfolioPerformance = [
-    { date: 'Jan', value: 500000 },
-    { date: 'Feb', value: 510000 },
-    { date: 'Mar', value: 540000 },
-    { date: 'Apr', value: 625000 }
-  ];
-
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService, private homeService: HomeService) {}
 
   ngOnInit(): void {
     this.user = this.authService.getCurrentUser();
+    this.fetchHome();
   }
 
-  /** First token of the single `name` field; falls back to "there". */
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  fetchHome(): void {
+    this.loading = true;
+    this.error = null;
+    this.homeService.getHome()
+      .pipe(takeUntil(this.destroy$), finalize(() => (this.loading = false)))
+      .subscribe({
+        next: (data) => {
+          this.home = data;
+          this.summary = data.summary;
+          this.profiles = data.profiles ?? [];
+          this.allocation = this.buildAllocation(this.profiles);
+          this.recentTransactions = this.buildRecentTransactions(this.profiles);
+        },
+        error: (err) => {
+          this.error = err?.error?.message || 'Failed to load portfolio data.';
+        }
+      });
+  }
+
+  private buildAllocation(profiles: HomeProfile[]): AllocationRow[] {
+    const totals = new Map<string, number>();
+    let grand = 0;
+    for (const p of profiles) {
+      for (const h of p.holdings) {
+        const v = Number(h.marketValue) || 0;
+        totals.set(h.assetType, (totals.get(h.assetType) || 0) + v);
+        grand += v;
+      }
+    }
+    if (grand <= 0) return [];
+    return Array.from(totals.entries())
+      .map(([name, value]) => ({ name, value, percentage: Math.round((value / grand) * 100) }))
+      .sort((a, b) => b.value - a.value);
+  }
+
+  private buildRecentTransactions(profiles: HomeProfile[]): (HomeTransaction & { profileName: string })[] {
+    const all: (HomeTransaction & { profileName: string })[] = [];
+    for (const p of profiles) {
+      for (const tx of p.transactions) {
+        all.push({ ...tx, profileName: p.name });
+      }
+    }
+    all.sort((a, b) => new Date(b.transactionDate).getTime() - new Date(a.transactionDate).getTime());
+    return all.slice(0, 5);
+  }
+
+  allocationColor(index: number): string {
+    return this.allocationColors[index % this.allocationColors.length];
+  }
+
   getFirstName(): string {
-    const first = (this.user?.name || '').trim().split(/\s+/)[0];
+    const first = (this.user?.name || this.home?.user?.name || '').trim().split(/\s+/)[0];
     return first || 'there';
   }
 
-  /**
-   * Get transaction type badge color
-   */
   getTransactionTypeColor(type: string): string {
     switch (type) {
-      case 'BUY':
-        return 'success';
-      case 'SELL':
-        return 'danger';
-      case 'SIP':
-        return 'primary';
-      case 'DIVIDEND':
-        return 'info';
-      default:
-        return 'secondary';
+      case 'BUY': return 'success';
+      case 'SELL': return 'danger';
+      case 'SIP': return 'primary';
+      case 'DIVIDEND': return 'info';
+      default: return 'secondary';
     }
   }
 
-  /**
-   * Get transaction type icon
-   */
   getTransactionTypeIcon(type: string): string {
     switch (type) {
-      case 'BUY':
-        return 'fa-arrow-down';
-      case 'SELL':
-        return 'fa-arrow-up';
-      case 'SIP':
-        return 'fa-repeat';
-      case 'DIVIDEND':
-        return 'fa-coins';
-      default:
-        return 'fa-exchange-alt';
+      case 'BUY': return 'fa-arrow-down';
+      case 'SELL': return 'fa-arrow-up';
+      case 'SIP': return 'fa-repeat';
+      case 'DIVIDEND': return 'fa-coins';
+      default: return 'fa-exchange-alt';
     }
   }
 
-  /**
-   * Format currency
-   */
-  formatCurrency(value: number): string {
-    return '₹' + value.toLocaleString('en-IN');
+  formatCurrency(value: number | null | undefined): string {
+    const n = Number(value) || 0;
+    return '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
   }
 
-  /**
-   * Format date
-   */
-  formatDate(date: Date): string {
+  formatDate(date: string | Date): string {
     return new Date(date).toLocaleDateString('en-IN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+      year: 'numeric', month: 'short', day: 'numeric'
     });
+  }
+
+  get totalInvestment(): number { return this.summary?.totalInvestment ?? 0; }
+  get totalMarketValue(): number { return this.summary?.totalMarketValue ?? 0; }
+  get totalReturns(): number { return this.summary?.totalUnrealizedPnL ?? 0; }
+  get returnPercentage(): number {
+    const inv = this.totalInvestment;
+    if (!inv) return 0;
+    return Math.round((this.totalReturns / inv) * 10000) / 100;
   }
 }
