@@ -1,5 +1,7 @@
 # Portivio - Financial Portfolio Management Application
 
+[![Frontend CI](https://github.com/Splitzzyy/Portivio/actions/workflows/frontend.yml/badge.svg?branch=main)](https://github.com/Splitzzyy/Portivio/actions/workflows/frontend.yml)
+
 An enterprise-level financial portfolio management application built with **Angular 18** and **Bun** runtime. Track investments, SIPs, and asset performance across multiple user profiles with enterprise-grade security.
 
 ## 🎯 Project Overview
