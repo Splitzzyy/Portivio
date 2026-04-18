@@ -4,6 +4,9 @@
 [![Frontend CI](https://github.com/Splitzzyy/Portivio/actions/workflows/frontend.yml/badge.svg?branch=main)](https://github.com/Splitzzyy/Portivio/actions/workflows/frontend.yml)
 [![Build & Push on Main](https://github.com/Splitzzyy/Portivio/actions/workflows/build-on-main.yml/badge.svg?branch=main)](https://github.com/Splitzzyy/Portivio/actions/workflows/build-on-main.yml)
 
+![Backend Test Status](https://raw.githubusercontent.com/Splitzzyy/Portivio/badges/backend-status.svg)
+![Frontend Test Status](https://raw.githubusercontent.com/Splitzzyy/Portivio/badges/frontend-status.svg)
+
 ## Tech Stack
 
 - Backend: ASP.NET Core Web API, .NET 10, Entity Framework Core, PostgreSQL
