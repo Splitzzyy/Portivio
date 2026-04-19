@@ -32,7 +32,6 @@ ng_packages*
 # Test
 coverage/
 .nyc_output/
-karma.conf.js
 
 # Environment files
 .env
