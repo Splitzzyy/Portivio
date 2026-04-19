@@ -10,8 +10,8 @@
 
 ### Test Results
 
-[![Backend Tests](https://raw.githubusercontent.com/Splitzzyy/Portivio/badges/backend-status.svg)](https://github.com/Splitzzyy/Portivio/actions/workflows/backend.yml)
-[![Frontend Tests](https://raw.githubusercontent.com/Splitzzyy/Portivio/badges/frontend-status.svg)](https://github.com/Splitzzyy/Portivio/actions/workflows/frontend.yml)
+[![Backend Tests](docs/badges/backend-status.svg)](https://github.com/Splitzzyy/Portivio/actions/workflows/backend.yml)
+[![Frontend Tests](docs/badges/frontend-status.svg)](https://github.com/Splitzzyy/Portivio/actions/workflows/frontend.yml)
 
 ## Documentation
 

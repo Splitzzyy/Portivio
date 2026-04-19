@@ -37,35 +37,25 @@ jobs:
 
       - name: Generate and Push Badges
         run: |
-          mkdir -p temp_badges
-          
+          mkdir -p docs/badges
+
           if [ "${{ needs.backend.result }}" == "success" ]; then
-            curl -s "https://img.shields.io/badge/Backend_Tests-Passed-success" > temp_badges/backend-status.svg
+            curl -s "https://img.shields.io/badge/Backend_Tests-Passed-success" > docs/badges/backend-status.svg
           else
-            curl -s "https://img.shields.io/badge/Backend_Tests-Failed-critical" > temp_badges/backend-status.svg
+            curl -s "https://img.shields.io/badge/Backend_Tests-Failed-critical" > docs/badges/backend-status.svg
           fi
-          
+
           if [ "${{ needs.frontend.result }}" == "success" ]; then
-            curl -s "https://img.shields.io/badge/Frontend_Tests-Passed-success" > temp_badges/frontend-status.svg
+            curl -s "https://img.shields.io/badge/Frontend_Tests-Passed-success" > docs/badges/frontend-status.svg
           else
-            curl -s "https://img.shields.io/badge/Frontend_Tests-Failed-critical" > temp_badges/frontend-status.svg
+            curl -s "https://img.shields.io/badge/Frontend_Tests-Failed-critical" > docs/badges/frontend-status.svg
           fi
 
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Try to switch to badges branch, create if it doesn't exist
-          git fetch origin badges:badges || true
-          if git rev-parse --verify badges >/dev/null 2>&1; then
-            git checkout badges
-          else
-            git checkout --orphan badges
-            git rm -rf .
-          fi
-          
-          cp temp_badges/*.svg ./
-          git add backend-status.svg frontend-status.svg
-          git commit -m "chore: update test status badges [skip ci]" || echo "No changes to commit"
-          git push origin badges
+
+          git add docs/badges/backend-status.svg docs/badges/frontend-status.svg
+          git commit -m "chore: update test status badges [skip ci]" || { echo "No changes to commit"; exit 0; }
+          git push origin HEAD:main
 
 
