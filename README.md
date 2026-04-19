@@ -1,11 +1,22 @@
 # Portivio
 
+## Build & Test Status
+
+### CI/CD Workflows
+
 [![Backend CI](https://github.com/Splitzzyy/Portivio/actions/workflows/backend.yml/badge.svg?branch=main)](https://github.com/Splitzzyy/Portivio/actions/workflows/backend.yml)
 [![Frontend CI](https://github.com/Splitzzyy/Portivio/actions/workflows/frontend.yml/badge.svg?branch=main)](https://github.com/Splitzzyy/Portivio/actions/workflows/frontend.yml)
 [![Build & Push on Main](https://github.com/Splitzzyy/Portivio/actions/workflows/build-on-main.yml/badge.svg?branch=main)](https://github.com/Splitzzyy/Portivio/actions/workflows/build-on-main.yml)
 
-![Backend Test Status](https://raw.githubusercontent.com/Splitzzyy/Portivio/badges/backend-status.svg)
-![Frontend Test Status](https://raw.githubusercontent.com/Splitzzyy/Portivio/badges/frontend-status.svg)
+### Test Results
+
+[![Backend Tests](https://raw.githubusercontent.com/Splitzzyy/Portivio/badges/backend-status.svg)](https://github.com/Splitzzyy/Portivio/actions/workflows/backend.yml)
+[![Frontend Tests](https://raw.githubusercontent.com/Splitzzyy/Portivio/badges/frontend-status.svg)](https://github.com/Splitzzyy/Portivio/actions/workflows/frontend.yml)
+
+## Documentation
+
+- [Frontend Architecture](docs/frontend-architecture.md)
+- [Backend Architecture](docs/backend-architecture.md)
 
 ## Tech Stack
 
