@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Portivio.API.Services;
 using Portivio.Application.Services;
+using Portivio.Application.Services.MarketData;
 using Portivio.Infrastructure.Data;
 using Serilog;
 using System.Security.Claims;
@@ -73,6 +74,33 @@ builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<ISIPPlanService, SIPPlanService>();
 builder.Services.AddScoped<IPriceHistoryService, PriceHistoryService>();
 builder.Services.AddScoped<IPortfolioPerformanceService, PortfolioPerformanceService>();
+
+// Market Data
+builder.Services.Configure<MarketDataOptions>(configuration.GetSection(MarketDataOptions.SectionName));
+
+builder.Services.AddHttpClient(AmfiNavProvider.HttpClientName, (sp, client) =>
+{
+    var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MarketDataOptions>>().Value;
+    client.Timeout = TimeSpan.FromSeconds(Math.Max(5, opts.Amfi.TimeoutSeconds));
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Portivio/1.0");
+});
+
+builder.Services.AddHttpClient(AlphaVantageStockProvider.HttpClientName, (sp, client) =>
+{
+    var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MarketDataOptions>>().Value;
+    var baseUrl = string.IsNullOrWhiteSpace(opts.AlphaVantage.BaseUrl)
+        ? "https://www.alphavantage.co"
+        : opts.AlphaVantage.BaseUrl;
+    client.BaseAddress = new Uri(baseUrl);
+    client.Timeout = TimeSpan.FromSeconds(Math.Max(5, opts.AlphaVantage.TimeoutSeconds));
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Portivio/1.0");
+});
+
+builder.Services.AddScoped<IStockPriceProvider, AlphaVantageStockProvider>();
+builder.Services.AddScoped<IMutualFundNavProvider, AmfiNavProvider>();
+builder.Services.AddScoped<IStandardRateProvider, ConfigStandardRateProvider>();
+builder.Services.AddScoped<IMarketDataService, MarketDataService>();
+builder.Services.AddScoped<IStandardRateService, StandardRateService>();
 
 // Configure JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"];
