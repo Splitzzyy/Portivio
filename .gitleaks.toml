@@ -1,0 +1,38 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known safe placeholders and dev values"
+regexes = [
+  # Placeholder strings
+  "ReplaceWithA32CharOrLongerKey",
+  "your-super-secret-key",
+  "your_password",
+  "your_smtp_password",
+  "your-alphavantage-api-key",
+
+  # Dev/test domains
+  "dev@portivio\\.local",
+  "noreply@example\\.com",
+
+  # Google OAuth Client ID (public-facing, not a secret)
+  "413602046367-[0-9a-z]+\\.apps\\.googleusercontent\\.com",
+
+  # appsettings.json empty string defaults
+  "\"Password\": \"\"",
+  "\"Key\": \"\"",
+  "\"ApiKey\": \"\"",
+]
+
+[[rules.allowlist]]
+description = "Skip test files"
+paths = [
+  '''Portivio\.Tests/''',
+]
+
+[[rules.allowlist]]
+description = "Skip migration snapshots"
+paths = [
+  '''Migrations/.*\.Designer\.cs''',
+  '''Migrations/PortivioDbContextModelSnapshot\.cs''',
+]

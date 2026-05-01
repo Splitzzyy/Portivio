@@ -16,6 +16,13 @@ services:
       timeout: 5s
       retries: 10
 
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: portivio-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
   backend:
     build:
       context: ./src/backend
@@ -24,6 +31,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:5274
@@ -31,6 +40,16 @@ services:
       Jwt__Key: "ReplaceWithA32CharOrLongerKey_ChangeMe!"
       Jwt__Issuer: "portivio"
       Jwt__Audience: "portivio"
+      Email__Host: "mailpit"
+      Email__Port: "1025"
+      Email__Username: ""
+      Email__Password: ""
+      Email__FromAddress: "dev@portivio.local"
+      Email__FromName: "Portivio Dev"
+      Email__EnableSsl: "false"
+      Email__FrontendBaseUrl: "http://localhost:4200"
+    volumes:
+      - ./src/backend/Portivio.API/appsettings.Development.json:/app/appsettings.Development.json:ro
     ports:
       - "5274:5274"
 

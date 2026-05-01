@@ -12,6 +12,10 @@ namespace Portivio.Infrastructure.Data.Configurations
             builder.HasIndex(u => u.Email).IsUnique();
             builder.Property(u => u.PasswordHash)
                 .HasMaxLength(255);
+            builder.Property(u => u.EmailVerificationToken)
+                .HasMaxLength(512);
+            builder.Property(u => u.PasswordResetToken)
+                .HasMaxLength(512);
             builder.HasMany(u => u.Profiles)
                 .WithOne(p => p.User)
                 .HasForeignKey(p => p.UserId);

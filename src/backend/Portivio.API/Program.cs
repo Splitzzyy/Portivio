@@ -1,3 +1,5 @@
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
@@ -5,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Portivio.API.Filters;
+using Portivio.Infrastructure.Services;
 using Portivio.API.Services;
 using Portivio.Application.Services;
 using Portivio.Application.Services.MarketData;
@@ -184,6 +187,19 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// Email
+builder.Services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+builder.Services.AddScoped<IEmailJobService, HangfireEmailJobService>();
+
+// Hangfire
+builder.Services.AddHangfire(cfg => cfg
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UsePostgreSqlStorage(opt => opt.UseNpgsqlConnection(postgresOptions.ConnectionString)));
+builder.Services.AddHangfireServer();
+
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -250,18 +266,23 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// DB Migration on startup with error handling
+if (environment.IsDevelopment())
+    app.MapHangfireDashboard("/hangfire");
+
+// DB migration + startup checks
 using (var scope = app.Services.CreateScope())
 {
+    var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     try
     {
+        startupLogger.LogInformation("[Startup] Running EF Core migrations...");
         var db = scope.ServiceProvider.GetRequiredService<PortivioDbContext>();
         db.Database.Migrate();
+        startupLogger.LogInformation("[Startup] Migrations OK.");
     }
     catch (Exception ex)
     {
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        logger.LogCritical(ex, "Database migration failed on startup");
+        startupLogger.LogCritical(ex, "[Startup] FAILED: EF Core migration error. Check DB connection and schema.");
         throw;
     }
 }

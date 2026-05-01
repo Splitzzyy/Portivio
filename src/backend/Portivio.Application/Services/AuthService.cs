@@ -7,6 +7,7 @@ using Portivio.Application.DTOs.Auth;
 using Portivio.Application.Results;
 using Portivio.Domain.Entities;
 using Portivio.Infrastructure.Data;
+using Portivio.Infrastructure.Services;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -34,17 +35,20 @@ namespace Portivio.Application.Services
         private readonly AppSettingsOptions _jwtSettings;
         private readonly GoogleAuthOptions _googleAppSettings;
         private readonly ILogger<AuthService> _logger;
+        private readonly IEmailJobService _emailJobService;
 
         public AuthService(
             PortivioDbContext context,
             IOptions<AppSettingsOptions> jwtOptions,
             IOptions<GoogleAuthOptions> googleOptions,
-            ILogger<AuthService> logger)
+            ILogger<AuthService> logger,
+            IEmailJobService emailJobService)
         {
             _context = context;
             _jwtSettings = jwtOptions.Value;
             _googleAppSettings = googleOptions.Value;
             _logger = logger;
+            _emailJobService = emailJobService;
         }
 
         public async Task<Result<AuthResponse>> LoginAsync(LoginRequest request)
@@ -132,6 +136,8 @@ namespace Portivio.Application.Services
                 if (existingUser != null)
                     return Result<AuthResponse>.Conflict("Email already registered");
 
+                var verificationToken = GenerateSecureToken();
+
                 var user = new User
                 {
                     Id = Guid.NewGuid(),
@@ -140,13 +146,16 @@ namespace Portivio.Application.Services
                     PasswordHash = HashPassword(request.Password),
                     IsVerified = false,
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow,
+                    EmailVerificationToken = verificationToken,
+                    EmailVerificationTokenExpiry = DateTime.UtcNow.AddHours(24)
                 };
 
                 _context.Users.Add(user);
                 await _context.SaveChangesAsync();
 
-                // TODO: Send verification email here
+                _emailJobService.EnqueueVerificationEmail(user.Email, user.Name, verificationToken);
+                _emailJobService.EnqueueWelcomeEmail(user.Email, user.Name);
 
                 var response = new AuthResponse
                 {
@@ -230,7 +239,6 @@ namespace Portivio.Application.Services
                 if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.VerificationToken))
                     return Result<AuthResponse>.BadRequest("Email and verification token are required");
 
-                // TODO: Verify the token (should be stored separately in a EmailVerification table)
                 var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
 
                 if (user == null)
@@ -239,7 +247,14 @@ namespace Portivio.Application.Services
                 if (user.IsVerified)
                     return Result<AuthResponse>.BadRequest("Email is already verified");
 
+                if (user.EmailVerificationToken == null
+                    || user.EmailVerificationToken != request.VerificationToken
+                    || user.EmailVerificationTokenExpiry < DateTime.UtcNow)
+                    return Result<AuthResponse>.BadRequest("Invalid or expired verification token");
+
                 user.IsVerified = true;
+                user.EmailVerificationToken = null;
+                user.EmailVerificationTokenExpiry = null;
                 _context.Users.Update(user);
                 await _context.SaveChangesAsync();
 
@@ -280,7 +295,13 @@ namespace Portivio.Application.Services
                 if (user.IsVerified)
                     return Result<AuthResponse>.BadRequest("Email is already verified");
 
-                // TODO: Generate and send verification email
+                var verificationToken = GenerateSecureToken();
+                user.EmailVerificationToken = verificationToken;
+                user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddHours(24);
+                _context.Users.Update(user);
+                await _context.SaveChangesAsync();
+
+                _emailJobService.EnqueueVerificationEmail(user.Email, user.Name, verificationToken);
 
                 var response = new AuthResponse
                 {
@@ -308,7 +329,13 @@ namespace Portivio.Application.Services
                 if (user == null)
                     return Result<AuthResponse>.NotFound("User not found");
 
-                // TODO: Generate reset token and send email
+                var resetToken = GenerateSecureToken();
+                user.PasswordResetToken = resetToken;
+                user.PasswordResetTokenExpiry = DateTime.UtcNow.AddHours(1);
+                _context.Users.Update(user);
+                await _context.SaveChangesAsync();
+
+                _emailJobService.EnqueuePasswordResetEmail(user.Email, user.Name, resetToken);
 
                 var response = new AuthResponse
                 {
@@ -348,10 +375,15 @@ namespace Portivio.Application.Services
                 if (user == null)
                     return Result<AuthResponse>.NotFound("User not found");
 
-                // TODO: Validate reset token
+                if (user.PasswordResetToken == null
+                    || user.PasswordResetToken != request.ResetToken
+                    || user.PasswordResetTokenExpiry < DateTime.UtcNow)
+                    return Result<AuthResponse>.BadRequest("Invalid or expired reset token");
 
                 user.PasswordHash = HashPassword(request.NewPassword);
                 user.IsActive = true;
+                user.PasswordResetToken = null;
+                user.PasswordResetTokenExpiry = null;
                 _context.Users.Update(user);
                 await _context.SaveChangesAsync();
 
@@ -424,14 +456,13 @@ namespace Portivio.Application.Services
                         Email = payload.Email,
                         Name = payload.Name,
                         PasswordHash = HashPassword(Guid.NewGuid().ToString()),
-                        IsVerified = false,
+                        IsVerified = true,
                         IsActive = true,
                         CreatedAt = DateTime.UtcNow
                     };
 
                     _context.Users.Add(user);
-
-                    // Need to Implement Email Service
+                    _emailJobService.EnqueueWelcomeEmail(user.Email, user.Name);
                 }
 
                 var tokensResult = await GenerateTokensAsync(
@@ -626,6 +657,17 @@ namespace Portivio.Application.Services
                 rng.GetBytes(randomNumber);
             }
             return Convert.ToBase64String(randomNumber);
+        }
+
+        private static string GenerateSecureToken()
+        {
+            var bytes = new byte[32];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(bytes);
+            return Convert.ToBase64String(bytes)
+                .Replace('+', '-')
+                .Replace('/', '_')
+                .TrimEnd('=');
         }
 
         private string HashToken(string token)

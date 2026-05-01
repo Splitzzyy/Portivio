@@ -29,6 +29,14 @@
     <!-- HTTP -->
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.6" />
     <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.6" />
+    <!-- Newtonsoft.Json: forced upgrade to fix NU1903 vulnerability from Hangfire.PostgreSql transitive dep -->
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
+    <!-- Email / Background Jobs -->
+    <PackageVersion Include="Hangfire.Core" Version="1.8.23" />
+    <PackageVersion Include="Hangfire.AspNetCore" Version="1.8.23" />
+    <PackageVersion Include="Hangfire.PostgreSql" Version="1.21.1" />
+    <PackageVersion Include="MailKit" Version="4.16.0" />
+    <PackageVersion Include="MimeKit" Version="4.16.0" />
     <!-- Test stack -->
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />

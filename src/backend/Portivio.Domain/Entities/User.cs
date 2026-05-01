@@ -10,6 +10,10 @@
         public DateTime CreatedAt { get; set; }
         public DateTime? LastLoginAt { get; set; }
         public bool IsActive { get; set; }
+        public string? EmailVerificationToken { get; set; }
+        public DateTime? EmailVerificationTokenExpiry { get; set; }
+        public string? PasswordResetToken { get; set; }
+        public DateTime? PasswordResetTokenExpiry { get; set; }
         public ICollection<Profile> Profiles { get; set; } = new List<Profile>();
         public ICollection<AuthProvider> AuthProviders { get; set; } = new List<AuthProvider>();
         public ICollection<AuthToken> AuthTokens { get; set; } = new List<AuthToken>();
