@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Portivio.Application.DTOs.Home;
 using Portivio.Application.Results;
 using Portivio.Infrastructure.Data;
@@ -13,10 +14,12 @@ namespace Portivio.Application.Services
     public class HomeService : IHomeService
     {
         private readonly PortivioDbContext _context;
+        private readonly ILogger<HomeService> _logger;
 
-        public HomeService(PortivioDbContext context)
+        public HomeService(PortivioDbContext context, ILogger<HomeService> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         public async Task<Result<HomeResponse>> GetHomeDataAsync(Guid userId)
@@ -31,7 +34,10 @@ namespace Portivio.Application.Services
                     .FirstOrDefaultAsync(u => u.Id == userId);
 
                 if (user == null)
+                {
+                    _logger.LogWarning("Home data lookup rejected: user not found. UserId={UserId}", userId);
                     return Result<HomeResponse>.NotFound("User not found");
+                }
 
                 var profiles = await _context.Profiles
                     .AsNoTracking()
@@ -137,6 +143,7 @@ namespace Portivio.Application.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to load home data. UserId={UserId}", userId);
                 return Result<HomeResponse>.InternalServerError($"Failed to load home data: {ex.Message}");
             }
         }

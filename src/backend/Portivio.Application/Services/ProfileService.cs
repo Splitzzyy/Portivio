@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Portivio.Application.DTOs.Profile;
 using Portivio.Application.Results;
 using Portivio.Domain.Entities;
@@ -17,10 +18,12 @@ namespace Portivio.Application.Services
     public class ProfileService : IProfileService
     {
         private readonly PortivioDbContext _context;
+        private readonly ILogger<ProfileService> _logger;
 
-        public ProfileService(PortivioDbContext context)
+        public ProfileService(PortivioDbContext context, ILogger<ProfileService> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         public async Task<Result<List<ProfileResponse>>> GetProfilesAsync(Guid userId)
@@ -45,6 +48,7 @@ namespace Portivio.Application.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving profiles. UserId={UserId}", userId);
                 return Result<List<ProfileResponse>>.InternalServerError($"Error retrieving profiles: {ex.Message}");
             }
         }
@@ -61,7 +65,10 @@ namespace Portivio.Application.Services
 
                 var userExists = await _context.Users.AnyAsync(u => u.Id == userId);
                 if (!userExists)
+                {
+                    _logger.LogWarning("Profile creation rejected: user not found. UserId={UserId}", userId);
                     return Result<ProfileResponse>.NotFound("User not found");
+                }
 
                 var profile = new Profile
                 {
@@ -76,6 +83,9 @@ namespace Portivio.Application.Services
                 _context.Profiles.Add(profile);
                 await _context.SaveChangesAsync();
 
+                _logger.LogInformation("Profile created. ProfileId={ProfileId} UserId={UserId} Name={Name}",
+                    profile.Id, userId, profile.Name);
+
                 return Result<ProfileResponse>.Success(new ProfileResponse
                 {
                     Id = profile.Id,
@@ -88,6 +98,7 @@ namespace Portivio.Application.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error creating profile. UserId={UserId}", userId);
                 return Result<ProfileResponse>.InternalServerError($"Error creating profile: {ex.Message}");
             }
         }
@@ -104,16 +115,25 @@ namespace Portivio.Application.Services
 
                 var profile = await _context.Profiles.FirstOrDefaultAsync(p => p.Id == profileId);
                 if (profile == null)
+                {
+                    _logger.LogWarning("Profile update rejected: not found. ProfileId={ProfileId} UserId={UserId}", profileId, userId);
                     return Result<ProfileResponse>.NotFound("Profile not found");
+                }
 
                 if (profile.UserId != userId)
+                {
+                    _logger.LogWarning("Profile update rejected: ownership mismatch. ProfileId={ProfileId} OwnerId={OwnerId} CallerId={CallerId}",
+                        profileId, profile.UserId, userId);
                     return Result<ProfileResponse>.Forbidden("Access denied");
+                }
 
                 profile.Name = request.Name.Trim();
                 profile.BaseCurrency = request.BaseCurrency.ToUpperInvariant();
                 profile.Description = request.Description?.Trim() ?? string.Empty;
 
                 await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Profile updated. ProfileId={ProfileId} UserId={UserId}", profileId, userId);
 
                 return Result<ProfileResponse>.Success(new ProfileResponse
                 {
@@ -127,6 +147,7 @@ namespace Portivio.Application.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error updating profile. ProfileId={ProfileId} UserId={UserId}", profileId, userId);
                 return Result<ProfileResponse>.InternalServerError($"Error updating profile: {ex.Message}");
             }
         }
@@ -137,26 +158,42 @@ namespace Portivio.Application.Services
             {
                 var profile = await _context.Profiles.FirstOrDefaultAsync(p => p.Id == profileId);
                 if (profile == null)
+                {
+                    _logger.LogWarning("Profile delete rejected: not found. ProfileId={ProfileId} UserId={UserId}", profileId, userId);
                     return Result.NotFound("Profile not found");
+                }
 
                 if (profile.UserId != userId)
+                {
+                    _logger.LogWarning("Profile delete rejected: ownership mismatch. ProfileId={ProfileId} OwnerId={OwnerId} CallerId={CallerId}",
+                        profileId, profile.UserId, userId);
                     return Result.Forbidden("Access denied");
+                }
 
                 var hasHoldings = await _context.Holdings.AnyAsync(h => h.ProfileId == profileId);
                 if (hasHoldings)
+                {
+                    _logger.LogWarning("Profile delete rejected: holdings exist. ProfileId={ProfileId}", profileId);
                     return Result.Conflict("Profile has associated holdings. Remove them first.");
+                }
 
                 var hasTransactions = await _context.Transactions.AnyAsync(t => t.ProfileId == profileId);
                 if (hasTransactions)
+                {
+                    _logger.LogWarning("Profile delete rejected: transactions exist. ProfileId={ProfileId}", profileId);
                     return Result.Conflict("Profile has associated transactions. Remove them first.");
+                }
 
                 _context.Profiles.Remove(profile);
                 await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Profile deleted. ProfileId={ProfileId} UserId={UserId}", profileId, userId);
 
                 return Result.Success("Profile deleted successfully");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error deleting profile. ProfileId={ProfileId} UserId={UserId}", profileId, userId);
                 return Result.InternalServerError($"Error deleting profile: {ex.Message}");
             }
         }

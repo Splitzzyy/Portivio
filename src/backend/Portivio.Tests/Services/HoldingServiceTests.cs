@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Moq;
 using Portivio.Application.DTOs.Holding;
 using Portivio.Application.Services;
 using Portivio.Domain.Entities;
@@ -17,6 +19,8 @@ namespace Portivio.Tests.Services
                 .Options;
             return new PortivioDbContext(options);
         }
+
+        private static ILogger<HoldingService> CreateMockLogger() => new Mock<ILogger<HoldingService>>().Object;
 
         private static (User user, Profile profile, AssetType assetType, Instrument instrument) SeedBasicData(PortivioDbContext context)
         {
@@ -37,7 +41,7 @@ namespace Portivio.Tests.Services
         {
             using var context = CreateInMemoryDbContext();
             var (user, profile, _, instrument) = SeedBasicData(context);
-            var service = new HoldingService(context);
+            var service = new HoldingService(context, CreateMockLogger());
 
             var result = await service.UpsertHoldingAsync(user.Id, profile.Id, new UpsertHoldingRequest
             {
@@ -62,7 +66,7 @@ namespace Portivio.Tests.Services
             context.Holdings.Add(holding);
             await context.SaveChangesAsync();
 
-            var service = new HoldingService(context);
+            var service = new HoldingService(context, CreateMockLogger());
             var result = await service.UpsertHoldingAsync(user.Id, profile.Id, new UpsertHoldingRequest
             {
                 InstrumentId = instrument.Id,
@@ -81,7 +85,7 @@ namespace Portivio.Tests.Services
         {
             using var context = CreateInMemoryDbContext();
             var (user, profile, _, instrument) = SeedBasicData(context);
-            var service = new HoldingService(context);
+            var service = new HoldingService(context, CreateMockLogger());
 
             var result = await service.UpsertHoldingAsync(user.Id, profile.Id, new UpsertHoldingRequest
             {
@@ -107,7 +111,7 @@ namespace Portivio.Tests.Services
             context.Holdings.Add(holding);
             await context.SaveChangesAsync();
 
-            var service = new HoldingService(context);
+            var service = new HoldingService(context, CreateMockLogger());
             var result = await service.DeleteHoldingAsync(user2.Id, profile.Id, holding.Id);
 
             Assert.False(result.IsSuccess);
@@ -125,7 +129,7 @@ namespace Portivio.Tests.Services
             );
             await context.SaveChangesAsync();
 
-            var service = new HoldingService(context);
+            var service = new HoldingService(context, CreateMockLogger());
             await service.RecalculateHoldingFromTransactionsAsync(profile.Id, instrument.Id);
 
             var holding = await context.Holdings.FirstAsync(h => h.ProfileId == profile.Id);
@@ -144,7 +148,7 @@ namespace Portivio.Tests.Services
             );
             await context.SaveChangesAsync();
 
-            var service = new HoldingService(context);
+            var service = new HoldingService(context, CreateMockLogger());
             await service.RecalculateHoldingFromTransactionsAsync(profile.Id, instrument.Id);
 
             var holding = await context.Holdings.FirstAsync(h => h.ProfileId == profile.Id);
@@ -164,7 +168,7 @@ namespace Portivio.Tests.Services
             );
             await context.SaveChangesAsync();
 
-            var service = new HoldingService(context);
+            var service = new HoldingService(context, CreateMockLogger());
             await service.RecalculateHoldingFromTransactionsAsync(profile.Id, instrument.Id);
 
             Assert.False(await context.Holdings.AnyAsync(h => h.ProfileId == profile.Id && h.InstrumentId == instrument.Id));

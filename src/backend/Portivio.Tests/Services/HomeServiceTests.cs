@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Moq;
 using Portivio.Application.Services;
 using Portivio.Domain.Entities;
 using Portivio.Domain.Enums;
@@ -17,6 +19,8 @@ namespace Portivio.Tests.Services
 
             return new PortivioDbContext(options);
         }
+
+        private static ILogger<HomeService> CreateMockLogger() => new Mock<ILogger<HomeService>>().Object;
 
         private async Task<(User user, Profile profile, Instrument instrument)> SeedUserWithPortfolioAsync(PortivioDbContext context)
         {
@@ -168,7 +172,7 @@ namespace Portivio.Tests.Services
         {
             var context = CreateInMemoryDbContext();
             var (user, profile, instrument) = await SeedUserWithPortfolioAsync(context);
-            var service = new HomeService(context);
+            var service = new HomeService(context, CreateMockLogger());
 
             var result = await service.GetHomeDataAsync(user.Id);
 
@@ -213,7 +217,7 @@ namespace Portivio.Tests.Services
         {
             var context = CreateInMemoryDbContext();
             var (user, _, _) = await SeedUserWithPortfolioAsync(context);
-            var service = new HomeService(context);
+            var service = new HomeService(context, CreateMockLogger());
 
             var result = await service.GetHomeDataAsync(user.Id);
 
@@ -232,7 +236,7 @@ namespace Portivio.Tests.Services
         public async Task GetHomeDataAsync_WithEmptyGuid_ReturnsBadRequest()
         {
             var context = CreateInMemoryDbContext();
-            var service = new HomeService(context);
+            var service = new HomeService(context, CreateMockLogger());
 
             var result = await service.GetHomeDataAsync(Guid.Empty);
 
@@ -245,7 +249,7 @@ namespace Portivio.Tests.Services
         public async Task GetHomeDataAsync_WithUnknownUser_ReturnsNotFound()
         {
             var context = CreateInMemoryDbContext();
-            var service = new HomeService(context);
+            var service = new HomeService(context, CreateMockLogger());
 
             var result = await service.GetHomeDataAsync(Guid.NewGuid());
 
@@ -271,7 +275,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new HomeService(context);
+            var service = new HomeService(context, CreateMockLogger());
 
             var result = await service.GetHomeDataAsync(user.Id);
 
@@ -332,7 +336,7 @@ namespace Portivio.Tests.Services
             context.Holdings.Add(otherHolding);
             await context.SaveChangesAsync();
 
-            var service = new HomeService(context);
+            var service = new HomeService(context, CreateMockLogger());
 
             var result = await service.GetHomeDataAsync(ownerUser.Id);
 
@@ -348,7 +352,7 @@ namespace Portivio.Tests.Services
         {
             var context = CreateInMemoryDbContext();
             var (user, _, _) = await SeedUserWithPortfolioAsync(context);
-            var service = new HomeService(context);
+            var service = new HomeService(context, CreateMockLogger());
 
             var result = await service.GetHomeDataAsync(user.Id);
 
@@ -363,7 +367,7 @@ namespace Portivio.Tests.Services
         {
             var context = CreateInMemoryDbContext();
             var (user, _, _) = await SeedUserWithPortfolioAsync(context);
-            var service = new HomeService(context);
+            var service = new HomeService(context, CreateMockLogger());
 
             var result = await service.GetHomeDataAsync(user.Id);
 
@@ -379,7 +383,7 @@ namespace Portivio.Tests.Services
         {
             var context = CreateInMemoryDbContext();
             var (user, _, _) = await SeedUserWithPortfolioAsync(context);
-            var service = new HomeService(context);
+            var service = new HomeService(context, CreateMockLogger());
 
             var originalLastLogin = user.LastLoginAt;
             var originalCreatedAt = user.CreatedAt;

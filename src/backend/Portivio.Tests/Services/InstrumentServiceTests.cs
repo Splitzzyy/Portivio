@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Moq;
 using Portivio.Application.DTOs.Instrument;
 using Portivio.Application.Services;
 using Portivio.Domain.Entities;
@@ -16,6 +18,8 @@ namespace Portivio.Tests.Services
                 .Options;
             return new PortivioDbContext(options);
         }
+
+        private static ILogger<InstrumentService> CreateMockLogger() => new Mock<ILogger<InstrumentService>>().Object;
 
         private static AssetType CreateAssetType(string name = "Equity") => new()
         {
@@ -36,7 +40,7 @@ namespace Portivio.Tests.Services
         public async Task CreateAssetType_ValidRequest_ReturnsSuccess()
         {
             using var context = CreateInMemoryDbContext();
-            var service = new InstrumentService(context);
+            var service = new InstrumentService(context, CreateMockLogger());
 
             var result = await service.CreateAssetTypeAsync(new CreateAssetTypeRequest { Name = "Equity" });
 
@@ -52,7 +56,7 @@ namespace Portivio.Tests.Services
             context.AssetTypes.Add(CreateAssetType("Equity"));
             await context.SaveChangesAsync();
 
-            var service = new InstrumentService(context);
+            var service = new InstrumentService(context, CreateMockLogger());
             var result = await service.CreateAssetTypeAsync(new CreateAssetTypeRequest { Name = "equity" });
 
             Assert.False(result.IsSuccess);
@@ -69,7 +73,7 @@ namespace Portivio.Tests.Services
             context.Instruments.Add(instrument);
             await context.SaveChangesAsync();
 
-            var service = new InstrumentService(context);
+            var service = new InstrumentService(context, CreateMockLogger());
             var result = await service.DeleteAssetTypeAsync(assetType.Id);
 
             Assert.False(result.IsSuccess);
@@ -84,7 +88,7 @@ namespace Portivio.Tests.Services
             context.AssetTypes.Add(assetType);
             await context.SaveChangesAsync();
 
-            var service = new InstrumentService(context);
+            var service = new InstrumentService(context, CreateMockLogger());
             var result = await service.DeleteAssetTypeAsync(assetType.Id);
 
             Assert.True(result.IsSuccess);
@@ -98,7 +102,7 @@ namespace Portivio.Tests.Services
             context.AssetTypes.Add(assetType);
             await context.SaveChangesAsync();
 
-            var service = new InstrumentService(context);
+            var service = new InstrumentService(context, CreateMockLogger());
             var result = await service.CreateInstrumentAsync(new CreateInstrumentRequest
             {
                 AssetTypeId = assetType.Id,
@@ -122,7 +126,7 @@ namespace Portivio.Tests.Services
             context.Instruments.Add(instrument);
             await context.SaveChangesAsync();
 
-            var service = new InstrumentService(context);
+            var service = new InstrumentService(context, CreateMockLogger());
             var result = await service.CreateInstrumentAsync(new CreateInstrumentRequest
             {
                 AssetTypeId = assetType.Id,
@@ -139,7 +143,7 @@ namespace Portivio.Tests.Services
         public async Task CreateInstrument_NonexistentAssetType_ReturnsBadRequest()
         {
             using var context = CreateInMemoryDbContext();
-            var service = new InstrumentService(context);
+            var service = new InstrumentService(context, CreateMockLogger());
 
             var result = await service.CreateInstrumentAsync(new CreateInstrumentRequest
             {
@@ -181,7 +185,7 @@ namespace Portivio.Tests.Services
             context.Holdings.Add(holding);
             await context.SaveChangesAsync();
 
-            var service = new InstrumentService(context);
+            var service = new InstrumentService(context, CreateMockLogger());
             var result = await service.DeleteInstrumentAsync(instrument.Id);
 
             Assert.False(result.IsSuccess);
@@ -200,7 +204,7 @@ namespace Portivio.Tests.Services
             context.Instruments.AddRange(equityInstrument, bondInstrument);
             await context.SaveChangesAsync();
 
-            var service = new InstrumentService(context);
+            var service = new InstrumentService(context, CreateMockLogger());
             var result = await service.GetInstrumentsAsync(equity.Id);
 
             Assert.True(result.IsSuccess);

@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Portivio.Application.DTOs.Auth;
 using Portivio.Application.Services;
@@ -20,16 +22,14 @@ namespace Portivio.Tests.Services
             return new PortivioDbContext(options);
         }
 
-        private Mock<IConfiguration> CreateMockConfiguration()
+        private IOptions<AppSettingsOptions> CreateJwtOptions()
         {
-            var config = new Mock<IConfiguration>();
-            config.Setup(c => c["Jwt:Key"])
-                .Returns("super-secret-key-that-is-at-least-32-characters-long");
-            config.Setup(c => c["Jwt:Issuer"])
-                .Returns("Portivio");
-            config.Setup(c => c["Jwt:Audience"])
-                .Returns("PortivioUsers");
-            return config;
+            return Options.Create(new AppSettingsOptions
+            {
+                Key = "super-secret-key-that-is-at-least-32-characters-long",
+                Issuer = "Portivio",
+                Audience = "PortivioUsers"
+            });
         }
 
         [Fact]
@@ -37,7 +37,7 @@ namespace Portivio.Tests.Services
         {
             // Arrange
             var context = CreateInMemoryDbContext();
-            var configMock = CreateMockConfiguration();
+            var jwtOptions = CreateJwtOptions();
 
             var user = new User
             {
@@ -53,7 +53,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, configMock.Object);
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>());
             var request = new LoginRequest
             {
                 Email = "test@example.com",
@@ -76,7 +76,7 @@ namespace Portivio.Tests.Services
         public async Task LoginAsync_WithPhoneClient_ReturnsRefreshToken()
         {
             var context = CreateInMemoryDbContext();
-            var configMock = CreateMockConfiguration();
+            var jwtOptions = CreateJwtOptions();
 
             var user = new User
             {
@@ -92,7 +92,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, configMock.Object);
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>());
             var request = new LoginRequest
             {
                 Email = "phone@example.com",
@@ -112,7 +112,7 @@ namespace Portivio.Tests.Services
         public async Task LoginAsync_WithoutRefreshToken_DoesNotPersistAuthToken()
         {
             var context = CreateInMemoryDbContext();
-            var configMock = CreateMockConfiguration();
+            var jwtOptions = CreateJwtOptions();
 
             var user = new User
             {
@@ -128,7 +128,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, configMock.Object);
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>());
             var request = new LoginRequest
             {
                 Email = "desktop@example.com",
@@ -148,8 +148,8 @@ namespace Portivio.Tests.Services
         {
             // Arrange
             var context = CreateInMemoryDbContext();
-            var configMock = CreateMockConfiguration();
-            var service = new AuthService(context, configMock.Object);
+            var jwtOptions = CreateJwtOptions();
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>());
 
             var request = new LoginRequest
             {
@@ -171,7 +171,7 @@ namespace Portivio.Tests.Services
         {
             // Arrange
             var context = CreateInMemoryDbContext();
-            var configMock = CreateMockConfiguration();
+            var jwtOptions = CreateJwtOptions();
 
             var user = new User
             {
@@ -187,7 +187,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, configMock.Object);
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>());
             var request = new LoginRequest
             {
                 Email = "unverified@example.com",
@@ -208,7 +208,7 @@ namespace Portivio.Tests.Services
         {
             // Arrange
             var context = CreateInMemoryDbContext();
-            var configMock = CreateMockConfiguration();
+            var jwtOptions = CreateJwtOptions();
 
             var user = new User
             {
@@ -224,7 +224,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, configMock.Object);
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>());
             var request = new LoginRequest
             {
                 Email = "inactive@example.com",
@@ -245,8 +245,8 @@ namespace Portivio.Tests.Services
         {
             // Arrange
             var context = CreateInMemoryDbContext();
-            var configMock = CreateMockConfiguration();
-            var service = new AuthService(context, configMock.Object);
+            var jwtOptions = CreateJwtOptions();
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>());
 
             var request = new LoginRequest
             {
@@ -267,7 +267,7 @@ namespace Portivio.Tests.Services
         {
             // Arrange
             var context = CreateInMemoryDbContext();
-            var configMock = CreateMockConfiguration();
+            var jwtOptions = CreateJwtOptions();
 
             var user = new User
             {
@@ -284,7 +284,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, configMock.Object);
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>());
             var request = new LoginRequest
             {
                 Email = "test@example.com",
@@ -313,16 +313,14 @@ namespace Portivio.Tests.Services
             return new PortivioDbContext(options);
         }
 
-        private Mock<IConfiguration> CreateMockConfiguration()
+        private IOptions<AppSettingsOptions> CreateJwtOptions()
         {
-            var config = new Mock<IConfiguration>();
-            config.Setup(c => c["Jwt:Key"])
-                .Returns("super-secret-key-that-is-at-least-32-characters-long");
-            config.Setup(c => c["Jwt:Issuer"])
-                .Returns("Portivio");
-            config.Setup(c => c["Jwt:Audience"])
-                .Returns("PortivioUsers");
-            return config;
+            return Options.Create(new AppSettingsOptions
+            {
+                Key = "super-secret-key-that-is-at-least-32-characters-long",
+                Issuer = "Portivio",
+                Audience = "PortivioUsers"
+            });
         }
 
         [Fact]
@@ -330,8 +328,8 @@ namespace Portivio.Tests.Services
         {
             // Arrange
             var context = CreateInMemoryDbContext();
-            var configMock = CreateMockConfiguration();
-            var service = new AuthService(context, configMock.Object);
+            var jwtOptions = CreateJwtOptions();
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>());
 
             var request = new SignupRequest
             {
@@ -364,8 +362,8 @@ namespace Portivio.Tests.Services
         {
             // Arrange
             var context = CreateInMemoryDbContext();
-            var configMock = CreateMockConfiguration();
-            var service = new AuthService(context, configMock.Object);
+            var jwtOptions = CreateJwtOptions();
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>());
 
             var request = new SignupRequest
             {
@@ -389,7 +387,7 @@ namespace Portivio.Tests.Services
         {
             // Arrange
             var context = CreateInMemoryDbContext();
-            var configMock = CreateMockConfiguration();
+            var jwtOptions = CreateJwtOptions();
 
             var existingUser = new User
             {
@@ -404,7 +402,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(existingUser);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, configMock.Object);
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>());
             var request = new SignupRequest
             {
                 Email = "existing@example.com",
@@ -427,8 +425,8 @@ namespace Portivio.Tests.Services
         {
             // Arrange
             var context = CreateInMemoryDbContext();
-            var configMock = CreateMockConfiguration();
-            var service = new AuthService(context, configMock.Object);
+            var jwtOptions = CreateJwtOptions();
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>());
 
             var request = new SignupRequest
             {
@@ -458,16 +456,14 @@ namespace Portivio.Tests.Services
             return new PortivioDbContext(options);
         }
 
-        private Mock<IConfiguration> CreateMockConfiguration()
+        private IOptions<AppSettingsOptions> CreateJwtOptions()
         {
-            var config = new Mock<IConfiguration>();
-            config.Setup(c => c["Jwt:Key"])
-                .Returns("super-secret-key-that-is-at-least-32-characters-long");
-            config.Setup(c => c["Jwt:Issuer"])
-                .Returns("Portivio");
-            config.Setup(c => c["Jwt:Audience"])
-                .Returns("PortivioUsers");
-            return config;
+            return Options.Create(new AppSettingsOptions
+            {
+                Key = "super-secret-key-that-is-at-least-32-characters-long",
+                Issuer = "Portivio",
+                Audience = "PortivioUsers"
+            });
         }
 
         [Fact]
@@ -475,7 +471,7 @@ namespace Portivio.Tests.Services
         {
             // Arrange
             var context = CreateInMemoryDbContext();
-            var configMock = CreateMockConfiguration();
+            var jwtOptions = CreateJwtOptions();
 
             var user = new User
             {
@@ -490,7 +486,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, configMock.Object);
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>());
             var request = new VerifyEmailRequest
             {
                 Email = "test@example.com",
@@ -512,8 +508,8 @@ namespace Portivio.Tests.Services
         {
             // Arrange
             var context = CreateInMemoryDbContext();
-            var configMock = CreateMockConfiguration();
-            var service = new AuthService(context, configMock.Object);
+            var jwtOptions = CreateJwtOptions();
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>());
 
             var request = new VerifyEmailRequest
             {
@@ -535,7 +531,7 @@ namespace Portivio.Tests.Services
         {
             // Arrange
             var context = CreateInMemoryDbContext();
-            var configMock = CreateMockConfiguration();
+            var jwtOptions = CreateJwtOptions();
 
             var user = new User
             {
@@ -550,7 +546,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, configMock.Object);
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>());
             var request = new VerifyEmailRequest
             {
                 Email = "verified@example.com",
@@ -578,16 +574,14 @@ namespace Portivio.Tests.Services
             return new PortivioDbContext(options);
         }
 
-        private Mock<IConfiguration> CreateMockConfiguration()
+        private IOptions<AppSettingsOptions> CreateJwtOptions()
         {
-            var config = new Mock<IConfiguration>();
-            config.Setup(c => c["Jwt:Key"])
-                .Returns("super-secret-key-that-is-at-least-32-characters-long");
-            config.Setup(c => c["Jwt:Issuer"])
-                .Returns("Portivio");
-            config.Setup(c => c["Jwt:Audience"])
-                .Returns("PortivioUsers");
-            return config;
+            return Options.Create(new AppSettingsOptions
+            {
+                Key = "super-secret-key-that-is-at-least-32-characters-long",
+                Issuer = "Portivio",
+                Audience = "PortivioUsers"
+            });
         }
 
         [Fact]
@@ -595,7 +589,7 @@ namespace Portivio.Tests.Services
         {
             // Arrange
             var context = CreateInMemoryDbContext();
-            var configMock = CreateMockConfiguration();
+            var jwtOptions = CreateJwtOptions();
             var userId = Guid.NewGuid();
 
             var token1 = new AuthToken
@@ -629,7 +623,7 @@ namespace Portivio.Tests.Services
             context.AuthTokens.AddRange(token1, token2);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, configMock.Object);
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>());
 
             // Act
             var result = await service.LogoutAsync(userId);
@@ -645,10 +639,10 @@ namespace Portivio.Tests.Services
         {
             // Arrange
             var context = CreateInMemoryDbContext();
-            var configMock = CreateMockConfiguration();
+            var jwtOptions = CreateJwtOptions();
             var userId = Guid.NewGuid();
 
-            var service = new AuthService(context, configMock.Object);
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>());
 
             // Act
             var result = await service.LogoutAsync(userId);
@@ -669,16 +663,14 @@ namespace Portivio.Tests.Services
             return new PortivioDbContext(options);
         }
 
-        private Mock<IConfiguration> CreateMockConfiguration()
+        private IOptions<AppSettingsOptions> CreateJwtOptions()
         {
-            var config = new Mock<IConfiguration>();
-            config.Setup(c => c["Jwt:Key"])
-                .Returns("super-secret-key-that-is-at-least-32-characters-long");
-            config.Setup(c => c["Jwt:Issuer"])
-                .Returns("Portivio");
-            config.Setup(c => c["Jwt:Audience"])
-                .Returns("PortivioUsers");
-            return config;
+            return Options.Create(new AppSettingsOptions
+            {
+                Key = "super-secret-key-that-is-at-least-32-characters-long",
+                Issuer = "Portivio",
+                Audience = "PortivioUsers"
+            });
         }
 
         [Fact]
@@ -686,7 +678,7 @@ namespace Portivio.Tests.Services
         {
             // Arrange
             var context = CreateInMemoryDbContext();
-            var configMock = CreateMockConfiguration();
+            var jwtOptions = CreateJwtOptions();
 
             var expiredToken = new AuthToken
             {
@@ -719,7 +711,7 @@ namespace Portivio.Tests.Services
             context.AuthTokens.AddRange(expiredToken, validToken);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, configMock.Object);
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>());
 
             // Act
             var result = await service.CleanupExpiredTokensAsync();
@@ -736,7 +728,7 @@ namespace Portivio.Tests.Services
         {
             // Arrange
             var context = CreateInMemoryDbContext();
-            var configMock = CreateMockConfiguration();
+            var jwtOptions = CreateJwtOptions();
 
             var validToken = new AuthToken
             {
@@ -755,7 +747,7 @@ namespace Portivio.Tests.Services
             context.AuthTokens.Add(validToken);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, configMock.Object);
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>());
 
             // Act
             var result = await service.CleanupExpiredTokensAsync();
@@ -778,16 +770,14 @@ namespace Portivio.Tests.Services
             return new PortivioDbContext(options);
         }
 
-        private Mock<IConfiguration> CreateMockConfiguration()
+        private IOptions<AppSettingsOptions> CreateJwtOptions()
         {
-            var config = new Mock<IConfiguration>();
-            config.Setup(c => c["Jwt:Key"])
-                .Returns("super-secret-key-that-is-at-least-32-characters-long");
-            config.Setup(c => c["Jwt:Issuer"])
-                .Returns("Portivio");
-            config.Setup(c => c["Jwt:Audience"])
-                .Returns("PortivioUsers");
-            return config;
+            return Options.Create(new AppSettingsOptions
+            {
+                Key = "super-secret-key-that-is-at-least-32-characters-long",
+                Issuer = "Portivio",
+                Audience = "PortivioUsers"
+            });
         }
 
         [Fact]
@@ -795,8 +785,8 @@ namespace Portivio.Tests.Services
         {
             // Arrange
             var context = CreateInMemoryDbContext();
-            var configMock = CreateMockConfiguration();
-            var service = new AuthService(context, configMock.Object);
+            var jwtOptions = CreateJwtOptions();
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>());
 
             // Act
             var result = await service.RefreshTokenAsync("");
@@ -812,8 +802,8 @@ namespace Portivio.Tests.Services
         {
             // Arrange
             var context = CreateInMemoryDbContext();
-            var configMock = CreateMockConfiguration();
-            var service = new AuthService(context, configMock.Object);
+            var jwtOptions = CreateJwtOptions();
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>());
 
             // Act
             var result = await service.RefreshTokenAsync("invalid-token");
@@ -828,7 +818,7 @@ namespace Portivio.Tests.Services
         public async Task RefreshTokenAsync_WithInactiveUser_ReturnsForbidden()
         {
             var context = CreateInMemoryDbContext();
-            var configMock = CreateMockConfiguration();
+            var jwtOptions = CreateJwtOptions();
 
             var user = new User
             {
@@ -858,7 +848,7 @@ namespace Portivio.Tests.Services
             });
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, configMock.Object);
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>());
 
             var result = await service.RefreshTokenAsync(refreshToken);
 

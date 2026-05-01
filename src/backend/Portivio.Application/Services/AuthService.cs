@@ -1,5 +1,7 @@
+using Google.Apis.Auth;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Portivio.Application.DTOs.Auth;
 using Portivio.Application.Results;
@@ -29,12 +31,20 @@ namespace Portivio.Application.Services
     public class AuthService : IAuthService
     {
         private readonly PortivioDbContext _context;
-        private readonly IConfiguration _configuration;
+        private readonly AppSettingsOptions _jwtSettings;
+        private readonly GoogleAuthOptions _googleAppSettings;
+        private readonly ILogger<AuthService> _logger;
 
-        public AuthService(PortivioDbContext context, IConfiguration configuration)
+        public AuthService(
+            PortivioDbContext context,
+            IOptions<AppSettingsOptions> jwtOptions,
+            IOptions<GoogleAuthOptions> googleOptions,
+            ILogger<AuthService> logger)
         {
             _context = context;
-            _configuration = configuration;
+            _jwtSettings = jwtOptions.Value;
+            _googleAppSettings = googleOptions.Value;
+            _logger = logger;
         }
 
         public async Task<Result<AuthResponse>> LoginAsync(LoginRequest request)
@@ -364,14 +374,113 @@ namespace Portivio.Application.Services
             try
             {
                 if (string.IsNullOrWhiteSpace(request.Token))
+                {
+                    _logger.LogWarning("Google login rejected: missing token. IP={IpAddress}", request.IpAddress);
                     return Result<AuthResponse>.BadRequest("Google token is required");
+                }
 
-                // TODO: Verify Google token and extract email/profile info
+                if (string.IsNullOrWhiteSpace(_googleAppSettings.ClientId))
+                {
+                    _logger.LogCritical("Google login cannot proceed: GoogleAuth:ClientId is not configured");
+                    throw new InvalidOperationException("Google Client ID is not configured");
+                }
 
-                return Result<AuthResponse>.Failure("Google login not fully implemented", 501);
+                var validAudiences = new List<string> { _googleAppSettings.ClientId };
+                if (!string.IsNullOrWhiteSpace(_googleAppSettings.AndroidClientId))
+                    validAudiences.Add(_googleAppSettings.AndroidClientId);
+
+                GoogleJsonWebSignature.Payload payload;
+                try
+                {
+                    payload = await GoogleJsonWebSignature.ValidateAsync(
+                        request.Token,
+                        new GoogleJsonWebSignature.ValidationSettings { Audience = validAudiences });
+                }
+                catch (InvalidJwtException ex)
+                {
+                    _logger.LogWarning("Google token validation failed. IP={IpAddress} Reason={Reason}",
+                        request.IpAddress, ex.Message);
+                    return Result<AuthResponse>.Unauthorized("Invalid or expired Google token");
+                }
+
+                _logger.LogInformation("Google token validated. Email={Email} IP={IpAddress} Device={DeviceInfo}",
+                    payload.Email, request.IpAddress, request.DeviceInfo);
+
+                if (!payload.EmailVerified)
+                {
+                    _logger.LogWarning("Google login rejected: email not verified. Email={Email} IP={IpAddress}",
+                        payload.Email, request.IpAddress);
+                    return Result<AuthResponse>.Unauthorized("Google account email is not verified");
+                }
+
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == payload.Email);
+                var isNewUser = user == null;
+
+                if (isNewUser)
+                {
+                    user = new User
+                    {
+                        Id = Guid.NewGuid(),
+                        Email = payload.Email,
+                        Name = payload.Name,
+                        PasswordHash = HashPassword(Guid.NewGuid().ToString()),
+                        IsVerified = false,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    _context.Users.Add(user);
+
+                    // Need to Implement Email Service
+                }
+
+                var tokensResult = await GenerateTokensAsync(
+                    user!,
+                    request.IpAddress ?? "Unknown",
+                    request.DeviceInfo ?? "Unknown",
+                    true);
+
+                if (tokensResult.IsFailure)
+                {
+                    _logger.LogError("Token generation failed for Google login. UserId={UserId} Error={Error}",
+                        user!.Id, tokensResult.Message);
+                    return Result<AuthResponse>.Failure(tokensResult.Message, tokensResult.Errors, tokensResult.StatusCode ?? 500);
+                }
+
+                // Saves both new user (if any) and auth token atomically in a single implicit transaction
+                await _context.SaveChangesAsync();
+
+                if (isNewUser)
+                    _logger.LogInformation("New user registered via Google SSO. UserId={UserId} Email={Email} IP={IpAddress}",
+                        user!.Id, user.Email, request.IpAddress);
+
+                _logger.LogInformation("Google SSO login successful. UserId={UserId} Email={Email} IP={IpAddress} Device={DeviceInfo}",
+                    user!.Id, user.Email, request.IpAddress, request.DeviceInfo);
+
+                var response = new AuthResponse
+                {
+                    Success = true,
+                    Message = "Login successful",
+                    AccessToken = tokensResult.Data!.AccessToken,
+                    RefreshToken = tokensResult.Data!.RefreshToken,
+                    AccessTokenExpiry = tokensResult.Data!.AccessTokenExpiry,
+                    RefreshTokenExpiry = tokensResult.Data!.RefreshTokenExpiry,
+                    User = new UserDto
+                    {
+                        Id = user.Id,
+                        Email = user.Email,
+                        Name = user.Name,
+                        IsVerified = user.IsVerified,
+                        IsActive = user.IsActive
+                    }
+                };
+
+                return Result<AuthResponse>.Success(response, "Login successful", 200);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Unhandled error during Google SSO login. IP={IpAddress} Device={DeviceInfo}",
+                    request.IpAddress, request.DeviceInfo);
                 return Result<AuthResponse>.InternalServerError($"Google login failed: {ex.Message}");
             }
         }
@@ -479,11 +588,10 @@ namespace Portivio.Application.Services
         {
             try
             {
-                var jwtKey = _configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key is not configured");
-                var jwtIssuer = _configuration["Jwt:Issuer"];
-                var jwtAudience = _configuration["Jwt:Audience"];
+                if (string.IsNullOrWhiteSpace(_jwtSettings.Key))
+                    throw new InvalidOperationException("JWT Key is not configured");
 
-                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
+                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Key));
                 var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
                 var claims = new[]
@@ -494,8 +602,8 @@ namespace Portivio.Application.Services
                 };
 
                 var token = new JwtSecurityToken(
-                    issuer: jwtIssuer,
-                    audience: jwtAudience,
+                    issuer: _jwtSettings.Issuer,
+                    audience: _jwtSettings.Audience,
                     claims: claims,
                     expires: expiry,
                     signingCredentials: credentials

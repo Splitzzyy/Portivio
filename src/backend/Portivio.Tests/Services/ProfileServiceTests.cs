@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Moq;
 using Portivio.Application.DTOs.Profile;
 using Portivio.Application.Services;
 using Portivio.Domain.Entities;
@@ -16,6 +18,8 @@ namespace Portivio.Tests.Services
                 .Options;
             return new PortivioDbContext(options);
         }
+
+        private static ILogger<ProfileService> CreateMockLogger() => new Mock<ILogger<ProfileService>>().Object;
 
         private static User CreateUser(Guid? id = null) => new()
         {
@@ -46,7 +50,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new ProfileService(context);
+            var service = new ProfileService(context, CreateMockLogger());
             var result = await service.CreateProfileAsync(user.Id, new CreateProfileRequest
             {
                 Name = "My Portfolio",
@@ -70,7 +74,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new ProfileService(context);
+            var service = new ProfileService(context, CreateMockLogger());
             var result = await service.CreateProfileAsync(user.Id, new CreateProfileRequest
             {
                 Name = "",
@@ -89,7 +93,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new ProfileService(context);
+            var service = new ProfileService(context, CreateMockLogger());
             var result = await service.CreateProfileAsync(user.Id, new CreateProfileRequest
             {
                 Name = "Portfolio",
@@ -111,7 +115,7 @@ namespace Portivio.Tests.Services
             context.Profiles.Add(profile);
             await context.SaveChangesAsync();
 
-            var service = new ProfileService(context);
+            var service = new ProfileService(context, CreateMockLogger());
             var result = await service.UpdateProfileAsync(user2.Id, profile.Id, new UpdateProfileRequest
             {
                 Name = "Hacked",
@@ -130,7 +134,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new ProfileService(context);
+            var service = new ProfileService(context, CreateMockLogger());
             var result = await service.UpdateProfileAsync(user.Id, Guid.NewGuid(), new UpdateProfileRequest
             {
                 Name = "Updated",
@@ -176,7 +180,7 @@ namespace Portivio.Tests.Services
             context.Holdings.Add(holding);
             await context.SaveChangesAsync();
 
-            var service = new ProfileService(context);
+            var service = new ProfileService(context, CreateMockLogger());
             var result = await service.DeleteProfileAsync(user.Id, profile.Id);
 
             Assert.False(result.IsSuccess);
@@ -193,7 +197,7 @@ namespace Portivio.Tests.Services
             context.Profiles.Add(profile);
             await context.SaveChangesAsync();
 
-            var service = new ProfileService(context);
+            var service = new ProfileService(context, CreateMockLogger());
             var result = await service.DeleteProfileAsync(user.Id, profile.Id);
 
             Assert.True(result.IsSuccess);
@@ -211,7 +215,7 @@ namespace Portivio.Tests.Services
             context.Profiles.Add(profile);
             await context.SaveChangesAsync();
 
-            var service = new ProfileService(context);
+            var service = new ProfileService(context, CreateMockLogger());
             var result = await service.DeleteProfileAsync(user2.Id, profile.Id);
 
             Assert.False(result.IsSuccess);
@@ -230,7 +234,7 @@ namespace Portivio.Tests.Services
             context.Profiles.AddRange(profile1, profile2);
             await context.SaveChangesAsync();
 
-            var service = new ProfileService(context);
+            var service = new ProfileService(context, CreateMockLogger());
             var result = await service.GetProfilesAsync(user1.Id);
 
             Assert.True(result.IsSuccess);

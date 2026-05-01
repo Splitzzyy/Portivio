@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Moq;
 using Portivio.Application.DTOs.PriceHistory;
 using Portivio.Application.Services;
 using Portivio.Domain.Entities;
@@ -28,7 +30,7 @@ namespace Portivio.Tests.Services
         }
 
         private static PriceHistoryService CreateService(PortivioDbContext context) =>
-            new(context, new HoldingService(context));
+            new(context, new HoldingService(context, new Mock<ILogger<HoldingService>>().Object));
 
         [Fact]
         public async Task AddPrice_ValidRequest_InsertsAndReturnsSuccess()

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Portivio.Application.DTOs.Instrument;
 using Portivio.Application.Results;
 using Portivio.Domain.Entities;
@@ -22,10 +23,12 @@ namespace Portivio.Application.Services
     public class InstrumentService : IInstrumentService
     {
         private readonly PortivioDbContext _context;
+        private readonly ILogger<InstrumentService> _logger;
 
-        public InstrumentService(PortivioDbContext context)
+        public InstrumentService(PortivioDbContext context, ILogger<InstrumentService> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         public async Task<Result<List<AssetTypeResponse>>> GetAssetTypesAsync()
@@ -41,6 +44,7 @@ namespace Portivio.Application.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving asset types");
                 return Result<List<AssetTypeResponse>>.InternalServerError($"Error retrieving asset types: {ex.Message}");
             }
         }
@@ -56,7 +60,10 @@ namespace Portivio.Application.Services
                     .AnyAsync(a => a.Name.ToLower() == request.Name.ToLower());
 
                 if (exists)
+                {
+                    _logger.LogWarning("Asset type creation rejected: duplicate name. Name={Name}", request.Name);
                     return Result<AssetTypeResponse>.Conflict("Asset type with this name already exists");
+                }
 
                 var assetType = new AssetType
                 {
@@ -67,12 +74,15 @@ namespace Portivio.Application.Services
                 _context.AssetTypes.Add(assetType);
                 await _context.SaveChangesAsync();
 
+                _logger.LogInformation("Asset type created. AssetTypeId={AssetTypeId} Name={Name}", assetType.Id, assetType.Name);
+
                 return Result<AssetTypeResponse>.Success(
                     new AssetTypeResponse { Id = assetType.Id, Name = assetType.Name },
                     "Asset type created successfully", 201);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error creating asset type. Name={Name}", request.Name);
                 return Result<AssetTypeResponse>.InternalServerError($"Error creating asset type: {ex.Message}");
             }
         }
@@ -83,19 +93,28 @@ namespace Portivio.Application.Services
             {
                 var assetType = await _context.AssetTypes.FirstOrDefaultAsync(a => a.Id == assetTypeId);
                 if (assetType == null)
+                {
+                    _logger.LogWarning("Asset type delete rejected: not found. AssetTypeId={AssetTypeId}", assetTypeId);
                     return Result.NotFound("Asset type not found");
+                }
 
                 var hasInstruments = await _context.Instruments.AnyAsync(i => i.AssetTypeId == assetTypeId);
                 if (hasInstruments)
+                {
+                    _logger.LogWarning("Asset type delete rejected: instruments exist. AssetTypeId={AssetTypeId}", assetTypeId);
                     return Result.Conflict("Asset type has associated instruments. Remove them first.");
+                }
 
                 _context.AssetTypes.Remove(assetType);
                 await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Asset type deleted. AssetTypeId={AssetTypeId}", assetTypeId);
 
                 return Result.Success("Asset type deleted successfully");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error deleting asset type. AssetTypeId={AssetTypeId}", assetTypeId);
                 return Result.InternalServerError($"Error deleting asset type: {ex.Message}");
             }
         }
@@ -126,6 +145,7 @@ namespace Portivio.Application.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving instruments. AssetTypeId={AssetTypeId}", assetTypeId);
                 return Result<List<InstrumentResponse>>.InternalServerError($"Error retrieving instruments: {ex.Message}");
             }
         }
@@ -139,7 +159,10 @@ namespace Portivio.Application.Services
                     .FirstOrDefaultAsync(i => i.Id == instrumentId);
 
                 if (instrument == null)
+                {
+                    _logger.LogWarning("Instrument lookup rejected: not found. InstrumentId={InstrumentId}", instrumentId);
                     return Result<InstrumentResponse>.NotFound("Instrument not found");
+                }
 
                 return Result<InstrumentResponse>.Success(new InstrumentResponse
                 {
@@ -153,6 +176,7 @@ namespace Portivio.Application.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving instrument. InstrumentId={InstrumentId}", instrumentId);
                 return Result<InstrumentResponse>.InternalServerError($"Error retrieving instrument: {ex.Message}");
             }
         }
@@ -172,13 +196,19 @@ namespace Portivio.Application.Services
 
                 var assetType = await _context.AssetTypes.FirstOrDefaultAsync(a => a.Id == request.AssetTypeId);
                 if (assetType == null)
+                {
+                    _logger.LogWarning("Instrument creation rejected: asset type not found. AssetTypeId={AssetTypeId}", request.AssetTypeId);
                     return Result<InstrumentResponse>.BadRequest("Asset type not found");
+                }
 
                 var symbolExists = await _context.Instruments
                     .AnyAsync(i => i.Symbol.ToLower() == request.Symbol.ToLower());
 
                 if (symbolExists)
+                {
+                    _logger.LogWarning("Instrument creation rejected: duplicate symbol. Symbol={Symbol}", request.Symbol);
                     return Result<InstrumentResponse>.Conflict("Instrument with this symbol already exists");
+                }
 
                 var instrument = new Instrument
                 {
@@ -192,6 +222,9 @@ namespace Portivio.Application.Services
                 _context.Instruments.Add(instrument);
                 await _context.SaveChangesAsync();
 
+                _logger.LogInformation("Instrument created. InstrumentId={InstrumentId} Symbol={Symbol} AssetTypeId={AssetTypeId}",
+                    instrument.Id, instrument.Symbol, instrument.AssetTypeId);
+
                 return Result<InstrumentResponse>.Success(new InstrumentResponse
                 {
                     Id = instrument.Id,
@@ -204,6 +237,7 @@ namespace Portivio.Application.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error creating instrument. Symbol={Symbol}", request.Symbol);
                 return Result<InstrumentResponse>.InternalServerError($"Error creating instrument: {ex.Message}");
             }
         }
@@ -226,19 +260,28 @@ namespace Portivio.Application.Services
                     .FirstOrDefaultAsync(i => i.Id == instrumentId);
 
                 if (instrument == null)
+                {
+                    _logger.LogWarning("Instrument update rejected: not found. InstrumentId={InstrumentId}", instrumentId);
                     return Result<InstrumentResponse>.NotFound("Instrument not found");
+                }
 
                 var symbolExists = await _context.Instruments
                     .AnyAsync(i => i.Symbol.ToLower() == request.Symbol.ToLower() && i.Id != instrumentId);
 
                 if (symbolExists)
+                {
+                    _logger.LogWarning("Instrument update rejected: duplicate symbol. InstrumentId={InstrumentId} Symbol={Symbol}",
+                        instrumentId, request.Symbol);
                     return Result<InstrumentResponse>.Conflict("Instrument with this symbol already exists");
+                }
 
                 instrument.Name = request.Name.Trim();
                 instrument.Symbol = request.Symbol.ToUpperInvariant();
                 instrument.Currency = request.Currency.ToUpperInvariant();
 
                 await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Instrument updated. InstrumentId={InstrumentId} Symbol={Symbol}", instrumentId, instrument.Symbol);
 
                 return Result<InstrumentResponse>.Success(new InstrumentResponse
                 {
@@ -252,6 +295,7 @@ namespace Portivio.Application.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error updating instrument. InstrumentId={InstrumentId}", instrumentId);
                 return Result<InstrumentResponse>.InternalServerError($"Error updating instrument: {ex.Message}");
             }
         }
@@ -262,23 +306,35 @@ namespace Portivio.Application.Services
             {
                 var instrument = await _context.Instruments.FirstOrDefaultAsync(i => i.Id == instrumentId);
                 if (instrument == null)
+                {
+                    _logger.LogWarning("Instrument delete rejected: not found. InstrumentId={InstrumentId}", instrumentId);
                     return Result.NotFound("Instrument not found");
+                }
 
                 var hasHoldings = await _context.Holdings.AnyAsync(h => h.InstrumentId == instrumentId);
                 if (hasHoldings)
+                {
+                    _logger.LogWarning("Instrument delete rejected: holdings exist. InstrumentId={InstrumentId}", instrumentId);
                     return Result.Conflict("Instrument has associated holdings. Remove them first.");
+                }
 
                 var hasTransactions = await _context.Transactions.AnyAsync(t => t.InstrumentId == instrumentId);
                 if (hasTransactions)
+                {
+                    _logger.LogWarning("Instrument delete rejected: transactions exist. InstrumentId={InstrumentId}", instrumentId);
                     return Result.Conflict("Instrument has associated transactions. Remove them first.");
+                }
 
                 _context.Instruments.Remove(instrument);
                 await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Instrument deleted. InstrumentId={InstrumentId}", instrumentId);
 
                 return Result.Success("Instrument deleted successfully");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error deleting instrument. InstrumentId={InstrumentId}", instrumentId);
                 return Result.InternalServerError($"Error deleting instrument: {ex.Message}");
             }
         }

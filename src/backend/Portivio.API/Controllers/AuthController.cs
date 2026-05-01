@@ -227,7 +227,9 @@ namespace Portivio.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during Google login");
+                _logger.LogError(ex, "Unhandled error in Google login endpoint. IP={IpAddress} UserAgent={UserAgent}",
+                    HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    HttpContext.Request.Headers.UserAgent.ToString());
                 return StatusCode(500, new { success = false, message = "An error occurred during Google login" });
             }
         }

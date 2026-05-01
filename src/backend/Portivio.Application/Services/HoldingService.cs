@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Portivio.Application.DTOs.Holding;
 using Portivio.Application.Results;
 using Portivio.Domain.Entities;
@@ -19,10 +20,12 @@ namespace Portivio.Application.Services
     public class HoldingService : IHoldingService
     {
         private readonly PortivioDbContext _context;
+        private readonly ILogger<HoldingService> _logger;
 
-        public HoldingService(PortivioDbContext context)
+        public HoldingService(PortivioDbContext context, ILogger<HoldingService> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         public async Task<Result<List<HoldingResponse>>> GetHoldingsAsync(Guid userId, Guid profileId)
@@ -31,9 +34,16 @@ namespace Portivio.Application.Services
             {
                 var profile = await _context.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.Id == profileId);
                 if (profile == null)
+                {
+                    _logger.LogWarning("Holdings lookup rejected: profile not found. ProfileId={ProfileId} UserId={UserId}", profileId, userId);
                     return Result<List<HoldingResponse>>.NotFound("Profile not found");
+                }
                 if (profile.UserId != userId)
+                {
+                    _logger.LogWarning("Holdings lookup rejected: ownership mismatch. ProfileId={ProfileId} OwnerId={OwnerId} CallerId={CallerId}",
+                        profileId, profile.UserId, userId);
                     return Result<List<HoldingResponse>>.Forbidden("Access denied");
+                }
 
                 var holdings = await _context.Holdings
                     .Include(h => h.Instrument).ThenInclude(i => i.AssetType)
@@ -46,6 +56,7 @@ namespace Portivio.Application.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error retrieving holdings. ProfileId={ProfileId} UserId={UserId}", profileId, userId);
                 return Result<List<HoldingResponse>>.InternalServerError($"Error retrieving holdings: {ex.Message}");
             }
         }
@@ -63,19 +74,30 @@ namespace Portivio.Application.Services
 
                 var profile = await _context.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.Id == profileId);
                 if (profile == null)
+                {
+                    _logger.LogWarning("Holding upsert rejected: profile not found. ProfileId={ProfileId} UserId={UserId}", profileId, userId);
                     return Result<HoldingResponse>.NotFound("Profile not found");
+                }
                 if (profile.UserId != userId)
+                {
+                    _logger.LogWarning("Holding upsert rejected: ownership mismatch. ProfileId={ProfileId} OwnerId={OwnerId} CallerId={CallerId}",
+                        profileId, profile.UserId, userId);
                     return Result<HoldingResponse>.Forbidden("Access denied");
+                }
 
                 var instrument = await _context.Instruments.Include(i => i.AssetType)
                     .FirstOrDefaultAsync(i => i.Id == request.InstrumentId);
                 if (instrument == null)
+                {
+                    _logger.LogWarning("Holding upsert rejected: instrument not found. InstrumentId={InstrumentId}", request.InstrumentId);
                     return Result<HoldingResponse>.BadRequest("Instrument not found");
+                }
 
                 var existing = await _context.Holdings
                     .FirstOrDefaultAsync(h => h.ProfileId == profileId && h.InstrumentId == request.InstrumentId);
 
                 Holding holding;
+                bool isNew;
                 if (existing != null)
                 {
                     existing.Quantity = request.Quantity;
@@ -85,6 +107,7 @@ namespace Portivio.Application.Services
                     existing.UnrealizedPnL = (request.CurrentPrice - request.AvgPrice) * request.Quantity;
                     existing.LastUpdated = DateTime.UtcNow;
                     holding = existing;
+                    isNew = false;
                 }
                 else
                 {
@@ -101,9 +124,13 @@ namespace Portivio.Application.Services
                         LastUpdated = DateTime.UtcNow
                     };
                     _context.Holdings.Add(holding);
+                    isNew = true;
                 }
 
                 await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Holding {Action}. HoldingId={HoldingId} ProfileId={ProfileId} InstrumentId={InstrumentId}",
+                    isNew ? "created" : "updated", holding.Id, profileId, request.InstrumentId);
 
                 return Result<HoldingResponse>.Success(new HoldingResponse
                 {
@@ -124,6 +151,8 @@ namespace Portivio.Application.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error upserting holding. ProfileId={ProfileId} UserId={UserId} InstrumentId={InstrumentId}",
+                    profileId, userId, request.InstrumentId);
                 return Result<HoldingResponse>.InternalServerError($"Error upserting holding: {ex.Message}");
             }
         }
@@ -134,21 +163,34 @@ namespace Portivio.Application.Services
             {
                 var profile = await _context.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.Id == profileId);
                 if (profile == null)
+                {
+                    _logger.LogWarning("Holding delete rejected: profile not found. ProfileId={ProfileId} UserId={UserId}", profileId, userId);
                     return Result.NotFound("Profile not found");
+                }
                 if (profile.UserId != userId)
+                {
+                    _logger.LogWarning("Holding delete rejected: ownership mismatch. ProfileId={ProfileId} OwnerId={OwnerId} CallerId={CallerId}",
+                        profileId, profile.UserId, userId);
                     return Result.Forbidden("Access denied");
+                }
 
                 var holding = await _context.Holdings.FirstOrDefaultAsync(h => h.Id == holdingId && h.ProfileId == profileId);
                 if (holding == null)
+                {
+                    _logger.LogWarning("Holding delete rejected: not found. HoldingId={HoldingId} ProfileId={ProfileId}", holdingId, profileId);
                     return Result.NotFound("Holding not found");
+                }
 
                 _context.Holdings.Remove(holding);
                 await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Holding deleted. HoldingId={HoldingId} ProfileId={ProfileId}", holdingId, profileId);
 
                 return Result.Success("Holding deleted successfully");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error deleting holding. HoldingId={HoldingId} ProfileId={ProfileId}", holdingId, profileId);
                 return Result.InternalServerError($"Error deleting holding: {ex.Message}");
             }
         }
@@ -177,6 +219,8 @@ namespace Portivio.Application.Services
                     {
                         _context.Holdings.Remove(existingHolding);
                         await _context.SaveChangesAsync();
+                        _logger.LogInformation("Holding removed: position closed. ProfileId={ProfileId} InstrumentId={InstrumentId}",
+                            profileId, instrumentId);
                     }
                     return Result.Success("Holding removed — position closed");
                 }
@@ -221,10 +265,15 @@ namespace Portivio.Application.Services
                 }
 
                 await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Holding recalculated. ProfileId={ProfileId} InstrumentId={InstrumentId} NetQty={NetQty} AvgPrice={AvgPrice}",
+                    profileId, instrumentId, netQty, weightedCostBasis);
+
                 return Result.Success("Holding recalculated successfully");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error recalculating holding. ProfileId={ProfileId} InstrumentId={InstrumentId}", profileId, instrumentId);
                 return Result.InternalServerError($"Error recalculating holding: {ex.Message}");
             }
         }
@@ -246,10 +295,16 @@ namespace Portivio.Application.Services
                 }
 
                 await _context.SaveChangesAsync();
+
+                if (holdings.Count > 0)
+                    _logger.LogInformation("Current price propagated. InstrumentId={InstrumentId} Price={Price} HoldingsAffected={Count}",
+                        instrumentId, currentPrice, holdings.Count);
+
                 return Result.Success($"Updated current price for {holdings.Count} holding(s)");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error updating current prices. InstrumentId={InstrumentId} Price={Price}", instrumentId, currentPrice);
                 return Result.InternalServerError($"Error updating current prices: {ex.Message}");
             }
         }

@@ -104,7 +104,9 @@ namespace Portivio.Application.Services
                 _context.Transactions.Add(transaction);
                 await _context.SaveChangesAsync();
 
-                await _holdingService.RecalculateHoldingFromTransactionsAsync(profileId, request.InstrumentId);
+                var holdingResult = await _holdingService.RecalculateHoldingFromTransactionsAsync(profileId, request.InstrumentId);
+                if (holdingResult.IsFailure)
+                    return Result<TransactionResponse>.InternalServerError($"Holding recalculation failed: {holdingResult.Message}");
 
                 return Result<TransactionResponse>.Success(new TransactionResponse
                 {
@@ -154,7 +156,9 @@ namespace Portivio.Application.Services
 
                 await _context.SaveChangesAsync();
 
-                await _holdingService.RecalculateHoldingFromTransactionsAsync(profileId, transaction.InstrumentId);
+                var holdingResult = await _holdingService.RecalculateHoldingFromTransactionsAsync(profileId, transaction.InstrumentId);
+                if (holdingResult.IsFailure)
+                    return Result<TransactionResponse>.InternalServerError($"Holding recalculation failed: {holdingResult.Message}");
 
                 return Result<TransactionResponse>.Success(MapToResponse(transaction), "Transaction updated successfully");
             }
@@ -181,10 +185,13 @@ namespace Portivio.Application.Services
                     return Result.NotFound("Transaction not found");
 
                 var instrumentId = transaction.InstrumentId;
+
                 _context.Transactions.Remove(transaction);
                 await _context.SaveChangesAsync();
 
-                await _holdingService.RecalculateHoldingFromTransactionsAsync(profileId, instrumentId);
+                var holdingResult = await _holdingService.RecalculateHoldingFromTransactionsAsync(profileId, instrumentId);
+                if (holdingResult.IsFailure)
+                    return Result.InternalServerError($"Holding recalculation failed: {holdingResult.Message}");
 
                 return Result.Success("Transaction deleted successfully");
             }

@@ -110,7 +110,9 @@ namespace Portivio.Application.Services
                 _context.PriceHistories.Add(priceHistory);
                 await _context.SaveChangesAsync();
 
-                await _holdingService.UpdateCurrentPriceAsync(instrumentId, request.Price);
+                var holdingResult = await _holdingService.UpdateCurrentPriceAsync(instrumentId, request.Price);
+                if (holdingResult.IsFailure)
+                    return Result<PriceHistoryResponse>.InternalServerError($"Price saved but holding update failed: {holdingResult.Message}");
 
                 return Result<PriceHistoryResponse>.Success(MapToResponse(priceHistory), "Price added successfully", 201);
             }
@@ -129,7 +131,6 @@ namespace Portivio.Application.Services
                     return Result<BulkAddPriceResponse>.NotFound("Instrument not found");
 
                 var response = new BulkAddPriceResponse();
-                decimal? latestPrice = null;
 
                 foreach (var item in request.Prices)
                 {
@@ -160,13 +161,12 @@ namespace Portivio.Application.Services
                         CreatedAt = DateTime.UtcNow
                     });
 
-                    latestPrice = item.Price;
                     response.Inserted++;
                 }
 
                 await _context.SaveChangesAsync();
 
-                if (latestPrice.HasValue)
+                if (response.Inserted > 0)
                 {
                     var actualLatest = await _context.PriceHistories
                         .Where(ph => ph.InstrumentId == instrumentId)
@@ -175,7 +175,11 @@ namespace Portivio.Application.Services
                         .FirstOrDefaultAsync();
 
                     if (actualLatest.HasValue)
-                        await _holdingService.UpdateCurrentPriceAsync(instrumentId, actualLatest.Value);
+                    {
+                        var holdingResult = await _holdingService.UpdateCurrentPriceAsync(instrumentId, actualLatest.Value);
+                        if (holdingResult.IsFailure)
+                            return Result<BulkAddPriceResponse>.InternalServerError($"Prices saved but holding update failed: {holdingResult.Message}");
+                    }
                 }
 
                 return Result<BulkAddPriceResponse>.Success(response, $"Bulk import complete: {response.Inserted} inserted, {response.Skipped} skipped");
@@ -206,7 +210,11 @@ namespace Portivio.Application.Services
                     .FirstOrDefaultAsync();
 
                 if (newLatest.HasValue)
-                    await _holdingService.UpdateCurrentPriceAsync(instrumentId, newLatest.Value);
+                {
+                    var holdingResult = await _holdingService.UpdateCurrentPriceAsync(instrumentId, newLatest.Value);
+                    if (holdingResult.IsFailure)
+                        return Result.InternalServerError($"Price deleted but holding update failed: {holdingResult.Message}");
+                }
 
                 return Result.Success("Price entry deleted successfully");
             }

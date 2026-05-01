@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using Portivio.API.Filters;
 using Portivio.API.Services;
 using Portivio.Application.Services;
 using Portivio.Application.Services.MarketData;
@@ -19,12 +20,16 @@ const string FrontendCorsPolicy = "FrontendDevelopment";
 var configuration = builder.Configuration;
 var environment = builder.Environment;
 
-var postgresConnectionString = configuration["Postgres:ConnectionString"];
-if (string.IsNullOrWhiteSpace(postgresConnectionString))
+var postgresOptions = configuration.GetSection(PostgresOptions.SectionName).Get<PostgresOptions>() ?? new PostgresOptions();
+if (string.IsNullOrWhiteSpace(postgresOptions.ConnectionString))
     throw new InvalidOperationException("Postgres connection string missing");
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddScoped<TransactionFilter>();
+builder.Services.AddControllers(options =>
+{
+    options.Filters.AddService<TransactionFilter>();
+});
 builder.Services.AddOpenApi();
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
@@ -59,7 +64,7 @@ builder.Services.AddCors(options =>
 // Configure PostgreSQL data access.
 builder.Services.AddDbContext<PortivioDbContext>(options =>
 {
-    options.UseNpgsql(postgresConnectionString);
+    options.UseNpgsql(postgresOptions.ConnectionString);
 });
 
 
@@ -74,6 +79,12 @@ builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<ISIPPlanService, SIPPlanService>();
 builder.Services.AddScoped<IPriceHistoryService, PriceHistoryService>();
 builder.Services.AddScoped<IPortfolioPerformanceService, PortfolioPerformanceService>();
+
+//Configure options
+builder.Services.Configure<AppSettingsOptions>(configuration.GetSection(AppSettingsOptions.SectionName));
+builder.Services.Configure<PostgresOptions>(configuration.GetSection(PostgresOptions.SectionName));
+builder.Services.Configure<GoogleAuthOptions>(configuration.GetSection(GoogleAuthOptions.SectionName));
+builder.Services.Configure<LoggingOptions>(configuration.GetSection(LoggingOptions.SectionName));
 
 // Market Data
 builder.Services.Configure<MarketDataOptions>(configuration.GetSection(MarketDataOptions.SectionName));
@@ -103,11 +114,8 @@ builder.Services.AddScoped<IMarketDataService, MarketDataService>();
 builder.Services.AddScoped<IStandardRateService, StandardRateService>();
 
 // Configure JWT Authentication
-var jwtKey = builder.Configuration["Jwt:Key"];
-var jwtIssuer = builder.Configuration["Jwt:Issuer"];
-var jwtAudience = builder.Configuration["Jwt:Audience"];
-
-if (string.IsNullOrWhiteSpace(jwtKey))
+var jwtSettings = configuration.GetSection(AppSettingsOptions.SectionName).Get<AppSettingsOptions>() ?? new AppSettingsOptions();
+if (string.IsNullOrWhiteSpace(jwtSettings.Key))
     throw new InvalidOperationException("JWT Key is missing in configuration");
 
 builder.Services.AddAuthentication(options =>
@@ -123,9 +131,9 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-        ValidIssuer = jwtIssuer,
-        ValidAudience = jwtAudience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
+        ValidIssuer = jwtSettings.Issuer,
+        ValidAudience = jwtSettings.Audience,
         ClockSkew = TimeSpan.Zero
     };
     options.Events = new JwtBearerEvents
