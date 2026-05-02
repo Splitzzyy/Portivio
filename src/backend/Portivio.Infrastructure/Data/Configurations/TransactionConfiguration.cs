@@ -12,6 +12,9 @@ namespace Portivio.Infrastructure.Data.Configurations
             builder.HasIndex(t => t.ProfileId);
             builder.HasIndex(t => t.InstrumentId);
             builder.HasIndex(t => new { t.ProfileId, t.InstrumentId }).HasDatabaseName("idx_transactions_profile_instrument");
+            builder.HasIndex(t => new { t.ProfileId, t.TransactionDate })
+                .IsDescending(false, true)
+                .HasDatabaseName("idx_transactions_profile_date_desc");
             builder.Property(t => t.Price).HasPrecision(18, 4);
             builder.Property(t => t.Amount).HasPrecision(18, 4);
             builder.Property(t => t.Quantity).HasPrecision(18, 4);
