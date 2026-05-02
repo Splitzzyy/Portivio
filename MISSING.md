@@ -1,87 +1,102 @@
 # Portivio — Missing Features & Gaps
 
-> Full audit of backend, frontend, infrastructure, CI/CD, and security.  
+> Full audit of backend, frontend, infrastructure, CI/CD, and security.
 > Stack: .NET 10 · Angular 18 · PostgreSQL · Docker · Hangfire
+> Last audited: 2026-05-02
+
+---
+
+## ✅ Recently Implemented (since last audit)
+
+- **B1** `app.UseRateLimiter()` — wired in `Program.cs` after `UseAuthorization()`
+- **B2** `DELETE /api/auth/cleanup-tokens` removed; replaced by `TokenCleanupService` (`IHostedService`, 24h cycle)
+- **B9** CLAUDE.md rewritten — BCrypt + auth flows now documented accurately
+- **I1** `/health` endpoint — `MapHealthChecks("/health").AllowAnonymous()` mapped; `AddDbContextCheck<PortivioDbContext>()` + custom `HangfireHealthCheck` registered
+- **X2** Health checks for external services — Hangfire health check live (DB + Hangfire covered)
+- **B5 (partial)** Google SSO returns `Result<AuthResponse>` for token validation failures (`InvalidJwtException` → `Unauthorized`); only remaining throw is `InvalidOperationException` for missing `GoogleAuth:ClientId` (startup-config error)
+- **X1 (partial)** `AllowedHosts` changed from `"*"` → `""` in base `appsettings.json`; still no production override
+- **I10 (partial)** Dependabot configured (`.github/dependabot.yml`) for nuget/npm/github-actions; no SAST (CodeQL/Snyk) yet
 
 ---
 
 ## 🔴 Critical
 
-### Backend
-- [ ] **B1** `app.UseRateLimiter()` missing from middleware pipeline — rate limiting is configured but completely inactive (`Program.cs`)
-- [ ] **B2** `DELETE /api/auth/cleanup-tokens` callable by any authenticated user — should be admin-only or a background job (`AuthController.cs`)
-
 ### Frontend
-- [ ] **F1** Email verification page missing — `/api/auth/verify-email` endpoint exists but no frontend route/component; users who click email link land on dead URL
+- [ ] **F1** Email verification page missing — `/api/auth/verify-email` exists but no Angular route/component; clicking email link → dead URL
 
 ### Infrastructure
-- [ ] **I1** No `/health` endpoint — no `AddHealthChecks()` / `MapHealthChecks()`; Docker/K8s probes will fail (`Program.cs`)
-- [ ] **I2** No `appsettings.Production.json` — base config has `AllowedHosts: "*"`, Swagger always on, no prod overrides
-- [ ] **I3** JWT key and DB password hardcoded in `docker-compose.yml` — should use `.env` file or Docker secrets
+- [ ] **I2** No `appsettings.Production.json` — Swagger always on, CORS origins empty in prod, no prod overrides
+- [ ] **I3** JWT key + DB password hardcoded in `docker-compose.yml` — move to `.env` / Docker secrets
+- [ ] **I5** Swagger exposed in all environments — `UsePortivioSwagger()` calls `MapOpenApi() + UseSwagger() + UseSwaggerUI()` unconditionally; gate behind `env.IsDevelopment()`
 
 ---
 
 ## 🟠 High
 
 ### Backend
-- [ ] **B3** No DTO validation attributes — no `[Required]`, `[EmailAddress]`, `[Range]` on any DTOs; invalid input reaches service layer before rejection
-- [ ] **B4** No password strength enforcement — signup and reset-password accept any password; no min length or complexity rules (`AuthService.cs`)
-- [ ] **B5** Google SSO throws raw exception instead of returning `Result` — breaks Result pattern consistency (`AuthService.cs` ~line 418)
-- [ ] **B6** `AssetTypeController` missing UPDATE — has GET/POST/DELETE but no PUT/PATCH; asset types cannot be edited after creation
+- [ ] **B3** No DTO validation attributes — no `[Required]`/`[EmailAddress]`/`[StringLength]` on any DTO; manual checks scattered through `AuthService.SignupAsync` etc. Move to DataAnnotations or FluentValidation
+- [ ] **B4** No password strength enforcement — signup + reset accept any password (only `IsNullOrWhiteSpace` check); no min length, complexity, breach check
+- [ ] **B6** `AssetTypeController` missing UPDATE — has `GET` / `POST` / `DELETE`, no `PUT` / `PATCH`
+- [ ] **B5b** `GoogleLoginAsync` still `throws InvalidOperationException` on missing `GoogleAuth:ClientId` — convert to `Result<AuthResponse>.InternalServerError(...)` for full Result-pattern consistency
 
 ### Frontend
-- [ ] **F2** Profile and Settings pages missing — dropdown nav items call `goToProfile()` / `goToSettings()` but routes and components don't exist (`home.component.ts`)
-- [ ] **F3** No Angular services for 15+ backend endpoints — `MarketDataController`, `PriceHistoryController`, `PortfolioPerformanceController` have no corresponding frontend services
+- [ ] **F2** Settings page + nav wiring — `goToProfile()` and `goToSettings()` in `home.component.ts` still have commented-out `router.navigate(...)` calls; `ProfilesComponent` route exists at `/home/profiles` but not linked; no `SettingsComponent` at all
+- [ ] **F3** Angular services missing for `MarketDataController`, `PriceHistoryController`, `PortfolioPerformanceController` — no UI yet calls these endpoints
 
 ### Infrastructure
-- [ ] **I4** No security headers — missing `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Content-Security-Policy` (`Program.cs`)
-- [ ] **I5** Swagger exposed in all environments — `UseSwagger()` / `UseSwaggerUI()` run unconditionally; should be `IsDevelopment()` only (`Program.cs`)
-- [ ] **I6** Docker containers run as root — no `USER` directive in either `Dockerfile`
-- [ ] **I7** No gzip / caching in nginx — missing `gzip on`, `Cache-Control` headers for static assets (`nginx.conf`)
-- [ ] **I8** No `restart: unless-stopped` on Docker services (`docker-compose.yml`)
+- [ ] **I4** No security headers — missing `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Content-Security-Policy`, `Referrer-Policy`
+- [ ] **I6** Docker containers run as root — no `USER` directive in either Dockerfile (backend or frontend)
+- [ ] **I7** No gzip / caching in nginx — missing `gzip on`, `Cache-Control` for static assets in `nginx.conf`
+- [ ] **I8** No `restart: unless-stopped` on services in `docker-compose.yml`
 
 ---
 
 ## 🟡 Medium
 
 ### Backend
-- [ ] **B7** Token expiry values hardcoded — email verify: 24h, password reset: 1h, access token: 1h — should be in `AppSettingsOptions` / appsettings
-- [ ] **B8** MarketData services have zero test coverage — `MarketDataService`, `StandardRateService`, `AlphaVantageStockProvider`, `AmfiNavProvider` all untested
-- [ ] **B9** CLAUDE.md outdated — states BCrypt not implemented; BCrypt IS fully implemented; misleads contributors
+- [ ] **B7** Token expiry hardcoded — email verify 24h, password reset 1h, access 1h, refresh 7d — push into `AppSettingsOptions`
+- [ ] **B8** MarketData services have zero test coverage — `MarketDataService`, `StandardRateService`, `AlphaVantageStockProvider`, `AmfiNavProvider` untested
+- [ ] **B10** `TokenCleanupService` untested — new `IHostedService` has no test (lifecycle + cleanup query)
+- [ ] **B11** `GlobalExceptionMiddleware` untested — exception → response mapping has no coverage
+- [ ] **B12** `TransactionFilter` untested — `IAsyncActionFilter` wraps every controller action in a DB transaction; no rollback/commit test
+- [ ] **B13** No HTTP resilience (Polly) on `AlphaVantageStockProvider` / `AmfiNavProvider` — single-shot HttpClient call; one network blip → request fails. Add retry + circuit breaker
 
 ### Frontend
-- [ ] **F4** Forgot-password uses weak email validator — uses Angular's `Validators.email` instead of custom `emailFormatValidator()` used in login/signup
-- [ ] **F5** Unused `authGuard` functional export — defined but never used in routing; dead code (`auth.guard.ts`)
+- [ ] **F4** `forgot-password.component.ts` still uses `Validators.email` instead of `emailFormatValidator()` (line 34)
+- [ ] **F5** Unused `authGuard` functional export in `auth.guard.ts` line 23 — defined but never referenced; dead code
 - [ ] **F6** `console.log` calls not stripped in production builds
-- [ ] **F7** Commented-out navigation code — `// this.router.navigate(['/profile'])` etc. should be cleaned up (`home.component.ts`)
+- [ ] **F7** Commented-out `// this.router.navigate(['/profile'])` etc. in `home.component.ts` lines 72, 77
 
 ### Infrastructure
-- [ ] **I9** Serilog has no sinks configured — used for JWT logging but no file/cloud sink; logs only go to console (`Program.cs`)
-- [ ] **I10** No SAST / security scanning in CI — no CodeQL, Snyk, or Dependabot (`.github/workflows/`)
-- [ ] **I11** No linting in CI pipelines — no ESLint (frontend) or StyleCop (backend) step
-- [ ] **I12** No code coverage reporting in CI — tests run but coverage not collected or threshold-gated
-- [ ] **I13** CORS allows any header and method — `AllowAnyHeader()` + `AllowAnyMethod()` too permissive; should whitelist specific headers/methods (`Program.cs`)
-- [ ] **I14** README incomplete — missing: local setup guide, appsettings/env config, migration steps, architecture overview
-- [ ] **I15** No `.env.example` file — no documented template for environment variables
+- [ ] **I9** Serilog has only Console sink — `appsettings.json` `WriteTo: [{ Name: Console }]` only; no file/Seq/cloud sink for production log retention
+- [ ] **I10b** No SAST scanning — Dependabot live, but no CodeQL or Snyk; add CodeQL workflow for C# + JavaScript
+- [ ] **I11** No linting in CI — no ESLint (frontend) or `dotnet format --verify-no-changes` (backend)
+- [ ] **I12** No code coverage reporting — tests run, results not collected or threshold-gated
+- [ ] **I13** CORS allows any header + method — `.AllowAnyHeader().AllowAnyMethod()` in `InfrastructureExtensions.cs` line 34-35; whitelist actual headers/methods
+- [ ] **I14** README incomplete — missing local setup, appsettings/env config, migration steps, architecture summary
+- [ ] **I15** No `.env.example` — no documented template for environment variables
+- [ ] **I16** Hangfire dashboard `/hangfire` mounted dev-only by `MapHangfireDashboardIfDevelopment` — fine; but no auth filter declared, so if it ever flips on in prod it's wide open. Add `IDashboardAuthorizationFilter` defensively
 
 ---
 
 ## 🔵 Cross-Cutting
 
-- [ ] **X1** `AllowedHosts: "*"` in base `appsettings.json` — restrict to specific domains in production
-- [ ] **X2** No health checks for external services — Hangfire, SMTP, AlphaVantage not checked on startup
-- [ ] **X3** Rate limiting is in-memory only — multiple backend instances would have independent counters (no distributed rate limiting)
-- [ ] **X4** No correlation IDs — impossible to trace a single request across log lines
-- [ ] **X5** No pagination on list endpoints — holdings, transactions, instruments return full lists with no skip/take
+- [ ] **X3** Rate limiting in-memory only — multi-instance deployment = independent counters per pod. Use Redis-backed limiter for distributed enforcement
+- [ ] **X4** No correlation IDs — only `Enrich.FromLogContext` is set; no middleware injects `X-Correlation-ID` into response or `LogContext`. Single request not traceable across log lines
+- [ ] **X5** No pagination on list endpoints — `HoldingController`, `TransactionController`, `InstrumentController` return full lists with no `skip`/`take`/cursor
+- [ ] **X6** No structured request/response logging — only ad-hoc `_logger.LogInformation` inside services; no per-request log scope with method/path/status/duration
+- [ ] **X7** No audit log writes — `AuditLog` entity exists in domain, but no service writes to it; security-relevant events (login, password reset, token revoke) not recorded
 
 ---
 
 ## ⚡ Quick Wins (< 30 min each)
 
-- [ ] Add `app.UseRateLimiter()` after `app.UseAuthorization()` in `Program.cs` — 1 line, activates all rate limiting
-- [ ] Gate `UseSwagger()` / `UseSwaggerUI()` behind `if (env.IsDevelopment())` in `Program.cs`
-- [ ] Replace `Validators.email` with `emailFormatValidator()` in `forgot-password.component.ts`
-- [ ] Remove unused functional `authGuard` export from `auth.guard.ts`
-- [ ] Update CLAUDE.md line 58 — mark BCrypt as implemented
+- [ ] Gate `UsePortivioSwagger()` body behind `if (app.Environment.IsDevelopment())` in `SwaggerExtensions.cs`
+- [ ] Replace `Validators.email` → `emailFormatValidator()` in `forgot-password.component.ts:34`
+- [ ] Delete unused functional `authGuard` export from `auth.guard.ts:23`
 - [ ] Add `restart: unless-stopped` to all services in `docker-compose.yml`
-- [ ] Add PUT endpoint for AssetType in `AssetTypeController.cs`
+- [ ] Add `PUT /api/asset-types/{id}` to `AssetTypeController`
+- [ ] Uncomment + wire `goToProfile()` → `/home/profiles` in `home.component.ts:72`
+- [ ] Add `USER app` directive after `WORKDIR /app` in backend `Dockerfile`
+- [ ] Replace `InvalidOperationException` with `Result<AuthResponse>.InternalServerError(...)` in `AuthService.GoogleLoginAsync` line ~417
+- [ ] Add `gzip on; gzip_types text/css application/javascript application/json;` to `nginx.conf`
