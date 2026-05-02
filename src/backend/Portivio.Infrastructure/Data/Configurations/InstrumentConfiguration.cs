@@ -10,6 +10,9 @@ namespace Portivio.Infrastructure.Data.Configurations
         {
             builder.HasKey(i => i.Id);
             builder.HasIndex(i => i.AssetTypeId);
+            builder.HasIndex(i => new { i.AssetTypeId, i.Symbol })
+                .IsUnique()
+                .HasDatabaseName("ux_instruments_assettype_symbol");
             builder.HasMany(i => i.Transactions)
                 .WithOne(t => t.Instrument)
                 .HasForeignKey(t => t.InstrumentId);

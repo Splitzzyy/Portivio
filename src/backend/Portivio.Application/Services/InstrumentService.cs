@@ -202,12 +202,14 @@ namespace Portivio.Application.Services
                 }
 
                 var symbolExists = await _context.Instruments
-                    .AnyAsync(i => i.Symbol.ToLower() == request.Symbol.ToLower());
+                    .AnyAsync(i => i.AssetTypeId == request.AssetTypeId
+                                && i.Symbol.ToLower() == request.Symbol.ToLower());
 
                 if (symbolExists)
                 {
-                    _logger.LogWarning("Instrument creation rejected: duplicate symbol. Symbol={Symbol}", request.Symbol);
-                    return Result<InstrumentResponse>.Conflict("Instrument with this symbol already exists");
+                    _logger.LogWarning("Instrument creation rejected: duplicate symbol within asset type. AssetTypeId={AssetTypeId} Symbol={Symbol}",
+                        request.AssetTypeId, request.Symbol);
+                    return Result<InstrumentResponse>.Conflict("Instrument with this symbol already exists for this asset type");
                 }
 
                 var instrument = new Instrument
@@ -266,13 +268,15 @@ namespace Portivio.Application.Services
                 }
 
                 var symbolExists = await _context.Instruments
-                    .AnyAsync(i => i.Symbol.ToLower() == request.Symbol.ToLower() && i.Id != instrumentId);
+                    .AnyAsync(i => i.AssetTypeId == instrument.AssetTypeId
+                                && i.Symbol.ToLower() == request.Symbol.ToLower()
+                                && i.Id != instrumentId);
 
                 if (symbolExists)
                 {
-                    _logger.LogWarning("Instrument update rejected: duplicate symbol. InstrumentId={InstrumentId} Symbol={Symbol}",
-                        instrumentId, request.Symbol);
-                    return Result<InstrumentResponse>.Conflict("Instrument with this symbol already exists");
+                    _logger.LogWarning("Instrument update rejected: duplicate symbol within asset type. InstrumentId={InstrumentId} AssetTypeId={AssetTypeId} Symbol={Symbol}",
+                        instrumentId, instrument.AssetTypeId, request.Symbol);
+                    return Result<InstrumentResponse>.Conflict("Instrument with this symbol already exists for this asset type");
                 }
 
                 instrument.Name = request.Name.Trim();
