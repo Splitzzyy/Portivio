@@ -67,24 +67,43 @@ jobs:
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
           set -euo pipefail
+          echo "Authenticating with Docker Hub..."
           TOKEN=$(curl -s -X POST "https://hub.docker.com/v2/users/login" \
             -H "Content-Type: application/json" \
             -d "{\"username\": \"${DOCKERHUB_USERNAME}\", \"password\": \"${DOCKERHUB_TOKEN}\"}" \
             | jq -r '.token')
 
           if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
-            echo "Failed to obtain Docker Hub token; skipping prune."
-            exit 0
+            echo "ERROR: Failed to obtain Docker Hub token"
+            exit 1
           fi
+          echo "✓ Authentication successful"
 
+          echo "Fetching tags from rghvgrv/portifio-api..."
           TAGS=$(curl -s -H "Authorization: JWT ${TOKEN}" \
             "https://hub.docker.com/v2/repositories/${DOCKERHUB_USERNAME}/portifio-api/tags/?page_size=100&ordering=-last_updated" \
             | jq -r '.results[].name' | grep -v '^latest$' || true)
 
+          TOTAL_TAGS=$(echo "$TAGS" | grep -v '^$' | wc -l)
+          echo "Found $TOTAL_TAGS tags (excluding 'latest')"
+          
+          if [ "$TOTAL_TAGS" -le 3 ]; then
+            echo "✓ Tag count ($TOTAL_TAGS) is within limit (3). No deletion needed."
+            exit 0
+          fi
+
+          echo "Keeping 3 most recent tags, deleting $(($TOTAL_TAGS - 3)) old tags..."
           echo "$TAGS" | tail -n +4 | while read -r tag; do
             [ -z "$tag" ] && continue
-            echo "Deleting old tag: $tag"
-            curl -s -X DELETE \
+            echo "  → Deleting: $tag"
+            RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE \
               -H "Authorization: JWT ${TOKEN}" \
-              "https://hub.docker.com/v2/repositories/${DOCKERHUB_USERNAME}/portifio-api/tags/${tag}/"
+              "https://hub.docker.com/v2/repositories/${DOCKERHUB_USERNAME}/portifio-api/tags/${tag}/")
+            HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+            if [ "$HTTP_CODE" = "204" ] || [ "$HTTP_CODE" = "200" ]; then
+              echo "    ✓ Deleted successfully"
+            else
+              echo "    ✗ Delete failed with HTTP $HTTP_CODE"
+            fi
           done
+          echo "✓ Pruning complete"
