@@ -52,7 +52,7 @@ namespace Portivio.Tests.Services
             var result = await service.CreateTransactionAsync(user.Id, profile.Id, new CreateTransactionRequest
             {
                 InstrumentId = instrument.Id,
-                Type = "Buy",
+                Type = TransactionType.Buy,
                 Quantity = 10m,
                 Price = 100m,
                 Amount = 1000m,
@@ -61,7 +61,7 @@ namespace Portivio.Tests.Services
 
             Assert.True(result.IsSuccess);
             Assert.Equal(201, result.StatusCode);
-            Assert.Equal("Buy", result.Data!.Type);
+            Assert.Equal(TransactionType.Buy, result.Data!.Type);
         }
 
         [Fact]
@@ -74,7 +74,7 @@ namespace Portivio.Tests.Services
             await service.CreateTransactionAsync(user.Id, profile.Id, new CreateTransactionRequest
             {
                 InstrumentId = instrument.Id,
-                Type = "Buy",
+                Type = TransactionType.Buy,
                 Quantity = 10m,
                 Price = 100m,
                 Amount = 1000m,
@@ -97,7 +97,7 @@ namespace Portivio.Tests.Services
             var result = await service.CreateTransactionAsync(user.Id, profile.Id, new CreateTransactionRequest
             {
                 InstrumentId = instrument.Id,
-                Type = "InvalidType",
+                Type = (TransactionType)999,
                 Quantity = 10m,
                 Price = 100m,
                 Amount = 1000m,
@@ -118,7 +118,7 @@ namespace Portivio.Tests.Services
             var result = await service.CreateTransactionAsync(user.Id, profile.Id, new CreateTransactionRequest
             {
                 InstrumentId = instrument.Id,
-                Type = "Dividend",
+                Type = TransactionType.Dividend,
                 Quantity = 0m,
                 Price = 0m,
                 Amount = 500m,
@@ -126,7 +126,7 @@ namespace Portivio.Tests.Services
             });
 
             Assert.True(result.IsSuccess);
-            Assert.Equal("Dividend", result.Data!.Type);
+            Assert.Equal(TransactionType.Dividend, result.Data!.Type);
         }
 
         [Fact]
@@ -142,7 +142,7 @@ namespace Portivio.Tests.Services
             var result = await service.CreateTransactionAsync(otherUser.Id, profile.Id, new CreateTransactionRequest
             {
                 InstrumentId = instrument.Id,
-                Type = "Buy",
+                Type = TransactionType.Buy,
                 Quantity = 10m,
                 Price = 100m,
                 Amount = 1000m,

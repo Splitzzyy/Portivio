@@ -109,8 +109,10 @@ namespace Portivio.Application.Services
             if (access.IsFailure)
                 return access.ToFailure<TransactionResponse>();
 
-            if (!Enum.TryParse<TransactionType>(request.Type, ignoreCase: true, out var txType))
-                return Result<TransactionResponse>.BadRequest("Invalid transaction type. Valid values: Buy, Sell, Dividend, Interest");
+            if (!Enum.IsDefined(typeof(TransactionType), request.Type))
+                return Result<TransactionResponse>.BadRequest("Invalid transaction type");
+
+            var txType = request.Type;
 
             var instrument = await _context.Instruments.FirstOrDefaultAsync(i => i.Id == request.InstrumentId);
             if (instrument == null)
@@ -164,7 +166,7 @@ namespace Portivio.Application.Services
                         InstrumentId = transaction.InstrumentId,
                         InstrumentName = instrument.Name,
                         InstrumentSymbol = instrument.Symbol,
-                        Type = transaction.Type.ToString(),
+                        Type = transaction.Type,
                         Quantity = transaction.Quantity,
                         Price = transaction.Price,
                         Amount = transaction.Amount,
@@ -260,7 +262,7 @@ namespace Portivio.Application.Services
             InstrumentId = t.InstrumentId,
             InstrumentName = t.Instrument.Name,
             InstrumentSymbol = t.Instrument.Symbol,
-            Type = t.Type.ToString(),
+            Type = t.Type,
             Quantity = t.Quantity,
             Price = t.Price,
             Amount = t.Amount,

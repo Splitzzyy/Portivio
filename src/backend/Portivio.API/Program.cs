@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Portivio.API.Extensions;
 using Portivio.API.Filters;
 using Portivio.API.Middleware;
@@ -14,7 +15,11 @@ var configuration = builder.Configuration;
 var environment = builder.Environment;
 
 builder.Services.AddScoped<TransactionFilter>();
-builder.Services.AddControllers(options => options.Filters.AddService<TransactionFilter>());
+builder.Services.AddControllers(options => options.Filters.AddService<TransactionFilter>())
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 builder.Services.AddOpenApi();
 builder.Services.AddForwardedHeadersConfiguration();
 builder.Services.AddCorsPolicy(environment, configuration);

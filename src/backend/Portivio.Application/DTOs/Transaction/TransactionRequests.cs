@@ -1,9 +1,11 @@
+using Portivio.Domain.Enums;
+
 namespace Portivio.Application.DTOs.Transaction
 {
     public class CreateTransactionRequest
     {
         public Guid InstrumentId { get; set; }
-        public string Type { get; set; } = string.Empty;
+        public TransactionType Type { get; set; }
         public decimal Quantity { get; set; }
         public decimal Price { get; set; }
         public decimal Amount { get; set; }
@@ -27,7 +29,7 @@ namespace Portivio.Application.DTOs.Transaction
         public Guid InstrumentId { get; set; }
         public string InstrumentName { get; set; } = string.Empty;
         public string InstrumentSymbol { get; set; } = string.Empty;
-        public string Type { get; set; } = string.Empty;
+        public TransactionType Type { get; set; }
         public decimal Quantity { get; set; }
         public decimal Price { get; set; }
         public decimal Amount { get; set; }
