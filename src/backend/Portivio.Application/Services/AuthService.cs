@@ -465,8 +465,10 @@ namespace Portivio.Application.Services
                     _emailJobService.EnqueueWelcomeEmail(user.Email, user.Name);
                 }
 
+                user!.LastLoginAt = DateTime.UtcNow;
+
                 var tokensResult = await GenerateTokensAsync(
-                    user!,
+                    user,
                     request.IpAddress ?? "Unknown",
                     request.DeviceInfo ?? "Unknown",
                     true);

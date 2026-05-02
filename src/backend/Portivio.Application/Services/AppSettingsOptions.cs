@@ -24,16 +24,5 @@ namespace Portivio.Application.Services
         public string AndroidClientId { get; set; } = string.Empty;
     }
 
-    public class LoggingOptions
-    {
-        public const string SectionName = "Logging";
 
-        public LogLevelOptions LogLevel { get; set; } = new();
-    }
-
-    public class LogLevelOptions
-    {
-        public string Default { get; set; } = "Information";
-        public string MicrosoftAspNetCore { get; set; } = "Warning";
-    }
 }

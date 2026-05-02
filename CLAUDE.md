@@ -2,98 +2,133 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Repository Layout
+## Current Project Snapshot (May 2026)
 
-Portivio is a financial portfolio management application with two independent projects under `src/`:
+Portivio = financial portfolio manager. Two halves under `src/`: **backend** (ASP.NET Core 10 Web API, Clean Architecture) and **frontend** (Angular 18 SPA). Full local stack via `docker-compose.yml` at repo root.
 
-- `src/backend/` — ASP.NET Core Web API (.NET 10) using Entity Framework Core + PostgreSQL
-- `src/frontend/` — Angular 18 SPA, using Bun as the runtime/package manager
+Recent activity this month: Google SSO + atomic transaction + structured logging (`47e02ed`), email verification + password reset (`971c604`).
 
-Each side has its own build, test, and dependency management. They communicate over HTTP; the frontend expects the API at a URL configured in `src/frontend/src/environments/environment.ts`.
+### Backend (`src/backend/`)
 
-## Backend (`src/backend`)
+ASP.NET Core 10 Web API. 4 projects, strict dependency direction `API → Application → Domain` and `Infrastructure → Domain`.
 
-### Common commands
+| Project | Role |
+|---------|------|
+| `Portivio.Domain` | Entities (`User`, `Profile`, `AuthToken`, `Holding`, `Transaction`, `Instrument`, `AssetType`, `SIPPlan`, `PortfolioPerformance`, `PriceHistory`, `AuthProvider`, `AuditLog`) and enums. No framework deps. |
+| `Portivio.Infrastructure` | `PortivioDbContext`, per-entity `IEntityTypeConfiguration` under `Data/Configurations/` (auto-discovered), EF migrations, SMTP email, Hangfire jobs. |
+| `Portivio.Application` | Business services returning `Result<T>` (carries `IsSuccess`, `Data`, `Message`, `Errors`, `StatusCode`, plus `Match`/`OnSuccess`/`Map`/`Bind`). DTOs under `DTOs/<Feature>/`. Options classes in `AppSettingsOptions.cs`. |
+| `Portivio.API` | Thin controllers mapping `Result` → HTTP via `result.Match(...)`. DI split into extension methods under `Extensions/`. |
 
-All commands run from `src/backend/`.
+**Key wiring** (`Program.cs` + `Extensions/`):
+- DI extensions: `AddDatabase`, `AddJwtAuthentication`, `AddApplicationServices`, `AddHangfireServices`, `AddPortivioHealthChecks`, `AddPortivioRateLimiting`, `AddSwagger`, `AddCorsPolicy`, `AddForwardedHeadersConfiguration`.
+- Middleware order: `GlobalExceptionMiddleware` → `ForwardedHeaders` → `StatusCodePages` → Swagger → HTTPS → CORS → AuthN → AuthZ → RateLimiter → `MapControllers` → `/health` → `/hangfire` (dev).
+- Auto-migration on startup via `RunWithMigrationAsync()` — process exits if migration fails.
+- `TokenCleanupService` (`IHostedService`): deletes expired `AuthToken` rows every 24h.
+- Hangfire (PostgreSQL storage) runs email sends via `HangfireEmailJobService`.
+
+**Auth**: JWT HS256, 1h access + 7d refresh, BCrypt.Net-Next passwords, SHA-256 hashed token storage in `AuthToken`. Email verification (24h token) + password reset (1h token) + Google SSO (`GoogleJsonWebSignature`). Refresh token written to `HttpOnly`/`Secure`/`SameSite=Strict` cookie via `IAuthHttpContextService`.
+
+**Rate limiting** (4 named policies): `global` (100/min), `login` (5/min on signup/login/google-login), `per-user` (60/min, IP fallback), `fixed` (5/min).
+
+**Conventions**:
+- Always return `Result<T>` for expected failures; reserve exceptions for unexpected failures.
+- Controllers map `result.StatusCode` — never hardcode status codes on failure paths.
+- New entity = `DbSet<T>` on `PortivioDbContext` **and** matching configuration class in `Data/Configurations/`.
+- Pin NuGet versions only in `Directory.Packages.props` (Central Package Management — no per-project `Version=`).
+- `TreatWarningsAsErrors=true` is global.
+
+### Frontend (`src/frontend/`)
+
+Angular 18, **module-based** (not standalone components), lazy-loaded feature routing.
+
+- `src/app/core/` — singletons imported once in `AppModule`: services (`AuthService`, `GoogleAuthService`, `HomeService`, `ProfileService`, `HoldingService`, `TransactionService`, `SIPPlanService`, `InstrumentService`, `LoadingService`), guards (`AuthGuard` class + `authGuard` functional + `NoAuthGuard`), interceptors, models.
+- `src/app/features/auth/` — login, signup, forgot/reset password (route `/auth`).
+- `src/app/features/home/` — protected dashboard (route `/home`, default).
+- `src/environments/environment.ts` — `apiUrl` + Google OAuth `clientId`.
+
+**`JwtInterceptor`**: attaches `Authorization: Bearer`. On 401 (non-auth URL), triggers single refresh; concurrent 401s queue on `BehaviorSubject<string|null>` and replay with the new token. Refresh failure → silent logout.
+
+**`ErrorInterceptor`**: auth endpoint 4xx errors handled inline by components; other errors surfaced via `ngx-toastr`. Status 0 logs CORS hint once per session.
+
+**Storage**: `AuthService` uses versioned localStorage keys (`portivio_*_v2`) — bump `STORAGE_VERSION` to invalidate stale client cache on breaking changes. Bootstrap 5 + FontAwesome loaded globally via `angular.json`.
+
+### Infrastructure & Ops
+
+- **Local stack** (`docker-compose.yml`): PostgreSQL 15 (health-checked) → Mailpit (SMTP 1025 / UI 8025) → backend (`:5274`) → frontend (`:4200`). `appsettings.Development.json` bind-mounted into backend container.
+- **CI** (`.github/workflows/`): `backend.yml` + `frontend.yml` (restore/build/test/Docker push), `build-on-main.yml` (orchestrator + badge updates), `secret-scan.yml` (Gitleaks).
+- **Images**: DockerHub `rghvgrv/portifio-api`, `rghvgrv/portifio-frontend` (tagged `latest` + commit SHA, old tags pruned to last 3).
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Backend | ASP.NET Core 10 · .NET 10 · Clean Architecture |
+| ORM | EF Core 10 · Npgsql · PostgreSQL 15 |
+| Auth | JWT (HS256) · BCrypt.Net-Next · Google.Apis.Auth |
+| Background Jobs | Hangfire 1.8 · Hangfire.PostgreSql |
+| Email | MailKit / MimeKit (SMTP) |
+| Logging | Serilog (console + context enrichment) |
+| Health | `Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore` + custom `HangfireHealthCheck` |
+| Tests | xUnit · Moq · `EntityFrameworkCore.InMemory` |
+| API Docs | Swashbuckle (Swagger UI at `/swagger`, dev only) |
+| Frontend | Angular 18 · Bun · Bootstrap 5 · ngx-toastr |
+| Infra | Docker Compose · Mailpit (dev SMTP) · GitHub Actions |
+
+## Build and Test
+
+**Backend** (from `src/backend/`):
 
 ```bash
-dotnet restore                              # restore packages (Central Package Management)
-dotnet build                                # build whole solution (Portivio.slnx)
-dotnet run --project Portivio.API           # run API (https://localhost:7241, http://localhost:5274)
-dotnet test Portivio.Tests                  # run the full xUnit suite
-dotnet test Portivio.Tests --filter "FullyQualifiedName~AuthServiceLoginTests"   # run a single class
-dotnet test Portivio.Tests --filter "DisplayName~Login_WithValidCredentials"     # run a single test
+dotnet restore
+dotnet build
+dotnet run --project Portivio.API           # https://localhost:7241 / http://localhost:5274
+dotnet test Portivio.Tests
+dotnet test Portivio.Tests --filter "FullyQualifiedName~AuthServiceLoginTests"   # single class
+dotnet test Portivio.Tests --filter "DisplayName~Login_WithValidCredentials"     # single test
 
-# EF Core migrations — must specify startup + project
+# EF Core migrations — both flags required
 dotnet ef migrations add <Name> --project Portivio.Infrastructure --startup-project Portivio.API
 dotnet ef database update --project Portivio.Infrastructure --startup-project Portivio.API
 ```
 
-Swagger UI is served at `/swagger` in Development. The `https` launch profile opens it automatically.
-
-### Configuration
-
-`Portivio.API` requires two config sections (see `appsettings.example.json`):
-
-- `Postgres:ConnectionString` — Npgsql connection string. Missing value throws at startup.
-- `Jwt:Key` (required, ≥32 chars), `Jwt:Issuer`, `Jwt:Audience` — JWT bearer validation. Issuer/Audience validation is only enabled when those values are non-empty.
-
-`appsettings.Development.json` holds local values and is gitignored-adjacent to `appsettings.example.json`. Do not commit real secrets here.
-
-### Solution architecture (Clean Architecture)
-
-The solution is split into four projects with a strict dependency direction `API → Application → Domain` and `Infrastructure → Domain`. `TreatWarningsAsErrors=true` is set globally via `Directory.Build.props`, and package versions are pinned centrally in `Directory.Packages.props` (Central Package Management — do not add `Version=` to individual `PackageReference` entries).
-
-- **Portivio.Domain** — Pure entity classes (`User`, `Profile`, `AuthToken`, `Transaction`, `Holding`, `Instrument`, `AssetType`, `SIPPlan`, `PortfolioPerformance`, `PriceHistory`, `AuthProvider`, `AuditLog`) and enums. No framework dependencies.
-- **Portivio.Infrastructure** — EF Core `PortivioDbContext`, per-entity `IEntityTypeConfiguration` classes under `Data/Configurations/` (auto-discovered via `ApplyConfigurationsFromAssembly`), and generated migrations. When adding a new entity, add both a `DbSet` on the context and a matching configuration class.
-- **Portivio.Application** — Business logic. Services return a `Result<T>` / `Result` type (see `Results/`) instead of throwing for expected failures. The Result pattern carries `IsSuccess`, `Message`, `Errors`, and an HTTP `StatusCode` (200/201/400/401/403/404/409/500/501), plus functional helpers (`Match`, `OnSuccess`, `OnFailure`, `Map`, `Bind`). DTOs live under `DTOs/<Feature>/`.
-- **Portivio.API** — Thin controllers that call services and translate results into HTTP responses via `result.Match(onSuccess, onFailure)`. Auth endpoints set the refresh token as an `HttpOnly`, `Secure`, `SameSite=Strict` cookie.
-
-### Conventions that matter
-
-- **Always return `Result<T>`** from Application services for expected error paths; reserve exceptions for unexpected failures (caught in the controller `try/catch`).
-- **Controllers map `StatusCode` from the failed Result** — do not hardcode status codes in the controller for failure paths.
-- **EF configurations live in `Infrastructure/Data/Configurations/`**, one file per entity. The `DbContext` picks them up automatically — no manual `modelBuilder.Entity<>()` calls inside `OnModelCreating`.
-- **Password handling in `AuthService` is placeholder** (`VerifyPassword` does not use bcrypt/Argon2 yet). Treat this as a known gap — if you touch auth, do not build on the current hashing approach.
-
-### Tests (`Portivio.Tests`)
-
-xUnit + Moq + `Microsoft.EntityFrameworkCore.InMemory`. Tests instantiate `AuthService` directly against an in-memory `PortivioDbContext`, so they have no external dependencies. When adding new service tests, follow the same pattern: new in-memory context per test, mock `IConfiguration` for JWT settings.
-
-## Frontend (`src/frontend`)
-
-### Common commands
-
-All commands run from `src/frontend/`. Bun is preferred (see `bunfig.toml`, `bun.lock`) but npm works as a fallback.
+**Frontend** (from `src/frontend/`):
 
 ```bash
-bun install                     # or: npm install
-bun start                       # dev server at http://localhost:4200 (= ng serve)
-bun run prod                    # production build to dist/portivio
-bun run test                    # Karma unit tests (ng test)
-bun run lint                    # ng lint
-
-# Run a single test spec
-ng test --include='**/auth.service.spec.ts'
+bun install
+bun start                                   # http://localhost:4200
+bun run prod                                # production build → dist/portivio
+bun run test                                # Karma unit tests
+bun run lint
+ng test --include='**/auth.service.spec.ts' # single spec
 ```
 
-### Architecture
+**Docker stack** (from repo root):
 
-Classic Angular 18 module-based app (not standalone components). Routing is lazy-loaded at the feature level:
+```bash
+docker compose up --build       # postgres + mailpit + backend + frontend
+docker compose logs -f backend
+docker compose down -v          # stops + drops volumes (deletes DB)
+```
 
-- `src/app/core/` — Singletons loaded once: `AuthService`, route guards (`AuthGuard`), HTTP interceptors (`JwtInterceptor` handles token attach + 401 refresh), and shared models.
-- `src/app/shared/` — Cross-feature components and utilities.
-- `src/app/features/auth/` — Login, signup, forgot/reset password pages. Lazy-loaded at `/auth`.
-- `src/app/features/home/` — Protected layout + dashboard. Lazy-loaded at `/home` (default route).
-- `src/environments/` — `environment.ts` (dev) and `environment.prod.ts` (prod) hold `apiUrl` and OAuth client IDs.
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:4200 |
+| API | http://localhost:5274 |
+| Swagger | http://localhost:5274/swagger |
+| Hangfire | http://localhost:5274/hangfire (dev only) |
+| Mailpit | http://localhost:8025 |
+| Health | http://localhost:5274/health |
 
-Auth state flows through `AuthService` (BehaviorSubject) → `JwtInterceptor` attaches access tokens → `AuthGuard` protects feature routes → 401 triggers refresh via the refresh token stored by the backend as an HttpOnly cookie.
+**Required config** (copy `appsettings.example.json` → `appsettings.Development.json`):
+`Postgres:ConnectionString`, `Jwt:Key` (≥32 chars), `Jwt:Issuer`, `Jwt:Audience`, `GoogleAuth:ClientId`, `Email:*`, `MarketData:AlphaVantage:ApiKey`. Missing `Postgres:ConnectionString` or `Jwt:Key` throws at startup.
 
-Global styles pull in Bootstrap 5 and FontAwesome via `angular.json` (`styles`/`scripts` arrays), so those are available app-wide without per-component imports.
+**Tests**: each test creates a fresh in-memory `PortivioDbContext` (new `Guid` DB name); JWT options via `Options.Create(new AppSettingsOptions { Key = "...≥32 chars..." })`; `ILogger`/`IEmailJobService` mocked with `Mock.Of<T>()`.
 
-## Cross-cutting notes
+## Additional Documents
 
-- When adding a new API endpoint that the frontend will call, update both the service method in `Portivio.Application/Services/` (returning `Result<T>`) and a matching method on the Angular side in `src/app/core/services/` — keep DTO shapes in sync with `Portivio.Application/DTOs/`.
-- The backend targets **.NET 10** (`net10.0`) — older SDKs will not build the solution.
-- When editing `Directory.Packages.props`, bump versions there rather than per-project to avoid CPM violations.
+- `README.md` — project overview, quick start, CI badges
+- `docs/backend-architecture.md` — detailed backend architecture
+- `docs/frontend-architecture.md` — detailed frontend architecture
+- `MISSING.md` — known gaps and roadmap
+- `AGENTS.md` — agent-specific guidance
+- `src/backend/Portivio.API/appsettings.example.json` — config template

@@ -18,13 +18,11 @@ namespace Portivio.API.Controllers
     {
         private readonly IAuthService _authService;
         private readonly IAuthHttpContextService _authHttpContextService;
-        private readonly ILogger<AuthController> _logger;
 
-        public AuthController(IAuthService authService, IAuthHttpContextService authHttpContextService, ILogger<AuthController> logger)
+        public AuthController(IAuthService authService, IAuthHttpContextService authHttpContextService)
         {
             _authService = authService;
             _authHttpContextService = authHttpContextService;
-            _logger = logger;
         }
 
         /// <summary>
@@ -36,24 +34,16 @@ namespace Portivio.API.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
         {
-            try
-            {
-                var result = await _authService.LoginAsync(_authHttpContextService.CreateLoginRequest(HttpContext, request));
+            var result = await _authService.LoginAsync(_authHttpContextService.CreateLoginRequest(HttpContext, request));
 
-                return result.Match(
-                    onSuccess: () =>
-                    {
-                        _authHttpContextService.ApplyRefreshTokenCookie(Response, result.Data);
-                        return Ok(_authHttpContextService.CreateClientAuthResponse(HttpContext, result.Data));
-                    },
-                    onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
-                );
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during login");
-                return StatusCode(500, new { success = false, message = "An error occurred during login" });
-            }
+            return result.Match(
+                onSuccess: () =>
+                {
+                    _authHttpContextService.ApplyRefreshTokenCookie(Response, result.Data);
+                    return Ok(_authHttpContextService.CreateClientAuthResponse(HttpContext, result.Data));
+                },
+                onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
+            );
         }
 
         /// <summary>
@@ -64,20 +54,12 @@ namespace Portivio.API.Controllers
         [EnableRateLimiting("login")]
         public async Task<ActionResult<AuthResponse>> Signup([FromBody] SignupRequest request)
         {
-            try
-            {
-                var result = await _authService.SignupAsync(request);
+            var result = await _authService.SignupAsync(request);
 
-                return result.Match(
-                    onSuccess: () => Created("", result.Data),
-                    onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
-                );
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during signup");
-                return StatusCode(500, new { success = false, message = "An error occurred during signup" });
-            }
+            return result.Match(
+                onSuccess: () => Created("", result.Data),
+                onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
+            );
         }
 
         /// <summary>
@@ -86,34 +68,26 @@ namespace Portivio.API.Controllers
         [HttpPost("refresh-token")]
         public async Task<ActionResult<AuthResponse>> RefreshToken([FromBody] RefreshTokenRequest request)
         {
-            try
+            var refreshToken = request.RefreshToken;
+            if (string.IsNullOrWhiteSpace(refreshToken))
             {
-                var refreshToken = request.RefreshToken;
-                if (string.IsNullOrWhiteSpace(refreshToken))
+                Request.Cookies.TryGetValue("refreshToken", out refreshToken);
+            }
+
+            var result = await _authService.RefreshTokenAsync(refreshToken ?? string.Empty);
+
+            return result.Match(
+                onSuccess: () =>
                 {
-                    Request.Cookies.TryGetValue("refreshToken", out refreshToken);
+                    _authHttpContextService.ApplyRefreshTokenCookie(Response, result.Data);
+                    return Ok(_authHttpContextService.CreateClientAuthResponse(HttpContext, result.Data));
+                },
+                onFailure: (error) =>
+                {
+                    _authHttpContextService.ClearAuthCookies(Response);
+                    return StatusCode(error.StatusCode ?? 401, new { success = false, message = error.Message, errors = error.Errors });
                 }
-
-                var result = await _authService.RefreshTokenAsync(refreshToken ?? string.Empty);
-
-                return result.Match(
-                    onSuccess: () =>
-                    {
-                        _authHttpContextService.ApplyRefreshTokenCookie(Response, result.Data);
-                        return Ok(_authHttpContextService.CreateClientAuthResponse(HttpContext, result.Data));
-                    },
-                    onFailure: (error) =>
-                    {
-                        _authHttpContextService.ClearAuthCookies(Response);
-                        return StatusCode(error.StatusCode ?? 401, new { success = false, message = error.Message, errors = error.Errors });
-                    }
-                );
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error refreshing token");
-                return StatusCode(500, new { success = false, message = "An error occurred while refreshing token" });
-            }
+            );
         }
 
         /// <summary>
@@ -122,20 +96,12 @@ namespace Portivio.API.Controllers
         [HttpPost("verify-email")]
         public async Task<ActionResult<AuthResponse>> VerifyEmail([FromBody] VerifyEmailRequest request)
         {
-            try
-            {
-                var result = await _authService.VerifyEmailAsync(request);
+            var result = await _authService.VerifyEmailAsync(request);
 
-                return result.Match(
-                    onSuccess: () => Ok(result.Data),
-                    onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
-                );
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error verifying email");
-                return StatusCode(500, new { success = false, message = "An error occurred while verifying email" });
-            }
+            return result.Match(
+                onSuccess: () => Ok(result.Data),
+                onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
+            );
         }
 
         /// <summary>
@@ -144,20 +110,12 @@ namespace Portivio.API.Controllers
         [HttpPost("resend-verification")]
         public async Task<ActionResult<AuthResponse>> ResendVerification([FromQuery] string email)
         {
-            try
-            {
-                var result = await _authService.ResendVerificationEmailAsync(email);
+            var result = await _authService.ResendVerificationEmailAsync(email);
 
-                return result.Match(
-                    onSuccess: () => Ok(result.Data),
-                    onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
-                );
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error resending verification email");
-                return StatusCode(500, new { success = false, message = "An error occurred while resending verification email" });
-            }
+            return result.Match(
+                onSuccess: () => Ok(result.Data),
+                onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
+            );
         }
 
         /// <summary>
@@ -166,20 +124,12 @@ namespace Portivio.API.Controllers
         [HttpPost("forgot-password")]
         public async Task<ActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
         {
-            try
-            {
-                var result = await _authService.ForgotPasswordAsync(request);
+            var result = await _authService.ForgotPasswordAsync(request);
 
-                return result.Match(
-                    onSuccess: () => Ok(new { success = true, message = result.Message }),
-                    onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
-                );
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in forgot password");
-                return StatusCode(500, new { success = false, message = "An error occurred while processing password reset request" });
-            }
+            return result.Match(
+                onSuccess: () => Ok(new { success = true, message = result.Message }),
+                onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
+            );
         }
 
         /// <summary>
@@ -188,20 +138,12 @@ namespace Portivio.API.Controllers
         [HttpPost("reset-password")]
         public async Task<ActionResult<AuthResponse>> ResetPassword([FromBody] ResetPasswordRequest request)
         {
-            try
-            {
-                var result = await _authService.ResetPasswordAsync(request);
+            var result = await _authService.ResetPasswordAsync(request);
 
-                return result.Match(
-                    onSuccess: () => Ok(result.Data),
-                    onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
-                );
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error resetting password");
-                return StatusCode(500, new { success = false, message = "An error occurred while resetting password" });
-            }
+            return result.Match(
+                onSuccess: () => Ok(result.Data),
+                onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
+            );
         }
 
         /// <summary>
@@ -212,26 +154,16 @@ namespace Portivio.API.Controllers
         [EnableRateLimiting("login")]
         public async Task<ActionResult<AuthResponse>> GoogleLogin([FromBody] GoogleLoginRequest request)
         {
-            try
-            {
-                var result = await _authService.GoogleLoginAsync(_authHttpContextService.CreateGoogleLoginRequest(HttpContext, request));
+            var result = await _authService.GoogleLoginAsync(_authHttpContextService.CreateGoogleLoginRequest(HttpContext, request));
 
-                return result.Match(
-                    onSuccess: () =>
-                    {
-                        _authHttpContextService.ApplyRefreshTokenCookie(Response, result.Data);
-                        return Ok(_authHttpContextService.CreateClientAuthResponse(HttpContext, result.Data));
-                    },
-                    onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
-                );
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unhandled error in Google login endpoint. IP={IpAddress} UserAgent={UserAgent}",
-                    HttpContext.Connection.RemoteIpAddress?.ToString(),
-                    HttpContext.Request.Headers.UserAgent.ToString());
-                return StatusCode(500, new { success = false, message = "An error occurred during Google login" });
-            }
+            return result.Match(
+                onSuccess: () =>
+                {
+                    _authHttpContextService.ApplyRefreshTokenCookie(Response, result.Data);
+                    return Ok(_authHttpContextService.CreateClientAuthResponse(HttpContext, result.Data));
+                },
+                onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
+            );
         }
 
         /// <summary>
@@ -241,52 +173,21 @@ namespace Portivio.API.Controllers
         [Authorize]
         public async Task<ActionResult> Logout()
         {
-            try
-            {
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
 
-                if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-                    return Unauthorized(new { success = false, message = "User not authenticated" });
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+                return Unauthorized(new { success = false, message = "User not authenticated" });
 
-                var result = await _authService.LogoutAsync(userId);
+            var result = await _authService.LogoutAsync(userId);
 
-                return result.Match(
-                    onSuccess: () =>
-                    {
-                        _authHttpContextService.ClearAuthCookies(Response);
-                        return Ok(new { success = true, message = result.Message });
-                    },
-                    onFailure: (error) => StatusCode(error.StatusCode ?? 500, new { success = false, message = error.Message, errors = error.Errors })
-                );
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during logout");
-                return StatusCode(500, new { success = false, message = "An error occurred during logout" });
-            }
+            return result.Match(
+                onSuccess: () =>
+                {
+                    _authHttpContextService.ClearAuthCookies(Response);
+                    return Ok(new { success = true, message = result.Message });
+                },
+                onFailure: (error) => StatusCode(error.StatusCode ?? 500, new { success = false, message = error.Message, errors = error.Errors })
+            );
         }
-
-        /// <summary>
-        /// Cleanup expired refresh tokens (admin/scheduled task)
-        /// </summary>
-        [HttpDelete("cleanup-tokens")]
-        public async Task<ActionResult> CleanupTokens()
-        {
-            try
-            {
-                var result = await _authService.CleanupExpiredTokensAsync();
-
-                return result.Match(
-                    onSuccess: () => Ok(new { success = true, message = result.Message }),
-                    onFailure: (error) => StatusCode(error.StatusCode ?? 500, new { success = false, message = error.Message, errors = error.Errors })
-                );
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during cleanup");
-                return StatusCode(500, new { success = false, message = "An error occurred during cleanup" });
-            }
-        }
-
     }
 }
