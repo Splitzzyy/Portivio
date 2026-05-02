@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Portivio.Application.DTOs.PriceHistory;
 using Portivio.Application.Services;
+using Portivio.Application.Services.Authorization;
 using Portivio.Domain.Entities;
 using Portivio.Infrastructure.Data;
 using Xunit;
@@ -30,7 +31,7 @@ namespace Portivio.Tests.Services
         }
 
         private static PriceHistoryService CreateService(PortivioDbContext context) =>
-            new(context, new HoldingService(context, new Mock<ILogger<HoldingService>>().Object));
+            new(context, new HoldingService(context, new Mock<ILogger<HoldingService>>().Object, new ProfileAccessGuard(context)));
 
         [Fact]
         public async Task AddPrice_ValidRequest_InsertsAndReturnsSuccess()

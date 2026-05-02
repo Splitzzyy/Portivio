@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Portivio.Application.DTOs.PortfolioPerformance;
 using Portivio.Application.Services;
+using Portivio.Application.Services.Authorization;
 using Portivio.Domain.Entities;
 using Portivio.Domain.Enums;
 using Portivio.Infrastructure.Data;
@@ -37,7 +38,7 @@ namespace Portivio.Tests.Services
         {
             using var context = CreateInMemoryDbContext();
             var (user, profile, _) = SeedBasicData(context);
-            var service = new PortfolioPerformanceService(context);
+            var service = new PortfolioPerformanceService(context, new ProfileAccessGuard(context));
 
             var result = await service.RecordSnapshotAsync(user.Id, profile.Id, null);
 
@@ -54,7 +55,7 @@ namespace Portivio.Tests.Services
             context.Holdings.Add(new Holding { Id = Guid.NewGuid(), ProfileId = profile.Id, InstrumentId = instrument.Id, Quantity = 10m, AvgPrice = 100m, CurrentPrice = 120m, MarketValue = 1200m, UnrealizedPnL = 200m, LastUpdated = DateTime.UtcNow });
             await context.SaveChangesAsync();
 
-            var service = new PortfolioPerformanceService(context);
+            var service = new PortfolioPerformanceService(context, new ProfileAccessGuard(context));
             var result = await service.RecordSnapshotAsync(user.Id, profile.Id, null);
 
             Assert.True(result.IsSuccess);
@@ -71,7 +72,7 @@ namespace Portivio.Tests.Services
             context.Holdings.Add(new Holding { Id = Guid.NewGuid(), ProfileId = profile.Id, InstrumentId = instrument.Id, Quantity = 10m, AvgPrice = 100m, CurrentPrice = 110m, MarketValue = 1100m, UnrealizedPnL = 100m, LastUpdated = DateTime.UtcNow });
             await context.SaveChangesAsync();
 
-            var service = new PortfolioPerformanceService(context);
+            var service = new PortfolioPerformanceService(context, new ProfileAccessGuard(context));
             var date = new RecordSnapshotRequest { Date = DateTime.UtcNow };
             await service.RecordSnapshotAsync(user.Id, profile.Id, date);
 
@@ -96,7 +97,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(otherUser);
             await context.SaveChangesAsync();
 
-            var service = new PortfolioPerformanceService(context);
+            var service = new PortfolioPerformanceService(context, new ProfileAccessGuard(context));
             var result = await service.RecordSnapshotAsync(otherUser.Id, profile.Id, null);
 
             Assert.False(result.IsSuccess);
@@ -117,7 +118,7 @@ namespace Portivio.Tests.Services
             context.PortfolioPerformances.AddRange(snapshots);
             await context.SaveChangesAsync();
 
-            var service = new PortfolioPerformanceService(context);
+            var service = new PortfolioPerformanceService(context, new ProfileAccessGuard(context));
             var result = await service.GetPerformanceHistoryAsync(user.Id, profile.Id, days: 90);
 
             Assert.True(result.IsSuccess);

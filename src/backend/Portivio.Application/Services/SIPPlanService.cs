@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Portivio.Application.DTOs.SIPPlan;
 using Portivio.Application.Results;
+using Portivio.Application.Services.Authorization;
 using Portivio.Domain.Entities;
 using Portivio.Infrastructure.Data;
 
@@ -19,21 +20,21 @@ namespace Portivio.Application.Services
     public class SIPPlanService : ISIPPlanService
     {
         private readonly PortivioDbContext _context;
+        private readonly IProfileAccessGuard _profileAccess;
 
-        public SIPPlanService(PortivioDbContext context)
+        public SIPPlanService(PortivioDbContext context, IProfileAccessGuard profileAccess)
         {
             _context = context;
+            _profileAccess = profileAccess;
         }
 
         public async Task<Result<List<SIPPlanResponse>>> GetSIPPlansAsync(Guid userId, Guid profileId, bool? activeOnly = null)
         {
             try
             {
-                var profile = await _context.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.Id == profileId);
-                if (profile == null)
-                    return Result<List<SIPPlanResponse>>.NotFound("Profile not found");
-                if (profile.UserId != userId)
-                    return Result<List<SIPPlanResponse>>.Forbidden("Access denied");
+                var access = await _profileAccess.EnsureOwnerAsync(userId, profileId);
+                if (access.IsFailure)
+                    return access.ToFailure<List<SIPPlanResponse>>();
 
                 var query = _context.SIPPlans
                     .Include(s => s.Instrument)
@@ -63,11 +64,9 @@ namespace Portivio.Application.Services
                 if (validationError != null)
                     return Result<SIPPlanResponse>.BadRequest(validationError);
 
-                var profile = await _context.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.Id == profileId);
-                if (profile == null)
-                    return Result<SIPPlanResponse>.NotFound("Profile not found");
-                if (profile.UserId != userId)
-                    return Result<SIPPlanResponse>.Forbidden("Access denied");
+                var access = await _profileAccess.EnsureOwnerAsync(userId, profileId);
+                if (access.IsFailure)
+                    return access.ToFailure<SIPPlanResponse>();
 
                 var instrument = await _context.Instruments.FirstOrDefaultAsync(i => i.Id == request.InstrumentId);
                 if (instrument == null)
@@ -179,11 +178,9 @@ namespace Portivio.Application.Services
         {
             try
             {
-                var profile = await _context.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.Id == profileId);
-                if (profile == null)
-                    return Result.NotFound("Profile not found");
-                if (profile.UserId != userId)
-                    return Result.Forbidden("Access denied");
+                var access = await _profileAccess.EnsureOwnerAsync(userId, profileId);
+                if (access.IsFailure)
+                    return access.ToFailure();
 
                 var plan = await _context.SIPPlans.FirstOrDefaultAsync(s => s.Id == sipId && s.ProfileId == profileId);
                 if (plan == null)
@@ -202,11 +199,9 @@ namespace Portivio.Application.Services
 
         private async Task<(SIPPlan? plan, Result<T>? error)> LoadPlanWithOwnershipCheck<T>(Guid userId, Guid profileId, Guid sipId)
         {
-            var profile = await _context.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.Id == profileId);
-            if (profile == null)
-                return (null, Result<T>.NotFound("Profile not found"));
-            if (profile.UserId != userId)
-                return (null, Result<T>.Forbidden("Access denied"));
+            var access = await _profileAccess.EnsureOwnerAsync(userId, profileId);
+            if (access.IsFailure)
+                return (null, access.ToFailure<T>());
 
             var plan = await _context.SIPPlans.FirstOrDefaultAsync(s => s.Id == sipId && s.ProfileId == profileId);
             if (plan == null)

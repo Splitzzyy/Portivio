@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Portivio.Application.DTOs.Transaction;
 using Portivio.Application.Services;
+using Portivio.Application.Services.Authorization;
 using Portivio.Domain.Entities;
 using Portivio.Domain.Enums;
 using Portivio.Infrastructure.Data;
@@ -34,8 +35,12 @@ namespace Portivio.Tests.Services
             return (user, profile, assetType, instrument);
         }
 
-        private static TransactionService CreateService(PortivioDbContext context) =>
-            new(context, new HoldingService(context, new Mock<ILogger<HoldingService>>().Object));
+        private static TransactionService CreateService(PortivioDbContext context)
+        {
+            var guard = new ProfileAccessGuard(context);
+            var holdings = new HoldingService(context, new Mock<ILogger<HoldingService>>().Object, guard);
+            return new TransactionService(context, holdings, guard);
+        }
 
         [Fact]
         public async Task CreateTransaction_Buy_ValidRequest_ReturnsSuccess()

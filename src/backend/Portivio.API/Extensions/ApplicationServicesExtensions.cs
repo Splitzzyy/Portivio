@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using Portivio.API.Services;
 using Portivio.Application.Services;
+using Portivio.Application.Services.Authorization;
 using Portivio.Application.Services.MarketData;
 using Portivio.Infrastructure.Services;
 
@@ -36,6 +37,7 @@ public static class ApplicationServicesExtensions
 
     private static void RegisterDomainServices(IServiceCollection services)
     {
+        services.AddScoped<IProfileAccessGuard, ProfileAccessGuard>();
         services.AddScoped<IHomeService, HomeService>();
         services.AddScoped<IProfileService, ProfileService>();
         services.AddScoped<IInstrumentService, InstrumentService>();

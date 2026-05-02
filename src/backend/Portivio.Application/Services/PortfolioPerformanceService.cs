@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Portivio.Application.DTOs.PortfolioPerformance;
 using Portivio.Application.Results;
+using Portivio.Application.Services.Authorization;
 using Portivio.Domain.Entities;
 using Portivio.Domain.Enums;
 using Portivio.Infrastructure.Data;
@@ -17,21 +18,21 @@ namespace Portivio.Application.Services
     public class PortfolioPerformanceService : IPortfolioPerformanceService
     {
         private readonly PortivioDbContext _context;
+        private readonly IProfileAccessGuard _profileAccess;
 
-        public PortfolioPerformanceService(PortivioDbContext context)
+        public PortfolioPerformanceService(PortivioDbContext context, IProfileAccessGuard profileAccess)
         {
             _context = context;
+            _profileAccess = profileAccess;
         }
 
         public async Task<Result<PerformanceResponse>> RecordSnapshotAsync(Guid userId, Guid profileId, RecordSnapshotRequest? request = null)
         {
             try
             {
-                var profile = await _context.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.Id == profileId);
-                if (profile == null)
-                    return Result<PerformanceResponse>.NotFound("Profile not found");
-                if (profile.UserId != userId)
-                    return Result<PerformanceResponse>.Forbidden("Access denied");
+                var access = await _profileAccess.EnsureOwnerAsync(userId, profileId);
+                if (access.IsFailure)
+                    return access.ToFailure<PerformanceResponse>();
 
                 var snapshotDate = (request?.Date ?? DateTime.UtcNow).Date;
                 var snapshotDateUtc = new DateTime(snapshotDate.Year, snapshotDate.Month, snapshotDate.Day, 0, 0, 0, DateTimeKind.Utc);
@@ -101,11 +102,9 @@ namespace Portivio.Application.Services
         {
             try
             {
-                var profile = await _context.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.Id == profileId);
-                if (profile == null)
-                    return Result<PerformanceHistoryResponse>.NotFound("Profile not found");
-                if (profile.UserId != userId)
-                    return Result<PerformanceHistoryResponse>.Forbidden("Access denied");
+                var access = await _profileAccess.EnsureOwnerAsync(userId, profileId);
+                if (access.IsFailure)
+                    return access.ToFailure<PerformanceHistoryResponse>();
 
                 var from = DateTime.UtcNow.AddDays(-days);
                 var history = await _context.PortfolioPerformances
@@ -132,11 +131,9 @@ namespace Portivio.Application.Services
         {
             try
             {
-                var profile = await _context.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.Id == profileId);
-                if (profile == null)
-                    return Result<PerformanceResponse>.NotFound("Profile not found");
-                if (profile.UserId != userId)
-                    return Result<PerformanceResponse>.Forbidden("Access denied");
+                var access = await _profileAccess.EnsureOwnerAsync(userId, profileId);
+                if (access.IsFailure)
+                    return access.ToFailure<PerformanceResponse>();
 
                 var latest = await _context.PortfolioPerformances
                     .Where(pp => pp.ProfileId == profileId)

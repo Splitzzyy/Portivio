@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Portivio.Application.DTOs.Holding;
 using Portivio.Application.Results;
+using Portivio.Application.Services.Authorization;
 using Portivio.Domain.Entities;
 using Portivio.Domain.Enums;
 using Portivio.Infrastructure.Data;
@@ -21,28 +22,25 @@ namespace Portivio.Application.Services
     {
         private readonly PortivioDbContext _context;
         private readonly ILogger<HoldingService> _logger;
+        private readonly IProfileAccessGuard _profileAccess;
 
-        public HoldingService(PortivioDbContext context, ILogger<HoldingService> logger)
+        public HoldingService(PortivioDbContext context, ILogger<HoldingService> logger, IProfileAccessGuard profileAccess)
         {
             _context = context;
             _logger = logger;
+            _profileAccess = profileAccess;
         }
 
         public async Task<Result<List<HoldingResponse>>> GetHoldingsAsync(Guid userId, Guid profileId)
         {
             try
             {
-                var profile = await _context.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.Id == profileId);
-                if (profile == null)
+                var access = await _profileAccess.EnsureOwnerAsync(userId, profileId);
+                if (access.IsFailure)
                 {
-                    _logger.LogWarning("Holdings lookup rejected: profile not found. ProfileId={ProfileId} UserId={UserId}", profileId, userId);
-                    return Result<List<HoldingResponse>>.NotFound("Profile not found");
-                }
-                if (profile.UserId != userId)
-                {
-                    _logger.LogWarning("Holdings lookup rejected: ownership mismatch. ProfileId={ProfileId} OwnerId={OwnerId} CallerId={CallerId}",
-                        profileId, profile.UserId, userId);
-                    return Result<List<HoldingResponse>>.Forbidden("Access denied");
+                    _logger.LogWarning("Holdings lookup rejected. ProfileId={ProfileId} UserId={UserId} Reason={Reason}",
+                        profileId, userId, access.Message);
+                    return access.ToFailure<List<HoldingResponse>>();
                 }
 
                 var holdings = await _context.Holdings
@@ -72,17 +70,12 @@ namespace Portivio.Application.Services
                 if (request.CurrentPrice < 0)
                     return Result<HoldingResponse>.BadRequest("Current price cannot be negative");
 
-                var profile = await _context.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.Id == profileId);
-                if (profile == null)
+                var access = await _profileAccess.EnsureOwnerAsync(userId, profileId);
+                if (access.IsFailure)
                 {
-                    _logger.LogWarning("Holding upsert rejected: profile not found. ProfileId={ProfileId} UserId={UserId}", profileId, userId);
-                    return Result<HoldingResponse>.NotFound("Profile not found");
-                }
-                if (profile.UserId != userId)
-                {
-                    _logger.LogWarning("Holding upsert rejected: ownership mismatch. ProfileId={ProfileId} OwnerId={OwnerId} CallerId={CallerId}",
-                        profileId, profile.UserId, userId);
-                    return Result<HoldingResponse>.Forbidden("Access denied");
+                    _logger.LogWarning("Holding upsert rejected. ProfileId={ProfileId} UserId={UserId} Reason={Reason}",
+                        profileId, userId, access.Message);
+                    return access.ToFailure<HoldingResponse>();
                 }
 
                 var instrument = await _context.Instruments.Include(i => i.AssetType)
@@ -161,17 +154,12 @@ namespace Portivio.Application.Services
         {
             try
             {
-                var profile = await _context.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.Id == profileId);
-                if (profile == null)
+                var access = await _profileAccess.EnsureOwnerAsync(userId, profileId);
+                if (access.IsFailure)
                 {
-                    _logger.LogWarning("Holding delete rejected: profile not found. ProfileId={ProfileId} UserId={UserId}", profileId, userId);
-                    return Result.NotFound("Profile not found");
-                }
-                if (profile.UserId != userId)
-                {
-                    _logger.LogWarning("Holding delete rejected: ownership mismatch. ProfileId={ProfileId} OwnerId={OwnerId} CallerId={CallerId}",
-                        profileId, profile.UserId, userId);
-                    return Result.Forbidden("Access denied");
+                    _logger.LogWarning("Holding delete rejected. ProfileId={ProfileId} UserId={UserId} Reason={Reason}",
+                        profileId, userId, access.Message);
+                    return access.ToFailure();
                 }
 
                 var holding = await _context.Holdings.FirstOrDefaultAsync(h => h.Id == holdingId && h.ProfileId == profileId);

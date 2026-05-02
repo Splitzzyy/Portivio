@@ -81,5 +81,21 @@ namespace Portivio.Application.Results
 
             return result;
         }
+
+        public static Result<T> ToFailure<T>(this IResult result)
+        {
+            if (result.IsSuccess)
+                throw new InvalidOperationException("ToFailure<T> called on a successful result");
+
+            return Result<T>.Failure(result.Message, result.Errors, result.StatusCode ?? 400);
+        }
+
+        public static Result ToFailure(this IResult result)
+        {
+            if (result.IsSuccess)
+                throw new InvalidOperationException("ToFailure called on a successful result");
+
+            return Result.Failure(result.Message, result.Errors, result.StatusCode ?? 400);
+        }
     }
 }

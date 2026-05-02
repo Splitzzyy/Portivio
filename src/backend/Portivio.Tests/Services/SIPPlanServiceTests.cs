@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Portivio.Application.DTOs.SIPPlan;
 using Portivio.Application.Services;
+using Portivio.Application.Services.Authorization;
 using Portivio.Domain.Entities;
 using Portivio.Infrastructure.Data;
 using Xunit;
@@ -45,7 +46,7 @@ namespace Portivio.Tests.Services
         {
             using var context = CreateInMemoryDbContext();
             var (user, profile, instrument) = SeedBasicData(context);
-            var service = new SIPPlanService(context);
+            var service = new SIPPlanService(context, new ProfileAccessGuard(context));
 
             var result = await service.CreateSIPPlanAsync(user.Id, profile.Id, ValidRequest(instrument.Id));
 
@@ -59,7 +60,7 @@ namespace Portivio.Tests.Services
         {
             using var context = CreateInMemoryDbContext();
             var (user, profile, instrument) = SeedBasicData(context);
-            var service = new SIPPlanService(context);
+            var service = new SIPPlanService(context, new ProfileAccessGuard(context));
 
             var req = ValidRequest(instrument.Id);
             req.SIPDay = 0;
@@ -74,7 +75,7 @@ namespace Portivio.Tests.Services
         {
             using var context = CreateInMemoryDbContext();
             var (user, profile, instrument) = SeedBasicData(context);
-            var service = new SIPPlanService(context);
+            var service = new SIPPlanService(context, new ProfileAccessGuard(context));
 
             var req = ValidRequest(instrument.Id);
             req.SIPDay = 29;
@@ -89,7 +90,7 @@ namespace Portivio.Tests.Services
         {
             using var context = CreateInMemoryDbContext();
             var (user, profile, instrument) = SeedBasicData(context);
-            var service = new SIPPlanService(context);
+            var service = new SIPPlanService(context, new ProfileAccessGuard(context));
 
             var req = ValidRequest(instrument.Id);
             req.StartDate = DateTime.UtcNow.AddYears(1);
@@ -105,7 +106,7 @@ namespace Portivio.Tests.Services
         {
             using var context = CreateInMemoryDbContext();
             var (user, profile, instrument) = SeedBasicData(context);
-            var service = new SIPPlanService(context);
+            var service = new SIPPlanService(context, new ProfileAccessGuard(context));
             var createResult = await service.CreateSIPPlanAsync(user.Id, profile.Id, ValidRequest(instrument.Id));
 
             var result = await service.ActivateSIPPlanAsync(user.Id, profile.Id, createResult.Data!.Id);
@@ -119,7 +120,7 @@ namespace Portivio.Tests.Services
         {
             using var context = CreateInMemoryDbContext();
             var (user, profile, instrument) = SeedBasicData(context);
-            var service = new SIPPlanService(context);
+            var service = new SIPPlanService(context, new ProfileAccessGuard(context));
             var createResult = await service.CreateSIPPlanAsync(user.Id, profile.Id, ValidRequest(instrument.Id));
 
             var result = await service.DeactivateSIPPlanAsync(user.Id, profile.Id, createResult.Data!.Id);
@@ -137,7 +138,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user2);
             await context.SaveChangesAsync();
 
-            var service = new SIPPlanService(context);
+            var service = new SIPPlanService(context, new ProfileAccessGuard(context));
             var createResult = await service.CreateSIPPlanAsync(user1.Id, profile.Id, ValidRequest(instrument.Id));
 
             var req = new UpdateSIPPlanRequest { Amount = 1000m, SIPDay = 5, StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow.AddYears(1) };
@@ -152,7 +153,7 @@ namespace Portivio.Tests.Services
         {
             using var context = CreateInMemoryDbContext();
             var (user, profile, instrument) = SeedBasicData(context);
-            var service = new SIPPlanService(context);
+            var service = new SIPPlanService(context, new ProfileAccessGuard(context));
             var plan1 = await service.CreateSIPPlanAsync(user.Id, profile.Id, ValidRequest(instrument.Id));
             await service.DeactivateSIPPlanAsync(user.Id, profile.Id, plan1.Data!.Id);
             await service.CreateSIPPlanAsync(user.Id, profile.Id, ValidRequest(instrument.Id));

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Portivio.Application.DTOs.Transaction;
 using Portivio.Application.Results;
+using Portivio.Application.Services.Authorization;
 using Portivio.Domain.Entities;
 using Portivio.Domain.Enums;
 using Portivio.Infrastructure.Data;
@@ -19,11 +20,13 @@ namespace Portivio.Application.Services
     {
         private readonly PortivioDbContext _context;
         private readonly IHoldingService _holdingService;
+        private readonly IProfileAccessGuard _profileAccess;
 
-        public TransactionService(PortivioDbContext context, IHoldingService holdingService)
+        public TransactionService(PortivioDbContext context, IHoldingService holdingService, IProfileAccessGuard profileAccess)
         {
             _context = context;
             _holdingService = holdingService;
+            _profileAccess = profileAccess;
         }
 
         private async Task<Result<T>> ExecuteInTransactionAsync<T>(Func<Task<Result<T>>> action)
@@ -78,11 +81,9 @@ namespace Portivio.Application.Services
         {
             try
             {
-                var profile = await _context.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.Id == profileId);
-                if (profile == null)
-                    return Result<List<TransactionResponse>>.NotFound("Profile not found");
-                if (profile.UserId != userId)
-                    return Result<List<TransactionResponse>>.Forbidden("Access denied");
+                var access = await _profileAccess.EnsureOwnerAsync(userId, profileId);
+                if (access.IsFailure)
+                    return access.ToFailure<List<TransactionResponse>>();
 
                 var skip = (page - 1) * pageSize;
                 var transactions = await _context.Transactions
@@ -104,11 +105,9 @@ namespace Portivio.Application.Services
 
         public async Task<Result<TransactionResponse>> CreateTransactionAsync(Guid userId, Guid profileId, CreateTransactionRequest request)
         {
-            var profile = await _context.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.Id == profileId);
-            if (profile == null)
-                return Result<TransactionResponse>.NotFound("Profile not found");
-            if (profile.UserId != userId)
-                return Result<TransactionResponse>.Forbidden("Access denied");
+            var access = await _profileAccess.EnsureOwnerAsync(userId, profileId);
+            if (access.IsFailure)
+                return access.ToFailure<TransactionResponse>();
 
             if (!Enum.TryParse<TransactionType>(request.Type, ignoreCase: true, out var txType))
                 return Result<TransactionResponse>.BadRequest("Invalid transaction type. Valid values: Buy, Sell, Dividend, Interest");
@@ -182,11 +181,9 @@ namespace Portivio.Application.Services
 
         public async Task<Result<TransactionResponse>> UpdateTransactionAsync(Guid userId, Guid profileId, Guid txId, UpdateTransactionRequest request)
         {
-            var profile = await _context.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.Id == profileId);
-            if (profile == null)
-                return Result<TransactionResponse>.NotFound("Profile not found");
-            if (profile.UserId != userId)
-                return Result<TransactionResponse>.Forbidden("Access denied");
+            var access = await _profileAccess.EnsureOwnerAsync(userId, profileId);
+            if (access.IsFailure)
+                return access.ToFailure<TransactionResponse>();
 
             var transaction = await _context.Transactions
                 .Include(t => t.Instrument)
@@ -224,11 +221,9 @@ namespace Portivio.Application.Services
 
         public async Task<Result> DeleteTransactionAsync(Guid userId, Guid profileId, Guid txId)
         {
-            var profile = await _context.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.Id == profileId);
-            if (profile == null)
-                return Result.NotFound("Profile not found");
-            if (profile.UserId != userId)
-                return Result.Forbidden("Access denied");
+            var access = await _profileAccess.EnsureOwnerAsync(userId, profileId);
+            if (access.IsFailure)
+                return access.ToFailure();
 
             var transaction = await _context.Transactions
                 .FirstOrDefaultAsync(t => t.Id == txId && t.ProfileId == profileId);
