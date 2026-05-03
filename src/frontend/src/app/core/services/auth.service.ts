@@ -156,6 +156,12 @@ export class AuthService {
     return localStorage.getItem(this.ACCESS_TOKEN_KEY);
   }
 
+  /** Clear local session state without making an HTTP call. Use when the server
+   *  is unreachable or the session is already invalid (e.g. after refresh fails). */
+  clearSession(): void {
+    this.clearAuth();
+  }
+
   getRefreshToken(): string | null {
     // Refresh token is in an HttpOnly cookie — not readable from JS.
     // Method kept for interface compatibility; always returns null.

@@ -53,7 +53,10 @@ export class JwtInterceptor implements HttpInterceptor {
       || url.includes('/auth/google-login')
       || url.includes('/auth/refresh-token')
       || url.includes('/auth/forgot-password')
-      || url.includes('/auth/reset-password');
+      || url.includes('/auth/reset-password')
+      || url.includes('/auth/logout')
+      || url.includes('/auth/verify-email')
+      || url.includes('/auth/resend-verification');
   }
 
   private addTokenToRequest(request: HttpRequest<unknown>, token: string): HttpRequest<unknown> {
@@ -94,9 +97,10 @@ export class JwtInterceptor implements HttpInterceptor {
       }),
       catchError(err => {
         this.isRefreshing = false;
-        // Refresh itself failed — clear session silently. The error interceptor
-        // will surface a toast if appropriate.
-        this.authService.logout().subscribe({ error: () => {} });
+        // Refresh failed — clear local session without hitting the server.
+        // Calling authService.logout() here would fire another HTTP request
+        // that could 401 and re-enter this handler, causing an infinite loop.
+        this.authService.clearSession();
         return throwError(() => err);
       })
     );
