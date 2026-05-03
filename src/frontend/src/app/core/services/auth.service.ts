@@ -125,14 +125,12 @@ export class AuthService {
   }
 
   refreshToken(): Observable<AuthResponse> {
-    const refreshToken = this.getRefreshToken();
-    if (!refreshToken) {
-      return throwError(() => new Error('No refresh token available'));
-    }
-
+    // Refresh token lives in an HttpOnly cookie set by the backend on login.
+    // Browser sends it automatically — just POST empty body. Backend falls
+    // through to Request.Cookies["refreshToken"] when body token is absent.
     return this.http.post<AuthResponse>(
       `${this.API_URL}/refresh-token`,
-      { refreshToken }
+      {}
     ).pipe(
       tap(response => this.handleAuthResponse(response)),
       catchError(error => {
@@ -159,7 +157,9 @@ export class AuthService {
   }
 
   getRefreshToken(): string | null {
-    return localStorage.getItem(this.REFRESH_TOKEN_KEY);
+    // Refresh token is in an HttpOnly cookie — not readable from JS.
+    // Method kept for interface compatibility; always returns null.
+    return null;
   }
 
   // ---------------------------------------------------------------------------

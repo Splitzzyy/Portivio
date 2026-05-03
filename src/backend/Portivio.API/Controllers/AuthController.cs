@@ -65,6 +65,7 @@ namespace Portivio.API.Controllers
         /// Refresh access token using refresh token
         /// </summary>
         [HttpPost("refresh-token")]
+        [AllowAnonymous]
         public async Task<ActionResult<AuthResponse>> RefreshToken([FromBody] RefreshTokenRequest request)
         {
             var refreshToken = request.RefreshToken;
