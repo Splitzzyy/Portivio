@@ -3,6 +3,7 @@ using Portivio.API.Services;
 using Portivio.Application.Services;
 using Portivio.Application.Services.Authorization;
 using Portivio.Application.Services.MarketData;
+using Portivio.Application.Services.Strategies;
 using Portivio.Infrastructure.Services;
 
 namespace Portivio.API.Extensions;
@@ -46,6 +47,9 @@ public static class ApplicationServicesExtensions
         services.AddScoped<ISIPPlanService, SIPPlanService>();
         services.AddScoped<IPriceHistoryService, PriceHistoryService>();
         services.AddScoped<IPortfolioPerformanceService, PortfolioPerformanceService>();
+        services.AddScoped<IAssetStrategy, EquityStrategy>();
+        services.AddScoped<AssetStrategyResolver>();
+        services.AddScoped<ITransactionIngestService, TransactionIngestService>();
     }
 
     private static void RegisterEmailServices(IServiceCollection services)

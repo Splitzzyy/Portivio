@@ -4,7 +4,7 @@
 >
 > **Design doc:** `docs/manual-investment-design.md`
 > **Current branch:** `main`
-> **Last updated:** 2026-05-03 (Phase 1 complete — step 6 done)
+> **Last updated:** 2026-05-03 (Phase 1 complete; Phase 2 tasks 2.1–2.6 done; 2.7 pending frontend coordination)
 
 ---
 
@@ -31,12 +31,12 @@
 
 | # | Task | Status |
 |---|------|--------|
-| 2.1 | Add nullable `Instrument.Category, PriceSource, PriceSourceKey, Metadata (jsonb), Isin, RowVersion` + backfill `Category` from AssetType.Name | ⏳ Queued |
-| 2.2 | Add `Transaction.ClientTxnId, Source, IsDeleted, CreatedAtUtc, UpdatedAtUtc, RowVersion` + backfill | ⏳ Queued |
-| 2.3 | Add `Holding.RealizedPnL, AccruedInterest, Snapshot (jsonb), RowVersion` | ⏳ Queued |
-| 2.4 | Introduce `IAssetStrategy` + `EquityStrategy` (parity with current behavior) + `AssetStrategyResolver` | ⏳ Queued |
-| 2.5 | New `TransactionIngestService.IngestAsync(userId, cmd, source, ct)` — controller delegates | ⏳ Queued |
-| 2.6 | Idempotency probe via `(ProfileId, ClientTxnId)` unique index | ⏳ Queued |
+| 2.1 | Add nullable `Instrument.Category, PriceSource, PriceSourceKey, Metadata (jsonb), Isin` + backfill `Category` from AssetType.Name | ✅ Done | New enums `AssetCategory`, `PriceSource` in `Portivio.Domain/Enums/`. Fields added to `Instrument` entity. `InstrumentConfiguration`: int conversions for enums, string↔JsonDocument value converter for InMemory compat, `HasColumnType("jsonb")`, Isin index. Migration `20260503070704_AddInstrumentCategoryPriceSourceMetadata`: backfill CASE on `AssetType.Name`, GIN index via raw SQL. RowVersion deferred — xmin concurrency handled per-entity when needed. |
+| 2.2 | Add `Transaction.ClientTxnId, Source, IsDeleted, CreatedAtUtc, UpdatedAtUtc` + backfill | ✅ Done | New enum `TransactionSource`. Fields added to `Transaction`. `TransactionConfiguration`: `Source` int conversion, `(ProfileId, ClientTxnId)` partial unique index (filtered on NOT NULL), `HasQueryFilter(!IsDeleted)`. Migration `20260503070918_AddTransactionIngestFields` backfills `Source=0, timestamps=TransactionDate`. `TransactionService`: `Create` sets `Source=Manual + timestamps`; `Update` sets `UpdatedAtUtc`; `Delete` → soft-delete (`IsDeleted=true`). RowVersion deferred. |
+| 2.3 | Add `Holding.RealizedPnL, AccruedInterest, Snapshot (jsonb)` | ✅ Done | Fields added to `Holding`. `HoldingConfiguration`: precision 18,4 for new decimals, string↔JsonDocument value converter for `Snapshot` (InMemory compat), `HasColumnType("jsonb")`. Migration `20260503_AddHoldingPnLSnapshot`. RowVersion deferred. |
+| 2.4 | Introduce `IAssetStrategy` + `EquityStrategy` + `AssetStrategyResolver` | ✅ Done | New files under `Portivio.Application/Services/Strategies/`: `IAssetStrategy.cs` (interface + `HoldingSnapshot` record), `EquityStrategy.cs` (Buy/Sell weighted-avg, Dividend/Interest validation, price from PriceHistory), `AssetStrategyResolver.cs`. DI: `AddScoped<IAssetStrategy, EquityStrategy>` + `AddScoped<AssetStrategyResolver>` in `ApplicationServicesExtensions`. |
+| 2.5 | `TransactionIngestService.IngestAsync(userId, cmd, source, ct)` — controller delegates | ✅ Done | New `Portivio.Application/Services/TransactionIngestService.cs`: `TransactionCommand` record + `ITransactionIngestService` + impl. Pipeline: profile guard → load instrument → `strategy.ValidateTransaction` → idempotency probe (ClientTxnId) → `BeginTransactionAsync` → insert txn → `SaveChangesAsync` → `strategy.ComputeHoldingAsync` → upsert holding → `SaveChangesAsync` → commit. `TransactionController.CreateTransaction` delegates to `_ingestService.IngestAsync(TransactionSource.Manual)`. |
+| 2.6 | Idempotency probe via `(ProfileId, ClientTxnId)` unique index | ✅ Done | DB-level: `ux_transactions_profile_clienttxnid` partial unique index (added in 2.2). App-level: `IngestAsync` probes for existing row by `(ProfileId, ClientTxnId)` before inserting — returns original `TransactionResponse` on match. Tests in `TransactionIngestServiceTests.cs`: idempotent repeat returns same id, count stays 1. |
 | 2.7 | Remove `HoldingController.UpsertHolding` POST surface (coordinate with frontend) | ⏳ Queued — breaking |
 
 ---

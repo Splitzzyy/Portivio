@@ -5,6 +5,7 @@ using Portivio.Application.Services.Authorization;
 using Portivio.Domain.Entities;
 using Portivio.Domain.Enums;
 using Portivio.Infrastructure.Data;
+using System.Net;
 
 namespace Portivio.Application.Services
 {
@@ -142,6 +143,7 @@ namespace Portivio.Application.Services
 
             var amount = request.Amount > 0 ? request.Amount : request.Quantity * request.Price;
 
+            var now = DateTime.UtcNow;
             var transaction = new Transaction
             {
                 Id = Guid.NewGuid(),
@@ -154,7 +156,10 @@ namespace Portivio.Application.Services
                 TransactionDate = request.TransactionDate.Kind == DateTimeKind.Utc
                     ? request.TransactionDate
                     : request.TransactionDate.ToUniversalTime(),
-                Notes = request.Notes?.Trim() ?? string.Empty
+                Notes = request.Notes?.Trim() ?? string.Empty,
+                Source = TransactionSource.Manual,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
             };
 
             return await ExecuteInTransactionAsync(async () =>
@@ -210,6 +215,7 @@ namespace Portivio.Application.Services
                 ? request.TransactionDate
                 : request.TransactionDate.ToUniversalTime();
             transaction.Notes = request.Notes?.Trim() ?? string.Empty;
+            transaction.UpdatedAtUtc = DateTime.UtcNow;
 
             return await ExecuteInTransactionAsync(async () =>
             {
@@ -248,7 +254,8 @@ namespace Portivio.Application.Services
             {
                 try
                 {
-                    _context.Transactions.Remove(transaction);
+                    transaction.IsDeleted = true;
+                    transaction.UpdatedAtUtc = DateTime.UtcNow;
                     await _context.SaveChangesAsync();
 
                     var holdingResult = await _holdingService.RecalculateHoldingFromTransactionsAsync(profileId, instrumentId);

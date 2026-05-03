@@ -1,4 +1,7 @@
-﻿namespace Portivio.Domain.Entities
+﻿using Portivio.Domain.Enums;
+using System.Text.Json;
+
+namespace Portivio.Domain.Entities
 {
     public class Instrument
     {
@@ -6,11 +9,21 @@
 
         public Guid AssetTypeId { get; set; }
 
+        public AssetCategory Category { get; set; }
+
         public string Name { get; set; } = null!;
 
         public string Symbol { get; set; } = null!;
 
+        public string? Isin { get; set; }
+
         public string Currency { get; set; } = null!;
+
+        public PriceSource PriceSource { get; set; }
+
+        public string? PriceSourceKey { get; set; }
+
+        public JsonDocument? Metadata { get; set; }
 
         public AssetType AssetType { get; set; } = null!;
 

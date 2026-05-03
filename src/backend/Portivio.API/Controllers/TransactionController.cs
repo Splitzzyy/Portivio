@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Portivio.Application.DTOs.Transaction;
 using Portivio.Application.Results;
 using Portivio.Application.Services;
+using Portivio.Domain.Enums;
 using System.Security.Claims;
 
 namespace Portivio.API.Controllers
@@ -15,10 +16,12 @@ namespace Portivio.API.Controllers
     public class TransactionController : ControllerBase
     {
         private readonly ITransactionService _transactionService;
+        private readonly ITransactionIngestService _ingestService;
 
-        public TransactionController(ITransactionService transactionService)
+        public TransactionController(ITransactionService transactionService, ITransactionIngestService ingestService)
         {
             _transactionService = transactionService;
+            _ingestService = ingestService;
         }
 
         [HttpGet]
@@ -36,15 +39,26 @@ namespace Portivio.API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateTransaction(Guid profileId, [FromBody] CreateTransactionRequest request)
+        public async Task<IActionResult> CreateTransaction(Guid profileId, [FromBody] CreateTransactionRequest request, CancellationToken ct)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
                 return Unauthorized(new { success = false, message = "User not authenticated" });
 
-            var result = await _transactionService.CreateTransactionAsync(userId, profileId, request);
+            var cmd = new TransactionCommand(
+                ProfileId: profileId,
+                InstrumentId: request.InstrumentId,
+                Type: request.Type,
+                Quantity: request.Quantity,
+                Price: request.Price,
+                Amount: request.Amount,
+                TransactionDateUtc: request.TransactionDate,
+                Notes: request.Notes,
+                ClientTxnId: null);
+
+            var result = await _ingestService.IngestAsync(userId, cmd, TransactionSource.Manual, ct);
             return result.Match(
-                onSuccess: () => StatusCode(201, result.Data),
+                onSuccess: () => StatusCode(result.Data != null ? (result.StatusCode ?? 201) : 201, result.Data),
                 onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
             );
         }

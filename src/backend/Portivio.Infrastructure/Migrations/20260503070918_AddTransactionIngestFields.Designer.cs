@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Portivio.Infrastructure.Data;
@@ -11,9 +12,11 @@ using Portivio.Infrastructure.Data;
 namespace Portivio.Infrastructure.Migrations
 {
     [DbContext(typeof(PortivioDbContext))]
-    partial class PortivioDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260503070918_AddTransactionIngestFields")]
+    partial class AddTransactionIngestFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -171,10 +174,6 @@ namespace Portivio.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("AccruedInterest")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)");
-
                     b.Property<decimal>("AvgPrice")
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
@@ -199,13 +198,6 @@ namespace Portivio.Infrastructure.Migrations
                     b.Property<decimal>("Quantity")
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
-
-                    b.Property<decimal>("RealizedPnL")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)");
-
-                    b.Property<string>("Snapshot")
-                        .HasColumnType("jsonb");
 
                     b.Property<decimal>("UnrealizedPnL")
                         .HasPrecision(18, 4)

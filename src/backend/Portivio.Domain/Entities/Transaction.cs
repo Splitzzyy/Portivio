@@ -22,6 +22,16 @@ namespace Portivio.Domain.Entities
 
         public string Notes { get; set; } = null!;
 
+        public string? ClientTxnId { get; set; }
+
+        public TransactionSource Source { get; set; }
+
+        public bool IsDeleted { get; set; }
+
+        public DateTime CreatedAtUtc { get; set; }
+
+        public DateTime UpdatedAtUtc { get; set; }
+
         public Profile Profile { get; set; } = null!;
 
         public Instrument Instrument { get; set; } = null!;
