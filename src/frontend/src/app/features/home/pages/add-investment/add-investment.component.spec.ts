@@ -184,10 +184,9 @@ describe('AddInvestmentComponent', () => {
   describe('validate – PPF', () => {
     beforeEach(() => component.pickType(component.assetTypes[3]));
 
-    it('flags accountNo, openedOn, rate, amount, date', () => {
+    it('flags openedOn, rate, amount, date', () => {
       component.ppfForm = { accountNo: '', openedOn: '', currentRatePercent: '', amount: '', date: '', notes: '' };
       const e = component.validate();
-      expect(e['accountNo']).toBeTruthy();
       expect(e['openedOn']).toBeTruthy();
       expect(e['currentRatePercent']).toBeTruthy();
       expect(e['amount']).toBeTruthy();
@@ -457,7 +456,7 @@ describe('AddInvestmentComponent', () => {
     it('calls addPpf with correct payload', () => {
       component.submit(false);
       expect(assetSvc.addPpf).toHaveBeenCalledWith('p1', jasmine.objectContaining({
-        accountNo: 'PPF001', openedOn: '2010-04-01',
+        accountNo: '', openedOn: '2010-04-01',
         currentRatePercent: 7.1, initialContribution: 50000,
         contributionDate: '2025-04-01', notes: 'annual'
       }));

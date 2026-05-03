@@ -23,6 +23,7 @@ export class HoldingsComponent implements OnInit, OnDestroy {
   holdings: Holding[] = [];
 
   selectedProfileId: string | null = null;
+  activeAssetType = '';
   loading = false;
   saving = false;
   error: string | null = null;
@@ -62,9 +63,23 @@ export class HoldingsComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  get availableTypes(): string[] {
+    const seen = new Set<string>();
+    for (const h of this.holdings) {
+      if (h.assetTypeName) seen.add(h.assetTypeName);
+    }
+    return Array.from(seen).sort();
+  }
+
+  get filteredHoldings(): Holding[] {
+    if (!this.activeAssetType) return this.holdings;
+    return this.holdings.filter(h => h.assetTypeName === this.activeAssetType);
+  }
+
   onProfileChange(): void {
     this.showForm = false;
     this.editingId = null;
+    this.activeAssetType = '';
     this.fetchHoldings();
   }
 
@@ -135,6 +150,10 @@ export class HoldingsComponent implements OnInit, OnDestroy {
         next: () => { this.toastr.success('Holding deleted'); this.fetchHoldings(); },
         error: (err) => this.toastr.error(err?.error?.message || 'Delete failed')
       });
+  }
+
+  countByType(type: string): number {
+    return this.holdings.filter(h => h.assetTypeName === type).length;
   }
 
   formatNumber(n: number, digits = 2): string {

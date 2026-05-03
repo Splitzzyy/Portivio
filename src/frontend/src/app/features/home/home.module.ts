@@ -8,7 +8,6 @@ import { ProfilesComponent } from './pages/profiles/profiles.component';
 import { HoldingsComponent } from './pages/holdings/holdings.component';
 import { TransactionsComponent } from './pages/transactions/transactions.component';
 import { SipPlansComponent } from './pages/sip-plans/sip-plans.component';
-import { InstrumentsComponent } from './pages/instruments/instruments.component';
 import { AddInvestmentComponent } from './pages/add-investment/add-investment.component';
 
 @NgModule({
@@ -19,7 +18,6 @@ import { AddInvestmentComponent } from './pages/add-investment/add-investment.co
     HoldingsComponent,
     TransactionsComponent,
     SipPlansComponent,
-    InstrumentsComponent,
     AddInvestmentComponent
   ],
   imports: [CommonModule, SharedModule, HomeRoutingModule]

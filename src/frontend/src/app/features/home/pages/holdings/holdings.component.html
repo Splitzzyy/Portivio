@@ -23,7 +23,7 @@
   </div>
 
   <div *ngIf="!instruments.length && profiles.length" class="state-message">
-    No instruments defined. Add them on the <a routerLink="/dashboard/instruments">Instruments page</a>.
+    No instruments found. Use <a routerLink="/dashboard/add-investment">Add Investment</a> to log your first position.
   </div>
 
   <div *ngIf="showForm" class="form-card">
@@ -61,8 +61,18 @@
   <div *ngIf="loading" class="state-message">Loading holdings…</div>
   <div *ngIf="error && !loading" class="state-message error">{{ error }}</div>
 
+  <div *ngIf="!loading && !error && selectedProfileId && holdings.length" class="asset-tabs">
+    <button type="button" class="tab-btn" [class.active]="activeAssetType === ''" (click)="activeAssetType = ''">
+      All <span class="tab-count">{{ holdings.length }}</span>
+    </button>
+    <button type="button" class="tab-btn" *ngFor="let t of availableTypes"
+      [class.active]="activeAssetType === t" (click)="activeAssetType = t">
+      {{ t }} <span class="tab-count">{{ countByType(t) }}</span>
+    </button>
+  </div>
+
   <div *ngIf="!loading && !error && selectedProfileId" class="data-card">
-    <table class="table" *ngIf="holdings.length; else empty">
+    <table class="table" *ngIf="filteredHoldings.length; else empty">
       <thead>
         <tr>
           <th>Symbol</th>
@@ -77,7 +87,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let h of holdings">
+        <tr *ngFor="let h of filteredHoldings">
           <td class="strong">{{ h.instrumentSymbol }}</td>
           <td>{{ h.instrumentName }}</td>
           <td class="muted">{{ h.assetTypeName }}</td>

@@ -107,10 +107,10 @@
               <div class="typeahead" (click)="$event.stopPropagation()">
                 <input type="text"
                        [value]="stockQuery"
-                       (input)="stockQuery = $any($event.target).value; stockDropdownOpen = true"
+                       (input)="stockForm.name = $any($event.target).value; stockQuery = $any($event.target).value; stockDropdownOpen = true"
                        (focus)="stockDropdownOpen = true"
                        (keydown.enter)="$event.preventDefault()"
-                       placeholder="Search existing instruments by symbol or name…" />
+                       placeholder="Search or type stock name…" />
                 <div class="results" *ngIf="stockDropdownOpen && filteredStocks.length > 0">
                   <div class="row" *ngFor="let inst of filteredStocks" (mousedown)="selectStock(inst)">
                     <div>
@@ -120,13 +120,8 @@
                   </div>
                 </div>
               </div>
-              <div class="hint">Or fill name &amp; symbol manually below</div>
-            </div>
-
-            <div class="ai-field" [class.invalid]="errors['name']">
-              <label>Name <span class="req">*</span></label>
-              <input type="text" [(ngModel)]="stockForm.name" name="stkName" placeholder="e.g. Tata Consultancy Services" />
               <div class="err" *ngIf="errors['name']"><i class="fas fa-exclamation-circle"></i> {{ errors['name'] }}</div>
+              <div class="hint">Or fill symbol manually below</div>
             </div>
 
             <div class="ai-field" [class.invalid]="errors['symbol']">
@@ -210,15 +205,15 @@
         <div *ngIf="selectedType === 'MF'">
           <div class="ai-form-grid">
 
-            <div class="ai-field full">
+            <div class="ai-field full" [class.invalid]="errors['schemeName']">
               <label>Fund <span class="req">*</span></label>
               <div class="typeahead" (click)="$event.stopPropagation()">
                 <input type="text"
                        [value]="mfQuery"
-                       (input)="mfQuery = $any($event.target).value; mfDropdownOpen = true"
+                       (input)="mfForm.schemeName = $any($event.target).value; mfQuery = $any($event.target).value; mfDropdownOpen = true"
                        (focus)="mfDropdownOpen = true"
                        (keydown.enter)="$event.preventDefault()"
-                       placeholder="Search existing schemes by name…" />
+                       placeholder="Search or type scheme name…" />
                 <div class="results" *ngIf="mfDropdownOpen && filteredMfs.length > 0">
                   <div class="row" *ngFor="let inst of filteredMfs" (mousedown)="selectMf(inst)">
                     <div>
@@ -228,13 +223,8 @@
                   </div>
                 </div>
               </div>
-              <div class="hint">Or fill scheme name &amp; code manually below</div>
-            </div>
-
-            <div class="ai-field full" [class.invalid]="errors['schemeName']">
-              <label>Scheme name <span class="req">*</span></label>
-              <input type="text" [(ngModel)]="mfForm.schemeName" name="mfName" placeholder="e.g. Parag Parikh Flexi Cap Fund – Direct Growth" />
               <div class="err" *ngIf="errors['schemeName']"><i class="fas fa-exclamation-circle"></i> {{ errors['schemeName'] }}</div>
+              <div class="hint">Or fill scheme code manually below</div>
             </div>
 
             <div class="ai-field" [class.invalid]="errors['schemeCode']">
@@ -381,12 +371,6 @@
         <!-- ===== PPF FORM ===== -->
         <div *ngIf="selectedType === 'PPF'">
           <div class="ai-form-grid">
-
-            <div class="ai-field" [class.invalid]="errors['accountNo']">
-              <label>PPF account number <span class="req">*</span></label>
-              <input type="text" [(ngModel)]="ppfForm.accountNo" name="ppfAccNo" placeholder="e.g. ****8821" />
-              <div class="err" *ngIf="errors['accountNo']"><i class="fas fa-exclamation-circle"></i> {{ errors['accountNo'] }}</div>
-            </div>
 
             <div class="ai-field" [class.invalid]="errors['openedOn']">
               <label>Account opened on <span class="req">*</span></label>

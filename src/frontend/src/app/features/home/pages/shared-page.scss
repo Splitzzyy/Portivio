@@ -173,6 +173,52 @@ $white: #ffffff;
   }
 }
 
+.asset-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+
+  .tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border: 1px solid $border-color;
+    border-radius: 8px;
+    background: $white;
+    color: $text-light;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    .tab-count {
+      background: $bg-light;
+      color: $text-light;
+      border-radius: 999px;
+      padding: 1px 7px;
+      font-size: 11px;
+    }
+
+    &:hover {
+      border-color: $primary-color;
+      color: $primary-color;
+    }
+
+    &.active {
+      background: $primary-color;
+      border-color: $primary-color;
+      color: $white;
+
+      .tab-count {
+        background: rgba(255, 255, 255, 0.25);
+        color: $white;
+      }
+    }
+  }
+}
+
 .data-card {
   background: $white;
   border: 1px solid $border-color;

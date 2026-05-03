@@ -269,7 +269,6 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
         if (!this.goldForm.date) e['date'] = 'Pick a date';
         break;
       case 'PPF':
-        if (!this.ppfForm.accountNo) e['accountNo'] = 'Enter account number';
         if (!this.ppfForm.openedOn) e['openedOn'] = 'Enter account opening date';
         if (!pos(this.ppfForm.currentRatePercent)) e['currentRatePercent'] = 'Enter interest rate';
         if (!pos(this.ppfForm.amount)) e['amount'] = 'Enter deposit amount';
@@ -308,7 +307,7 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
           this.resetCurrentForm();
           this.errors = {};
         } else {
-          this.router.navigate(['/dashboard/holdings']);
+          this.router.navigate(['/dashboard/transactions']);
         }
       },
       error: (err) => this.toastr.error(err?.error?.message || 'Save failed')
@@ -354,7 +353,7 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
       }
       case 'PPF':
         return this.assetService.addPpf(pid, {
-          accountNo: this.ppfForm.accountNo,
+          accountNo: '',
           openedOn: this.ppfForm.openedOn,
           currentRatePercent: Number(this.ppfForm.currentRatePercent),
           initialContribution: Number(this.ppfForm.amount),
