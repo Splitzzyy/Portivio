@@ -22,13 +22,9 @@ RUN dotnet publish Portivio.API/Portivio.API.csproj \
     /p:UseAppHost=false
 
 # ---------- Runtime stage ----------
-# bookworm-slim (Debian) instead of Ubuntu Chiseled — Chiseled lacks libgssapi_krb5.so.2
-# which Npgsql loads at startup for GSSAPI support even when password auth is used.
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-bookworm-slim AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends libgssapi-krb5-2 \
-    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=build /app/publish .
 
 ENV ASPNETCORE_URLS=http://+:5274 \
