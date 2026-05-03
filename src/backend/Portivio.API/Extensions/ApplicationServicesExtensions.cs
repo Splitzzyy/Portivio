@@ -48,8 +48,14 @@ public static class ApplicationServicesExtensions
         services.AddScoped<IPriceHistoryService, PriceHistoryService>();
         services.AddScoped<IPortfolioPerformanceService, PortfolioPerformanceService>();
         services.AddScoped<IAssetStrategy, EquityStrategy>();
+        services.AddScoped<IAssetStrategy, MutualFundStrategy>();
+        services.AddScoped<IAssetStrategy, FixedDepositStrategy>();
+        services.AddScoped<IAssetStrategy, RecurringDepositStrategy>();
+        services.AddScoped<IAssetStrategy, PpfStrategy>();
+        services.AddScoped<IAssetStrategy, GoldStrategy>();
         services.AddScoped<AssetStrategyResolver>();
         services.AddScoped<ITransactionIngestService, TransactionIngestService>();
+        services.AddScoped<IAssetInstrumentService, AssetInstrumentService>();
     }
 
     private static void RegisterEmailServices(IServiceCollection services)

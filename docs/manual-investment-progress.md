@@ -4,7 +4,7 @@
 >
 > **Design doc:** `docs/manual-investment-design.md`
 > **Current branch:** `main`
-> **Last updated:** 2026-05-03 (Phase 1 complete; Phase 2 tasks 2.1–2.6 done; 2.7 pending frontend coordination)
+> **Last updated:** 2026-05-03 (Phase 1 + Phase 2.1–2.6 + Phase 3 complete; 2.7 + Phase 4–5 queued)
 
 ---
 
@@ -45,11 +45,13 @@
 
 | # | Task | Status |
 |---|------|--------|
-| 3.1 | `MutualFundStrategy` + AMFI NAV price source + `POST /instruments/mutual-fund` | ⏳ Queued |
-| 3.2 | `FixedDepositStrategy` (`AccrualFormula`) + `POST /instruments/fixed-deposit` | ⏳ Queued |
-| 3.3 | `RecurringDepositStrategy` (`AccrualFormula`) + `POST /instruments/recurring-deposit` | ⏳ Queued |
-| 3.4 | `PpfStrategy` (`AccrualFormula`) + `POST /instruments/ppf` + `POST /instruments/ppf/contributions` | ⏳ Queued |
-| 3.5 | `GoldStrategy` (Manual price; SGB/ETF subtypes via metadata) + `POST /instruments/gold` | ⏳ Queued |
+| 3.0 | Expand `TransactionType` enum | ✅ Done | Added `Deposit/Contribution/Withdrawal/Maturity/BonusUnits/Split/Merger/Charge/Tax` (int values 4–12). Backward-compatible. |
+| 3.1 | `MutualFundStrategy` + `POST /api/profiles/{id}/assets/mutual-fund` | ✅ Done | `MutualFundStrategy`: Buy/Sell/Dividend/BonusUnits/Split/Merger validation; weighted avg NAV; `FetchCurrentPriceAsync` from PriceHistory. |
+| 3.2 | `FixedDepositStrategy` (`AccrualFormula`) + `POST /assets/fixed-deposit` | ✅ Done | Compound interest from metadata (principal, rate, compounding, startDate, maturityDate). Deposit/Maturity/Withdrawal/Interest validation. |
+| 3.3 | `RecurringDepositStrategy` (`AccrualFormula`) + `POST /assets/recurring-deposit` | ✅ Done | Simple interest on accumulated installments. Contribution/Maturity/Withdrawal validation. |
+| 3.4 | `PpfStrategy` (`AccrualFormula`) + `POST /assets/ppf` + `POST /assets/ppf/contributions` | ✅ Done | Annual compound interest from metadata `currentRate`; `FetchCurrentPriceAsync` from PriceHistory (StandardRateService syncs). |
+| 3.5 | `GoldStrategy` (Manual price) + `POST /assets/gold` | ✅ Done | Weight-in-grams as quantity; price per gram; Buy/Sell/Dividend(SGB)/Maturity. |
+| — | `AssetInstrumentService` + `AssetController` | ✅ Done | New `IAssetInstrumentService`/`AssetInstrumentService` in Application. `AssetController` at `api/profiles/{profileId}/assets/{type}` — find-or-create instrument with Category/PriceSource/Metadata + call `IngestAsync`. All 5 asset types + PPF contributions. 16 new tests; 120/120 pass. |
 
 ---
 
