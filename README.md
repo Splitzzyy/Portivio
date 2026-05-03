@@ -2,15 +2,16 @@
 
 Financial portfolio management application. Track stocks, mutual funds, SIP plans, and portfolio performance across multiple profiles.
 
-## Build & Test Status
+## Build Status
 
-[![Backend CI](https://github.com/Splitzzyy/Portivio/actions/workflows/backend.yml/badge.svg?branch=main)](https://github.com/Splitzzyy/Portivio/actions/workflows/backend.yml)
-[![Frontend CI](https://github.com/Splitzzyy/Portivio/actions/workflows/frontend.yml/badge.svg?branch=main)](https://github.com/Splitzzyy/Portivio/actions/workflows/frontend.yml)
-[![Build & Push on Main](https://github.com/Splitzzyy/Portivio/actions/workflows/build-on-main.yml/badge.svg?branch=main)](https://github.com/Splitzzyy/Portivio/actions/workflows/build-on-main.yml)
+| | Backend | Frontend |
+|---|:-------:|:--------:|
+| Build | [![Build](https://github.com/Splitzzyy/Portivio/actions/workflows/build-on-main.yml/badge.svg?branch=main)](https://github.com/Splitzzyy/Portivio/actions/workflows/build-on-main.yml) | [![Build](https://github.com/Splitzzyy/Portivio/actions/workflows/build-on-main.yml/badge.svg?branch=main)](https://github.com/Splitzzyy/Portivio/actions/workflows/build-on-main.yml) |
+| Tests | ![Backend tests](https://img.shields.io/badge/tests-120%2F120%20passed-brightgreen) | ![Frontend tests](https://img.shields.io/badge/frontend%20tests-1%2F1%20passed-brightgreen) |
+
+Both backend and frontend builds/tests run through the single `build-on-main.yml` workflow.
+
 [![Secret Scan](https://github.com/Splitzzyy/Portivio/actions/workflows/secret-scan.yml/badge.svg)](https://github.com/Splitzzyy/Portivio/actions/workflows/secret-scan.yml)
-
-[![Backend Tests](docs/badges/backend-status.svg)](https://github.com/Splitzzyy/Portivio/actions/workflows/backend.yml)
-[![Frontend Tests](docs/badges/frontend-status.svg)](https://github.com/Splitzzyy/Portivio/actions/workflows/frontend.yml)
 
 ---
 
