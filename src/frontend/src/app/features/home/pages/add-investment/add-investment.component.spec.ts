@@ -344,6 +344,14 @@ describe('AddInvestmentComponent', () => {
   // ---- submit ----
 
   describe('submit – validation failure', () => {
+    it('blocks submit when no profile selected', () => {
+      component.selectedProfileId = '';
+      component.pickType(component.assetTypes[0]);
+      component.submit(false);
+      expect(assetSvc.addStock).not.toHaveBeenCalled();
+      expect(toastr.error).toHaveBeenCalledWith('Select a profile first');
+    });
+
     it('shows error toastr and does NOT call API', () => {
       component.pickType(component.assetTypes[0]);
       component.stockForm.name = '';

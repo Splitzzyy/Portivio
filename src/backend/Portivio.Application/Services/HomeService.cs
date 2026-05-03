@@ -46,6 +46,7 @@ namespace Portivio.Application.Services
                     .Include(p => p.Transactions).ThenInclude(t => t.Instrument)
                     .Include(p => p.SIPPlans).ThenInclude(s => s.Instrument)
                     .Include(p => p.PortfolioPerformances)
+                    .AsSplitQuery()
                     .ToListAsync();
 
                 var profileDtos = profiles.Select(p => new ProfileDto

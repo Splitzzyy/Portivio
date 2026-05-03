@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Portivio.Application.DTOs.Asset;
 using Portivio.Application.Results;
 using Portivio.Application.Services.Authorization;
@@ -462,6 +463,43 @@ namespace Portivio.Application.Services
             _context.Instruments.Add(created);
             await _context.SaveChangesAsync(ct);
             return created;
+        }
+
+        // Wraps an asset ingestion operation in a single database transaction so that
+        // GetOrCreate* saves and the IngestAsync call are committed or rolled back together.
+        private async Task<Result<AssetIngestResponse>> InTransactionAsync(
+            Func<CancellationToken, Task<Result<AssetIngestResponse>>> operation,
+            CancellationToken ct)
+        {
+            if (!_context.Database.IsRelational())
+                return await operation(ct);
+
+            // Only begin a transaction if one is not already active.
+            var ownsTx = _context.Database.CurrentTransaction is null;
+            IDbContextTransaction? tx = null;
+            if (ownsTx)
+                tx = await _context.Database.BeginTransactionAsync(ct);
+
+            try
+            {
+                var result = await operation(ct);
+                if (result.IsFailure)
+                {
+                    if (tx is not null) await tx.RollbackAsync(ct);
+                    return result;
+                }
+                if (tx is not null) await tx.CommitAsync(ct);
+                return result;
+            }
+            catch
+            {
+                if (tx is not null) await tx.RollbackAsync(ct);
+                throw;
+            }
+            finally
+            {
+                if (tx is not null) await tx.DisposeAsync();
+            }
         }
     }
 }

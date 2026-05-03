@@ -288,6 +288,10 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
   }
 
   submit(addAnother = false): void {
+    if (!this.selectedProfileId) {
+      this.toastr.error('Select a profile first');
+      return;
+    }
     const errs = this.validate();
     this.errors = errs;
     if (Object.keys(errs).length > 0) {

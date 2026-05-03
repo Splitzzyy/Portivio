@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Portivio.Application.DTOs.Transaction;
 using Portivio.Application.Results;
 using Portivio.Application.Services.Authorization;
@@ -81,22 +82,32 @@ namespace Portivio.Application.Services
             if (!_context.Database.IsRelational())
                 return await ExecuteCoreAsync(cmd, source, instrument, strategy, ct);
 
-            await using var dbTx = await _context.Database.BeginTransactionAsync(ct);
+            // If the caller already opened a transaction (e.g. AssetInstrumentService),
+            // participate in it rather than starting a nested BEGIN (unsupported by PostgreSQL).
+            var ownsTx = _context.Database.CurrentTransaction is null;
+            IDbContextTransaction? dbTx = null;
+            if (ownsTx)
+                dbTx = await _context.Database.BeginTransactionAsync(ct);
+
             try
             {
                 var result = await ExecuteCoreAsync(cmd, source, instrument, strategy, ct);
                 if (result.IsFailure)
                 {
-                    await dbTx.RollbackAsync(ct);
+                    if (dbTx is not null) await dbTx.RollbackAsync(ct);
                     return result;
                 }
-                await dbTx.CommitAsync(ct);
+                if (dbTx is not null) await dbTx.CommitAsync(ct);
                 return result;
             }
             catch
             {
-                await dbTx.RollbackAsync(ct);
+                if (dbTx is not null) await dbTx.RollbackAsync(ct);
                 throw;
+            }
+            finally
+            {
+                if (dbTx is not null) await dbTx.DisposeAsync();
             }
         }
 
