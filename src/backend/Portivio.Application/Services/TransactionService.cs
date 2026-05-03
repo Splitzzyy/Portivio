@@ -10,7 +10,7 @@ namespace Portivio.Application.Services
 {
     public interface ITransactionService
     {
-        Task<Result<List<TransactionResponse>>> GetTransactionsAsync(Guid userId, Guid profileId, int page = 1, int pageSize = 50);
+        Task<Result<PagedResult<TransactionResponse>>> GetTransactionsAsync(Guid userId, Guid profileId, int page = 1, int pageSize = 50);
         Task<Result<TransactionResponse>> CreateTransactionAsync(Guid userId, Guid profileId, CreateTransactionRequest request);
         Task<Result<TransactionResponse>> UpdateTransactionAsync(Guid userId, Guid profileId, Guid txId, UpdateTransactionRequest request);
         Task<Result> DeleteTransactionAsync(Guid userId, Guid profileId, Guid txId);
@@ -77,29 +77,38 @@ namespace Portivio.Application.Services
             }
         }
 
-        public async Task<Result<List<TransactionResponse>>> GetTransactionsAsync(Guid userId, Guid profileId, int page = 1, int pageSize = 50)
+        public async Task<Result<PagedResult<TransactionResponse>>> GetTransactionsAsync(Guid userId, Guid profileId, int page = 1, int pageSize = 50)
         {
             try
             {
+                if (page < 1) page = 1;
+                if (pageSize < 1) pageSize = 1;
+                if (pageSize > 200) pageSize = 200;
+
                 var access = await _profileAccess.EnsureOwnerAsync(userId, profileId);
                 if (access.IsFailure)
-                    return access.ToFailure<List<TransactionResponse>>();
+                    return access.ToFailure<PagedResult<TransactionResponse>>();
+
+                var baseQuery = _context.Transactions
+                    .Where(t => t.ProfileId == profileId);
+
+                var total = await baseQuery.CountAsync();
 
                 var skip = (page - 1) * pageSize;
-                var transactions = await _context.Transactions
+                var transactions = await baseQuery
                     .Include(t => t.Instrument)
-                    .Where(t => t.ProfileId == profileId)
                     .OrderByDescending(t => t.TransactionDate)
                     .Skip(skip)
                     .Take(pageSize)
                     .Select(t => MapToResponse(t))
                     .ToListAsync();
 
-                return Result<List<TransactionResponse>>.Success(transactions, "Transactions retrieved successfully");
+                var paged = PagedResult<TransactionResponse>.Create(transactions, page, pageSize, total);
+                return Result<PagedResult<TransactionResponse>>.Success(paged, "Transactions retrieved successfully");
             }
             catch (Exception ex)
             {
-                return Result<List<TransactionResponse>>.InternalServerError($"Error retrieving transactions: {ex.Message}");
+                return Result<PagedResult<TransactionResponse>>.InternalServerError($"Error retrieving transactions: {ex.Message}");
             }
         }
 

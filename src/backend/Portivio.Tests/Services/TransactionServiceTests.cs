@@ -184,7 +184,11 @@ namespace Portivio.Tests.Services
             var result = await service.GetTransactionsAsync(user.Id, profile.Id, page: 1, pageSize: 3);
 
             Assert.True(result.IsSuccess);
-            Assert.Equal(3, result.Data!.Count);
+            Assert.Equal(3, result.Data!.Items.Count);
+            Assert.Equal(5, result.Data.Total);
+            Assert.Equal(1, result.Data.Page);
+            Assert.Equal(3, result.Data.PageSize);
+            Assert.True(result.Data.HasMore);
         }
 
         [Fact]
@@ -201,7 +205,8 @@ namespace Portivio.Tests.Services
             var result = await service.GetTransactionsAsync(user.Id, profile1.Id, page: 1, pageSize: 50);
 
             Assert.True(result.IsSuccess);
-            Assert.Empty(result.Data!);
+            Assert.Empty(result.Data!.Items);
+            Assert.Equal(0, result.Data.Total);
         }
     }
 }

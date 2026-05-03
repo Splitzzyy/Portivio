@@ -4,7 +4,7 @@
 >
 > **Design doc:** `docs/manual-investment-design.md`
 > **Current branch:** `main`
-> **Last updated:** 2026-05-03
+> **Last updated:** 2026-05-03 (Phase 1 complete — step 6 done)
 
 ---
 
@@ -18,7 +18,7 @@
 | 3 | DTO `Type` → `TransactionType` enum + global `JsonStringEnumConverter` | ✅ Done | `Portivio.Application/DTOs/Transaction/TransactionRequests.cs`; `Portivio.Application/Services/TransactionService.cs`; `Portivio.API/Program.cs` (AddJsonOptions); tests updated | wire format unchanged ("Buy" string) |
 | 4 | Composite unique `(AssetTypeId, Symbol)` on `Instruments` | ✅ Done | `Portivio.Infrastructure/Data/Configurations/InstrumentConfiguration.cs`; `InstrumentService.Create/Update` scope `symbolExists` by AssetTypeId; migration `20260502210804_AddInstrumentAssetTypeSymbolUnique` | DB had no prior unique on Symbol → no DROP needed. Pre-flight before deploy: `SELECT "AssetTypeId", LOWER("Symbol"), COUNT(*) FROM "Instruments" GROUP BY 1,2 HAVING COUNT(*)>1;` |
 | 5 | Index `(ProfileId, TransactionDate DESC)` for paginated list | ✅ Done | `Portivio.Infrastructure/Data/Configurations/TransactionConfiguration.cs`; migration `20260502211049_AddTransactionProfileDateIndex` | speeds up `GetTransactionsAsync` ORDER BY TransactionDate DESC |
-| 6 | `PagedResult<T>` wrap on `GetTransactionsAsync` | ⏳ Queued | will create `Portivio.Application/Results/PagedResult.cs`; update `ITransactionService` + `TransactionController` + tests | response shape: `{ items, page, pageSize, total, hasMore }` |
+| 6 | `PagedResult<T>` wrap on `GetTransactionsAsync` | ✅ Done | `Portivio.Application/Results/PagedResult.cs` (new); `Portivio.Application/Services/TransactionService.cs`; `Portivio.Tests/Services/TransactionServiceTests.cs` (asserts on `Items`/`Total`/`Page`/`PageSize`/`HasMore`) | Service clamps `page>=1`, `1<=pageSize<=200`. Controller already passes `result.Data` through → JSON `{ items, page, pageSize, total, hasMore }` via default camelCase. Single `CountAsync` + paged `Select` query. |
 
 ### Phase 1 build/test status
 - All 99 tests pass after each step.
