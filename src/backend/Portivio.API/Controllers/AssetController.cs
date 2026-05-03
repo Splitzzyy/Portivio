@@ -93,6 +93,18 @@ namespace Portivio.API.Controllers
                 onFailure: e => StatusCode(e.StatusCode ?? 400, new { success = false, message = e.Message, errors = e.Errors }));
         }
 
+        [HttpPost("stock")]
+        public async Task<IActionResult> AddStock(Guid profileId, [FromBody] AddStockRequest req, CancellationToken ct)
+        {
+            if (!TryGetUserId(out var userId))
+                return Unauthorized(new { success = false, message = "User not authenticated" });
+
+            var result = await _assets.AddStockAsync(userId, profileId, req, ct);
+            return result.Match(
+                onSuccess: () => StatusCode(201, result.Data),
+                onFailure: e => StatusCode(e.StatusCode ?? 400, new { success = false, message = e.Message, errors = e.Errors }));
+        }
+
         private bool TryGetUserId(out Guid userId)
         {
             var claim = User.FindFirst(ClaimTypes.NameIdentifier);

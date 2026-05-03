@@ -67,6 +67,18 @@ namespace Portivio.Application.DTOs.Asset
         public string? Notes { get; set; }
     }
 
+    public class AddStockRequest
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Symbol { get; set; } = string.Empty;
+        public string Exchange { get; set; } = "NSE";
+        public string? Isin { get; set; }
+        public decimal Quantity { get; set; }
+        public decimal Price { get; set; }
+        public DateTime Date { get; set; }
+        public string? Notes { get; set; }
+    }
+
     public class AssetIngestResponse
     {
         public Guid InstrumentId { get; set; }

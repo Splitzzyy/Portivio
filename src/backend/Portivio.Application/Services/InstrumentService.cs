@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Portivio.Application.DTOs.Instrument;
 using Portivio.Application.Results;
 using Portivio.Domain.Entities;
+using Portivio.Domain.Enums;
 using Portivio.Infrastructure.Data;
 
 namespace Portivio.Application.Services
@@ -128,18 +129,8 @@ namespace Portivio.Application.Services
                 if (assetTypeId.HasValue)
                     query = query.Where(i => i.AssetTypeId == assetTypeId.Value);
 
-                var instruments = await query
-                    .OrderBy(i => i.Name)
-                    .Select(i => new InstrumentResponse
-                    {
-                        Id = i.Id,
-                        AssetTypeId = i.AssetTypeId,
-                        AssetTypeName = i.AssetType.Name,
-                        Name = i.Name,
-                        Symbol = i.Symbol,
-                        Currency = i.Currency
-                    })
-                    .ToListAsync();
+                var raw = await query.OrderBy(i => i.Name).ToListAsync();
+                var instruments = raw.Select(MapToResponse).ToList();
 
                 return Result<List<InstrumentResponse>>.Success(instruments, "Instruments retrieved successfully");
             }
@@ -164,15 +155,7 @@ namespace Portivio.Application.Services
                     return Result<InstrumentResponse>.NotFound("Instrument not found");
                 }
 
-                return Result<InstrumentResponse>.Success(new InstrumentResponse
-                {
-                    Id = instrument.Id,
-                    AssetTypeId = instrument.AssetTypeId,
-                    AssetTypeName = instrument.AssetType.Name,
-                    Name = instrument.Name,
-                    Symbol = instrument.Symbol,
-                    Currency = instrument.Currency
-                }, "Instrument retrieved successfully");
+                return Result<InstrumentResponse>.Success(MapToResponse(instrument), "Instrument retrieved successfully");
             }
             catch (Exception ex)
             {
@@ -218,7 +201,12 @@ namespace Portivio.Application.Services
                     AssetTypeId = request.AssetTypeId,
                     Name = request.Name.Trim(),
                     Symbol = request.Symbol.ToUpperInvariant(),
-                    Currency = request.Currency.ToUpperInvariant()
+                    Currency = request.Currency.ToUpperInvariant(),
+                    Category = request.Category,
+                    Isin = request.Isin?.Trim().ToUpperInvariant(),
+                    PriceSource = request.PriceSource,
+                    PriceSourceKey = request.PriceSourceKey?.Trim(),
+                    Metadata = request.Metadata
                 };
 
                 _context.Instruments.Add(instrument);
@@ -227,15 +215,8 @@ namespace Portivio.Application.Services
                 _logger.LogInformation("Instrument created. InstrumentId={InstrumentId} Symbol={Symbol} AssetTypeId={AssetTypeId}",
                     instrument.Id, instrument.Symbol, instrument.AssetTypeId);
 
-                return Result<InstrumentResponse>.Success(new InstrumentResponse
-                {
-                    Id = instrument.Id,
-                    AssetTypeId = instrument.AssetTypeId,
-                    AssetTypeName = assetType.Name,
-                    Name = instrument.Name,
-                    Symbol = instrument.Symbol,
-                    Currency = instrument.Currency
-                }, "Instrument created successfully", 201);
+                instrument.AssetType = assetType;
+                return Result<InstrumentResponse>.Success(MapToResponse(instrument), "Instrument created successfully", 201);
             }
             catch (Exception ex)
             {
@@ -282,20 +263,17 @@ namespace Portivio.Application.Services
                 instrument.Name = request.Name.Trim();
                 instrument.Symbol = request.Symbol.ToUpperInvariant();
                 instrument.Currency = request.Currency.ToUpperInvariant();
+                if (request.Category.HasValue) instrument.Category = request.Category.Value;
+                if (request.Isin != null) instrument.Isin = request.Isin.Trim().ToUpperInvariant();
+                if (request.PriceSource.HasValue) instrument.PriceSource = request.PriceSource.Value;
+                if (request.PriceSourceKey != null) instrument.PriceSourceKey = request.PriceSourceKey.Trim();
+                if (request.Metadata != null) instrument.Metadata = request.Metadata;
 
                 await _context.SaveChangesAsync();
 
                 _logger.LogInformation("Instrument updated. InstrumentId={InstrumentId} Symbol={Symbol}", instrumentId, instrument.Symbol);
 
-                return Result<InstrumentResponse>.Success(new InstrumentResponse
-                {
-                    Id = instrument.Id,
-                    AssetTypeId = instrument.AssetTypeId,
-                    AssetTypeName = instrument.AssetType.Name,
-                    Name = instrument.Name,
-                    Symbol = instrument.Symbol,
-                    Currency = instrument.Currency
-                }, "Instrument updated successfully");
+                return Result<InstrumentResponse>.Success(MapToResponse(instrument), "Instrument updated successfully");
             }
             catch (Exception ex)
             {
@@ -342,5 +320,19 @@ namespace Portivio.Application.Services
                 return Result.InternalServerError($"Error deleting instrument: {ex.Message}");
             }
         }
+
+        private static InstrumentResponse MapToResponse(Instrument i) => new()
+        {
+            Id = i.Id,
+            AssetTypeId = i.AssetTypeId,
+            AssetTypeName = i.AssetType?.Name ?? string.Empty,
+            Name = i.Name,
+            Symbol = i.Symbol,
+            Currency = i.Currency,
+            Category = i.Category,
+            Isin = i.Isin,
+            PriceSource = i.PriceSource,
+            PriceSourceKey = i.PriceSourceKey
+        };
     }
 }

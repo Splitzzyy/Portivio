@@ -17,6 +17,7 @@ namespace Portivio.Application.Services
         Task<Result<AssetIngestResponse>> AddPpfAsync(Guid userId, Guid profileId, AddPpfRequest req, CancellationToken ct = default);
         Task<Result<AssetIngestResponse>> AddPpfContributionAsync(Guid userId, Guid profileId, AddPpfContributionRequest req, CancellationToken ct = default);
         Task<Result<AssetIngestResponse>> AddGoldAsync(Guid userId, Guid profileId, AddGoldRequest req, CancellationToken ct = default);
+        Task<Result<AssetIngestResponse>> AddStockAsync(Guid userId, Guid profileId, AddStockRequest req, CancellationToken ct = default);
     }
 
     public class AssetInstrumentService : IAssetInstrumentService
@@ -366,6 +367,63 @@ namespace Portivio.Application.Services
                 TransactionId = txResult.Data!.Id,
                 Message = "Gold purchase recorded"
             }, "Gold purchase recorded", 201);
+        }
+
+        public async Task<Result<AssetIngestResponse>> AddStockAsync(Guid userId, Guid profileId, AddStockRequest req, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(req.Name))
+                return Result<AssetIngestResponse>.BadRequest("Name is required");
+            if (string.IsNullOrWhiteSpace(req.Symbol))
+                return Result<AssetIngestResponse>.BadRequest("Symbol is required");
+            if (req.Quantity <= 0)
+                return Result<AssetIngestResponse>.BadRequest("Quantity must be greater than zero");
+            if (req.Price <= 0)
+                return Result<AssetIngestResponse>.BadRequest("Price must be greater than zero");
+
+            var assetType = await GetOrCreateAssetTypeAsync("Equity", ct);
+            var exchangeNorm = req.Exchange.Trim().ToUpperInvariant();
+            var symbolNorm = req.Symbol.Trim().ToUpperInvariant();
+            var symbol = $"{exchangeNorm}:{symbolNorm}";
+
+            var instrument = await GetOrCreateInstrumentAsync(
+                name: req.Name.Trim(),
+                symbol: symbol,
+                isin: req.Isin?.Trim().ToUpperInvariant(),
+                currency: "INR",
+                assetTypeId: assetType.Id,
+                category: AssetCategory.Equity,
+                priceSource: PriceSource.AlphaVantage,
+                priceSourceKey: symbolNorm,
+                metadata: JsonDocument.Parse(JsonSerializer.Serialize(new
+                {
+                    exchange = exchangeNorm,
+                    isin = req.Isin?.Trim()
+                })),
+                ct);
+
+            var cmd = new TransactionCommand(
+                ProfileId: profileId,
+                InstrumentId: instrument.Id,
+                Type: TransactionType.Buy,
+                Quantity: req.Quantity,
+                Price: req.Price,
+                Amount: req.Quantity * req.Price,
+                TransactionDateUtc: req.Date,
+                Notes: req.Notes,
+                ClientTxnId: null);
+
+            var txResult = await _ingest.IngestAsync(userId, cmd, TransactionSource.Manual, ct);
+            if (txResult.IsFailure)
+                return txResult.ToFailure<AssetIngestResponse>();
+
+            return Result<AssetIngestResponse>.Success(new AssetIngestResponse
+            {
+                InstrumentId = instrument.Id,
+                InstrumentName = instrument.Name,
+                Symbol = instrument.Symbol,
+                TransactionId = txResult.Data!.Id,
+                Message = "Stock purchase recorded"
+            }, "Stock purchase recorded", 201);
         }
 
         private async Task<AssetType> GetOrCreateAssetTypeAsync(string name, CancellationToken ct)

@@ -1,3 +1,6 @@
+using Portivio.Domain.Enums;
+using System.Text.Json;
+
 namespace Portivio.Application.DTOs.Instrument
 {
     public class CreateAssetTypeRequest
@@ -17,6 +20,11 @@ namespace Portivio.Application.DTOs.Instrument
         public string Name { get; set; } = string.Empty;
         public string Symbol { get; set; } = string.Empty;
         public string Currency { get; set; } = string.Empty;
+        public AssetCategory Category { get; set; }
+        public string? Isin { get; set; }
+        public PriceSource PriceSource { get; set; }
+        public string? PriceSourceKey { get; set; }
+        public JsonDocument? Metadata { get; set; }
     }
 
     public class UpdateInstrumentRequest
@@ -24,6 +32,11 @@ namespace Portivio.Application.DTOs.Instrument
         public string Name { get; set; } = string.Empty;
         public string Symbol { get; set; } = string.Empty;
         public string Currency { get; set; } = string.Empty;
+        public AssetCategory? Category { get; set; }
+        public string? Isin { get; set; }
+        public PriceSource? PriceSource { get; set; }
+        public string? PriceSourceKey { get; set; }
+        public JsonDocument? Metadata { get; set; }
     }
 
     public class InstrumentResponse
@@ -34,5 +47,9 @@ namespace Portivio.Application.DTOs.Instrument
         public string Name { get; set; } = string.Empty;
         public string Symbol { get; set; } = string.Empty;
         public string Currency { get; set; } = string.Empty;
+        public AssetCategory Category { get; set; }
+        public string? Isin { get; set; }
+        public PriceSource PriceSource { get; set; }
+        public string? PriceSourceKey { get; set; }
     }
 }

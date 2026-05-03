@@ -51,7 +51,7 @@
 | 3.3 | `RecurringDepositStrategy` (`AccrualFormula`) + `POST /assets/recurring-deposit` | ✅ Done | Simple interest on accumulated installments. Contribution/Maturity/Withdrawal validation. |
 | 3.4 | `PpfStrategy` (`AccrualFormula`) + `POST /assets/ppf` + `POST /assets/ppf/contributions` | ✅ Done | Annual compound interest from metadata `currentRate`; `FetchCurrentPriceAsync` from PriceHistory (StandardRateService syncs). |
 | 3.5 | `GoldStrategy` (Manual price) + `POST /assets/gold` | ✅ Done | Weight-in-grams as quantity; price per gram; Buy/Sell/Dividend(SGB)/Maturity. |
-| — | `AssetInstrumentService` + `AssetController` | ✅ Done | New `IAssetInstrumentService`/`AssetInstrumentService` in Application. `AssetController` at `api/profiles/{profileId}/assets/{type}` — find-or-create instrument with Category/PriceSource/Metadata + call `IngestAsync`. All 5 asset types + PPF contributions. 16 new tests; 120/120 pass. |
+| — | `AssetInstrumentService` + `AssetController` | ✅ Done | New `IAssetInstrumentService`/`AssetInstrumentService` in Application. `AssetController` at `api/profiles/{profileId}/assets/{type}` — find-or-create instrument with Category/PriceSource/Metadata + call `IngestAsync`. All 6 asset types (stock/MF/FD/RD/PPF/Gold) + PPF contributions. 16 new tests; 120/120 pass. |
 
 ---
 
