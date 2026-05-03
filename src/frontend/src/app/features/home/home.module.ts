@@ -9,6 +9,7 @@ import { HoldingsComponent } from './pages/holdings/holdings.component';
 import { TransactionsComponent } from './pages/transactions/transactions.component';
 import { SipPlansComponent } from './pages/sip-plans/sip-plans.component';
 import { InstrumentsComponent } from './pages/instruments/instruments.component';
+import { AddInvestmentComponent } from './pages/add-investment/add-investment.component';
 
 @NgModule({
   declarations: [
@@ -18,7 +19,8 @@ import { InstrumentsComponent } from './pages/instruments/instruments.component'
     HoldingsComponent,
     TransactionsComponent,
     SipPlansComponent,
-    InstrumentsComponent
+    InstrumentsComponent,
+    AddInvestmentComponent
   ],
   imports: [CommonModule, SharedModule, HomeRoutingModule]
 })

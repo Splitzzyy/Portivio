@@ -1,0 +1,586 @@
+<div class="page-container">
+
+  <!-- PAGE HEADER -->
+  <div class="page-header" style="align-items: flex-end;">
+    <div>
+      <h1 class="page-heading">Add Investment</h1>
+      <p class="page-subtitle">Manually log an investment that's not auto-imported.</p>
+    </div>
+    <div class="profile-pill" (click)="$event.stopPropagation()">
+      <span class="label">Profile</span>
+      <select class="profile-name-select"
+              [(ngModel)]="selectedProfileId"
+              (change)="onProfileChange()"
+              name="profilePill"
+              [ngModelOptions]="{standalone: true}">
+        <option *ngFor="let p of profiles" [value]="p.id">{{ p.name }}</option>
+      </select>
+      <span class="chev"><i class="fas fa-chevron-down"></i></span>
+    </div>
+  </div>
+
+  <!-- STEPPER -->
+  <div class="stepper">
+    <div class="step" [class.active]="step === 1" [class.done]="step > 1">
+      <div class="dot">
+        <ng-container *ngIf="step === 1">1</ng-container>
+        <i *ngIf="step > 1" class="fas fa-check"></i>
+      </div>
+      <span>Asset type<ng-container *ngIf="selectedTypeConfig && step !== 1"> · {{ selectedTypeConfig.name }}</ng-container></span>
+    </div>
+    <div class="bar"></div>
+    <div class="step" [class.active]="step === 2">
+      <div class="dot">2</div>
+      <span>Investment details</span>
+    </div>
+    <div class="bar"></div>
+    <div class="step">
+      <div class="dot">3</div>
+      <span>Review &amp; save</span>
+    </div>
+  </div>
+
+  <!-- ===== STEP 1: Pick Type ===== -->
+  <ng-container *ngIf="step === 1">
+    <div class="section-title">Choose an asset type</div>
+    <div class="asset-grid">
+      <button class="asset-card" *ngFor="let t of assetTypes" (click)="pickType(t)">
+        <div class="icon" [ngClass]="t.cls">
+          <i class="fas" [ngClass]="t.icon"></i>
+        </div>
+        <div>
+          <h3 class="name">{{ t.name }}</h3>
+          <p class="desc">{{ t.desc }}</p>
+        </div>
+        <div class="fields">
+          <span class="field-chip" *ngFor="let f of t.fields">{{ f }}</span>
+        </div>
+      </button>
+    </div>
+
+    <!-- Recent Investments -->
+    <div *ngIf="recentTransactions.length > 0" style="margin-top: 28px;">
+      <div class="section-title">Recent investments</div>
+      <div class="recent-list">
+        <div class="head">
+          <h3>Last {{ recentTransactions.length }} entries</h3>
+          <a routerLink="/dashboard/transactions">View all →</a>
+        </div>
+        <div class="recent-row" *ngFor="let tx of recentTransactions">
+          <div class="ico icon-stocks"><i class="fas fa-chart-line"></i></div>
+          <div>
+            <div class="rname">{{ tx.instrumentSymbol }}</div>
+            <div class="sub">{{ tx.type }} · {{ tx.quantity | number:'1.0-4' }} units</div>
+          </div>
+          <div class="amt">₹{{ tx.amount | number:'1.2-2' }}</div>
+          <div class="date">{{ tx.transactionDate | date:'mediumDate' }}</div>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- ===== STEP 2: Fill Form ===== -->
+  <ng-container *ngIf="step === 2 && selectedTypeConfig">
+    <form class="ai-form" (submit)="$event.preventDefault()">
+      <div class="ai-form-card">
+
+        <!-- Form Card Header -->
+        <div class="form-card-header">
+          <div class="icon" [ngClass]="selectedTypeConfig.cls">
+            <i class="fas" [ngClass]="selectedTypeConfig.icon"></i>
+          </div>
+          <div class="meta">
+            <h2>{{ selectedTypeConfig.name }}</h2>
+            <p>{{ selectedTypeConfig.desc }}</p>
+          </div>
+          <button class="change-btn" type="button" (click)="changeType()">
+            <i class="fas fa-arrow-left"></i> Change
+          </button>
+        </div>
+
+        <!-- ===== STOCK FORM ===== -->
+        <div *ngIf="selectedType === 'STOCK'">
+          <div class="ai-form-grid">
+
+            <div class="ai-field full" [class.invalid]="errors['name'] || errors['symbol']">
+              <label>Stock <span class="req">*</span></label>
+              <div class="typeahead" (click)="$event.stopPropagation()">
+                <input type="text"
+                       [value]="stockQuery"
+                       (input)="stockQuery = $any($event.target).value; stockDropdownOpen = true"
+                       (focus)="stockDropdownOpen = true"
+                       (keydown.enter)="$event.preventDefault()"
+                       placeholder="Search existing instruments by symbol or name…" />
+                <div class="results" *ngIf="stockDropdownOpen && filteredStocks.length > 0">
+                  <div class="row" *ngFor="let inst of filteredStocks" (mousedown)="selectStock(inst)">
+                    <div>
+                      <div class="symbol">{{ inst.symbol }}</div>
+                      <div class="iname">{{ inst.name }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="hint">Or fill name &amp; symbol manually below</div>
+            </div>
+
+            <div class="ai-field" [class.invalid]="errors['name']">
+              <label>Name <span class="req">*</span></label>
+              <input type="text" [(ngModel)]="stockForm.name" name="stkName" placeholder="e.g. Tata Consultancy Services" />
+              <div class="err" *ngIf="errors['name']"><i class="fas fa-exclamation-circle"></i> {{ errors['name'] }}</div>
+            </div>
+
+            <div class="ai-field" [class.invalid]="errors['symbol']">
+              <label>Symbol <span class="req">*</span></label>
+              <input type="text" [(ngModel)]="stockForm.symbol" name="stkSymbol" placeholder="e.g. TCS" />
+              <div class="err" *ngIf="errors['symbol']"><i class="fas fa-exclamation-circle"></i> {{ errors['symbol'] }}</div>
+            </div>
+
+            <div class="ai-field">
+              <label>Exchange</label>
+              <select [(ngModel)]="stockForm.exchange" name="stkExch">
+                <option>NSE</option>
+                <option>BSE</option>
+              </select>
+            </div>
+
+            <div class="ai-field">
+              <label>ISIN</label>
+              <input type="text" [(ngModel)]="stockForm.isin" name="stkIsin" placeholder="Optional" />
+            </div>
+
+            <div class="ai-field" [class.invalid]="errors['quantity']">
+              <label>Quantity <span class="req">*</span></label>
+              <div class="input-affix">
+                <input class="has-suffix" type="text" inputmode="decimal" [(ngModel)]="stockForm.quantity" name="stkQty" placeholder="0" />
+                <span class="suffix">shares</span>
+              </div>
+              <div class="err" *ngIf="errors['quantity']"><i class="fas fa-exclamation-circle"></i> {{ errors['quantity'] }}</div>
+            </div>
+
+            <div class="ai-field" [class.invalid]="errors['price']">
+              <label>Buy price (per share) <span class="req">*</span></label>
+              <div class="input-affix">
+                <span class="prefix">₹</span>
+                <input class="has-prefix" type="text" inputmode="decimal" [(ngModel)]="stockForm.price" name="stkPrice" placeholder="0.00" />
+              </div>
+              <div class="err" *ngIf="errors['price']"><i class="fas fa-exclamation-circle"></i> {{ errors['price'] }}</div>
+            </div>
+
+            <div class="ai-field" [class.invalid]="errors['date']">
+              <label>Buy date <span class="req">*</span></label>
+              <input type="date" [(ngModel)]="stockForm.date" name="stkDate" />
+              <div class="err" *ngIf="errors['date']"><i class="fas fa-exclamation-circle"></i> {{ errors['date'] }}</div>
+            </div>
+
+            <div class="ai-field">
+              <label>Brokerage / charges</label>
+              <div class="input-affix">
+                <span class="prefix">₹</span>
+                <input class="has-prefix" type="text" inputmode="decimal" [(ngModel)]="stockForm.charges" name="stkCharges" placeholder="0" />
+              </div>
+              <div class="hint">Optional — included in invested amount</div>
+            </div>
+
+            <div class="ai-field full">
+              <label>Notes</label>
+              <input type="text" [(ngModel)]="stockForm.notes" name="stkNotes" placeholder="Strategy, broker reference, etc." />
+            </div>
+          </div>
+
+          <div class="summary-card">
+            <div>
+              <div class="label">Invested amount</div>
+              <div class="value">{{ formatINR(stockTotal) }}</div>
+            </div>
+            <div class="divider"></div>
+            <div class="grow">
+              <div>
+                <div class="label">Quantity</div>
+                <div class="small">{{ stockForm.quantity ? (stockForm.quantity + ' sh') : '—' }}</div>
+              </div>
+              <div>
+                <div class="label">Avg cost</div>
+                <div class="small">{{ stockAvgCost > 0 ? formatINR(stockAvgCost) : '—' }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== MF FORM ===== -->
+        <div *ngIf="selectedType === 'MF'">
+          <div class="ai-form-grid">
+
+            <div class="ai-field full">
+              <label>Fund <span class="req">*</span></label>
+              <div class="typeahead" (click)="$event.stopPropagation()">
+                <input type="text"
+                       [value]="mfQuery"
+                       (input)="mfQuery = $any($event.target).value; mfDropdownOpen = true"
+                       (focus)="mfDropdownOpen = true"
+                       (keydown.enter)="$event.preventDefault()"
+                       placeholder="Search existing schemes by name…" />
+                <div class="results" *ngIf="mfDropdownOpen && filteredMfs.length > 0">
+                  <div class="row" *ngFor="let inst of filteredMfs" (mousedown)="selectMf(inst)">
+                    <div>
+                      <div class="symbol">{{ inst.symbol }}</div>
+                      <div class="iname">{{ inst.name }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="hint">Or fill scheme name &amp; code manually below</div>
+            </div>
+
+            <div class="ai-field full" [class.invalid]="errors['schemeName']">
+              <label>Scheme name <span class="req">*</span></label>
+              <input type="text" [(ngModel)]="mfForm.schemeName" name="mfName" placeholder="e.g. Parag Parikh Flexi Cap Fund – Direct Growth" />
+              <div class="err" *ngIf="errors['schemeName']"><i class="fas fa-exclamation-circle"></i> {{ errors['schemeName'] }}</div>
+            </div>
+
+            <div class="ai-field" [class.invalid]="errors['schemeCode']">
+              <label>Scheme code <span class="req">*</span></label>
+              <input type="text" [(ngModel)]="mfForm.schemeCode" name="mfCode" placeholder="e.g. PPFAS-FLEXI" />
+              <div class="err" *ngIf="errors['schemeCode']"><i class="fas fa-exclamation-circle"></i> {{ errors['schemeCode'] }}</div>
+            </div>
+
+            <div class="ai-field">
+              <label>ISIN</label>
+              <input type="text" [(ngModel)]="mfForm.isin" name="mfIsin" placeholder="Optional" />
+            </div>
+
+            <div class="ai-field">
+              <label>Mode <span class="req">*</span></label>
+              <div class="segmented">
+                <button type="button" [class.on]="mfForm.mode === 'Lumpsum'" (click)="mfForm.mode = 'Lumpsum'">Lumpsum</button>
+                <button type="button" [class.on]="mfForm.mode === 'SIP'" (click)="mfForm.mode = 'SIP'">SIP</button>
+              </div>
+            </div>
+
+            <div class="ai-field" [class.invalid]="errors['nav']">
+              <label>NAV (per unit) <span class="req">*</span></label>
+              <div class="input-affix">
+                <span class="prefix">₹</span>
+                <input class="has-prefix" type="text" inputmode="decimal" [(ngModel)]="mfForm.nav" name="mfNav" placeholder="0.00" />
+              </div>
+              <div class="err" *ngIf="errors['nav']"><i class="fas fa-exclamation-circle"></i> {{ errors['nav'] }}</div>
+            </div>
+
+            <div class="ai-field" [class.invalid]="errors['units']">
+              <label>Units <span class="req">*</span></label>
+              <div class="input-affix">
+                <input class="has-suffix" type="text" inputmode="decimal" [(ngModel)]="mfForm.units" name="mfUnits" placeholder="0.000" />
+                <span class="suffix">units</span>
+              </div>
+              <div class="err" *ngIf="errors['units']"><i class="fas fa-exclamation-circle"></i> {{ errors['units'] }}</div>
+            </div>
+
+            <div class="ai-field" [class.invalid]="errors['date']">
+              <label>{{ mfForm.mode === 'SIP' ? 'SIP date' : 'Purchase date' }} <span class="req">*</span></label>
+              <input type="date" [(ngModel)]="mfForm.date" name="mfDate" />
+              <div class="err" *ngIf="errors['date']"><i class="fas fa-exclamation-circle"></i> {{ errors['date'] }}</div>
+            </div>
+
+            <div class="ai-field full">
+              <label>Folio number</label>
+              <input type="text" [(ngModel)]="mfForm.folio" name="mfFolio" placeholder="e.g. 1234567890 / 12" />
+              <div class="hint">Optional — useful for reconciliation</div>
+            </div>
+          </div>
+
+          <div class="summary-card">
+            <div>
+              <div class="label">Invested amount</div>
+              <div class="value">{{ formatINR(mfTotal) }}</div>
+            </div>
+            <div class="divider"></div>
+            <div class="grow">
+              <div>
+                <div class="label">Mode</div>
+                <div class="small">{{ mfForm.mode }}</div>
+              </div>
+              <div>
+                <div class="label">Units × NAV</div>
+                <div class="small">{{ mfForm.units && mfForm.nav ? (mfForm.units + ' × ₹' + mfForm.nav) : '—' }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== GOLD FORM ===== -->
+        <div *ngIf="selectedType === 'GOLD'">
+          <div class="ai-form-grid">
+
+            <div class="ai-field full">
+              <label>Gold type <span class="req">*</span></label>
+              <div class="segmented">
+                <button type="button" [class.on]="goldForm.subtype === 'Digital'" (click)="goldForm.subtype = 'Digital'">Digital</button>
+                <button type="button" [class.on]="goldForm.subtype === 'Physical'" (click)="goldForm.subtype = 'Physical'">Physical</button>
+                <button type="button" [class.on]="goldForm.subtype === 'SGB'" (click)="goldForm.subtype = 'SGB'">SGB</button>
+              </div>
+            </div>
+
+            <div class="ai-field" [class.invalid]="errors['amount']">
+              <label>Amount paid <span class="req">*</span></label>
+              <div class="input-affix">
+                <span class="prefix">₹</span>
+                <input class="has-prefix" type="text" inputmode="decimal" [(ngModel)]="goldForm.amount" name="goldAmt" placeholder="0" />
+              </div>
+              <div class="err" *ngIf="errors['amount']"><i class="fas fa-exclamation-circle"></i> {{ errors['amount'] }}</div>
+            </div>
+
+            <div class="ai-field" [class.invalid]="errors['grams']">
+              <label>Quantity <span class="req">*</span></label>
+              <div class="input-affix">
+                <input class="has-suffix" type="text" inputmode="decimal" [(ngModel)]="goldForm.grams" name="goldGrams" placeholder="0.000" />
+                <span class="suffix">grams</span>
+              </div>
+              <div class="err" *ngIf="errors['grams']"><i class="fas fa-exclamation-circle"></i> {{ errors['grams'] }}</div>
+            </div>
+
+            <div class="ai-field">
+              <label>Purity</label>
+              <select [(ngModel)]="goldForm.purity" name="goldPurity">
+                <option value="24K">24K (999)</option>
+                <option value="22K">22K (916)</option>
+                <option value="18K">18K (750)</option>
+              </select>
+            </div>
+
+            <div class="ai-field" [class.invalid]="errors['date']">
+              <label>Purchase date <span class="req">*</span></label>
+              <input type="date" [(ngModel)]="goldForm.date" name="goldDate" />
+              <div class="err" *ngIf="errors['date']"><i class="fas fa-exclamation-circle"></i> {{ errors['date'] }}</div>
+            </div>
+
+            <div class="ai-field full">
+              <label>Source</label>
+              <input type="text" [(ngModel)]="goldForm.source" name="goldSrc" placeholder="e.g. MMTC-PAMP, Tanishq, SGB Series II" />
+              <div class="hint">Vendor / issuer</div>
+            </div>
+          </div>
+
+          <div class="summary-card">
+            <div>
+              <div class="label">Invested amount</div>
+              <div class="value">{{ formatINR(+goldForm.amount || 0) }}</div>
+            </div>
+            <div class="divider"></div>
+            <div class="grow">
+              <div>
+                <div class="label">Type</div>
+                <div class="small">{{ goldForm.subtype }}</div>
+              </div>
+              <div>
+                <div class="label">Rate / gram</div>
+                <div class="small">{{ goldRatePerGram > 0 ? formatINR(goldRatePerGram) : '—' }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== PPF FORM ===== -->
+        <div *ngIf="selectedType === 'PPF'">
+          <div class="ai-form-grid">
+
+            <div class="ai-field" [class.invalid]="errors['accountNo']">
+              <label>PPF account number <span class="req">*</span></label>
+              <input type="text" [(ngModel)]="ppfForm.accountNo" name="ppfAccNo" placeholder="e.g. ****8821" />
+              <div class="err" *ngIf="errors['accountNo']"><i class="fas fa-exclamation-circle"></i> {{ errors['accountNo'] }}</div>
+            </div>
+
+            <div class="ai-field" [class.invalid]="errors['openedOn']">
+              <label>Account opened on <span class="req">*</span></label>
+              <input type="date" [(ngModel)]="ppfForm.openedOn" name="ppfOpenedOn" />
+              <div class="err" *ngIf="errors['openedOn']"><i class="fas fa-exclamation-circle"></i> {{ errors['openedOn'] }}</div>
+            </div>
+
+            <div class="ai-field" [class.invalid]="errors['currentRatePercent']">
+              <label>Current interest rate <span class="req">*</span></label>
+              <div class="input-affix">
+                <input class="has-suffix" type="text" inputmode="decimal" [(ngModel)]="ppfForm.currentRatePercent" name="ppfRate" placeholder="7.1" />
+                <span class="suffix">% p.a.</span>
+              </div>
+              <div class="err" *ngIf="errors['currentRatePercent']"><i class="fas fa-exclamation-circle"></i> {{ errors['currentRatePercent'] }}</div>
+            </div>
+
+            <div class="ai-field" [class.invalid]="errors['amount']">
+              <label>Deposit amount <span class="req">*</span></label>
+              <div class="input-affix">
+                <span class="prefix">₹</span>
+                <input class="has-prefix" type="text" inputmode="decimal" [(ngModel)]="ppfForm.amount" name="ppfAmt" placeholder="0" />
+              </div>
+              <div class="hint">Annual cap ₹1,50,000 across all PPF accounts</div>
+              <div class="err" *ngIf="errors['amount']"><i class="fas fa-exclamation-circle"></i> {{ errors['amount'] }}</div>
+            </div>
+
+            <div class="ai-field" [class.invalid]="errors['date']">
+              <label>Deposit date <span class="req">*</span></label>
+              <input type="date" [(ngModel)]="ppfForm.date" name="ppfDate" />
+              <div class="err" *ngIf="errors['date']"><i class="fas fa-exclamation-circle"></i> {{ errors['date'] }}</div>
+            </div>
+
+            <div class="ai-field">
+              <label>Financial year</label>
+              <input type="text" disabled [value]="deriveFY(ppfForm.date)" />
+              <div class="hint">Auto-derived from date</div>
+            </div>
+
+            <div class="ai-field full">
+              <label>Notes</label>
+              <input type="text" [(ngModel)]="ppfForm.notes" name="ppfNotes" placeholder="e.g. Quarterly contribution" />
+            </div>
+          </div>
+
+          <div class="summary-card">
+            <div>
+              <div class="label">Deposit amount</div>
+              <div class="value">{{ formatINR(+ppfForm.amount || 0) }}</div>
+            </div>
+            <div class="divider"></div>
+            <div class="grow">
+              <div>
+                <div class="label">FY</div>
+                <div class="small">{{ deriveFY(ppfForm.date) }}</div>
+              </div>
+              <div>
+                <div class="label">Tenure</div>
+                <div class="small">15 years (lock-in)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== FD / RD FORM ===== -->
+        <div *ngIf="selectedType === 'FDRD'">
+          <div class="ai-form-grid">
+
+            <div class="ai-field full">
+              <label>Type <span class="req">*</span></label>
+              <div class="segmented">
+                <button type="button" [class.on]="fdRdForm.subtype === 'FD'" (click)="fdRdForm.subtype = 'FD'">FD</button>
+                <button type="button" [class.on]="fdRdForm.subtype === 'RD'" (click)="fdRdForm.subtype = 'RD'">RD</button>
+              </div>
+            </div>
+
+            <div class="ai-field" [class.invalid]="errors['amount']">
+              <label>{{ fdRdForm.subtype === 'RD' ? 'Monthly installment' : 'Principal amount' }} <span class="req">*</span></label>
+              <div class="input-affix">
+                <span class="prefix">₹</span>
+                <input class="has-prefix" type="text" inputmode="decimal" [(ngModel)]="fdRdForm.amount" name="fdAmt" placeholder="0" />
+              </div>
+              <div class="err" *ngIf="errors['amount']"><i class="fas fa-exclamation-circle"></i> {{ errors['amount'] }}</div>
+            </div>
+
+            <div class="ai-field" [class.invalid]="errors['bank']">
+              <label>Bank <span class="req">*</span></label>
+              <select [(ngModel)]="fdRdForm.bank" name="fdBank">
+                <option value="">Select bank</option>
+                <option *ngFor="let b of banks" [value]="b">{{ b }}</option>
+                <option value="Other">Other…</option>
+              </select>
+              <div class="err" *ngIf="errors['bank']"><i class="fas fa-exclamation-circle"></i> {{ errors['bank'] }}</div>
+            </div>
+
+            <div class="ai-field" [class.invalid]="errors['ratePercent']">
+              <label>Interest rate <span class="req">*</span></label>
+              <div class="input-affix">
+                <input class="has-suffix" type="text" inputmode="decimal" [(ngModel)]="fdRdForm.ratePercent" name="fdRate" placeholder="0.00" />
+                <span class="suffix">% p.a.</span>
+              </div>
+              <div class="err" *ngIf="errors['ratePercent']"><i class="fas fa-exclamation-circle"></i> {{ errors['ratePercent'] }}</div>
+            </div>
+
+            <div class="ai-field" *ngIf="fdRdForm.subtype === 'FD'">
+              <label>Compounding</label>
+              <select [(ngModel)]="fdRdForm.compounding" name="fdComp">
+                <option>Monthly</option>
+                <option>Quarterly</option>
+                <option>Half-yearly</option>
+                <option>Yearly</option>
+                <option>At maturity</option>
+              </select>
+            </div>
+
+            <div class="ai-field" *ngIf="fdRdForm.subtype === 'RD'" [class.invalid]="errors['tenureMonths']">
+              <label>Tenure <span class="req">*</span></label>
+              <div class="input-affix">
+                <input class="has-suffix" type="text" inputmode="numeric" [(ngModel)]="fdRdForm.tenureMonths" name="fdTenure" placeholder="0" />
+                <span class="suffix">months</span>
+              </div>
+              <div class="err" *ngIf="errors['tenureMonths']"><i class="fas fa-exclamation-circle"></i> {{ errors['tenureMonths'] }}</div>
+            </div>
+
+            <div class="ai-field" [class.invalid]="errors['startDate']">
+              <label>Start date <span class="req">*</span></label>
+              <input type="date" [(ngModel)]="fdRdForm.startDate" name="fdStart" />
+              <div class="err" *ngIf="errors['startDate']"><i class="fas fa-exclamation-circle"></i> {{ errors['startDate'] }}</div>
+            </div>
+
+            <div class="ai-field" *ngIf="fdRdForm.subtype === 'FD'" [class.invalid]="errors['maturityDate']">
+              <label>Maturity date <span class="req">*</span></label>
+              <input type="date" [(ngModel)]="fdRdForm.maturityDate" name="fdMaturity" />
+              <div class="err" *ngIf="errors['maturityDate']"><i class="fas fa-exclamation-circle"></i> {{ errors['maturityDate'] }}</div>
+            </div>
+
+            <div class="ai-field full">
+              <label>Account / FD number</label>
+              <input type="text" [(ngModel)]="fdRdForm.accountNo" name="fdAccNo" placeholder="e.g. 0021-FD-887261" />
+              <div class="hint">Optional</div>
+            </div>
+
+            <div class="ai-field full">
+              <label>Notes</label>
+              <input type="text" [(ngModel)]="fdRdForm.notes" name="fdNotes" placeholder="Any additional info" />
+            </div>
+          </div>
+
+          <div class="summary-card">
+            <div>
+              <div class="label">{{ fdRdForm.subtype === 'RD' ? 'Total deposited at maturity' : 'Maturity value' }}</div>
+              <div class="value">{{ fdMaturityValue > 0 ? formatINR(fdMaturityValue) : '—' }}</div>
+            </div>
+            <div class="divider"></div>
+            <div class="grow">
+              <div>
+                <div class="label">{{ fdRdForm.subtype === 'RD' ? 'Installment' : 'Principal' }}</div>
+                <div class="small">{{ fdRdForm.amount ? formatINR(+fdRdForm.amount) : '—' }}</div>
+              </div>
+              <div>
+                <div class="label">Tenure</div>
+                <div class="small">
+                  <ng-container *ngIf="fdRdForm.subtype === 'RD'">{{ fdRdForm.tenureMonths ? (fdRdForm.tenureMonths + ' mo') : '—' }}</ng-container>
+                  <ng-container *ngIf="fdRdForm.subtype !== 'RD'">{{ fdTenureYears > 0 ? (fdTenureYears.toFixed(1) + ' yr') : '—' }}</ng-container>
+                </div>
+              </div>
+              <div>
+                <div class="label">Rate</div>
+                <div class="small">{{ fdRdForm.ratePercent ? (fdRdForm.ratePercent + '% p.a.') : '—' }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FORM ACTIONS -->
+        <div class="ai-form-actions">
+          <div class="left">
+            <i class="fas fa-shield-halved" style="color: #10b981;"></i>
+            Saved to your profile only — no broker connection needed.
+          </div>
+          <div class="right">
+            <button class="btn btn-secondary" type="button" (click)="changeType()">Cancel</button>
+            <button class="btn btn-ghost" type="button" (click)="submit(true)" [disabled]="saving">
+              Save &amp; add another
+            </button>
+            <button class="btn btn-primary" type="button" (click)="submit(false)" [disabled]="saving">
+              <i class="fas fa-spinner fa-spin" *ngIf="saving"></i>
+              <i class="fas fa-check" *ngIf="!saving"></i>
+              {{ saving ? 'Saving…' : 'Save investment' }}
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </form>
+  </ng-container>
+
+</div>

@@ -32,6 +32,12 @@
           </a>
         </li>
         <li class="nav-item">
+          <a routerLink="/dashboard/add-investment" routerLinkActive="active" class="nav-link">
+            <i class="fas fa-plus-circle"></i>
+            <span *ngIf="sidebarOpen">Add Investment</span>
+          </a>
+        </li>
+        <li class="nav-item">
           <a routerLink="/dashboard/transactions" routerLinkActive="active" class="nav-link">
             <i class="fas fa-exchange-alt"></i>
             <span *ngIf="sidebarOpen">Transactions</span>

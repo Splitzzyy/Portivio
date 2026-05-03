@@ -234,3 +234,77 @@ export interface HomeResponse {
   summary: PortfolioSummary;
   profiles: HomeProfile[];
 }
+
+// ---------- Asset Ingestion ----------
+export interface AddStockRequest {
+  name: string;
+  symbol: string;
+  exchange: string;
+  isin?: string;
+  quantity: number;
+  price: number;
+  date: string;
+  notes?: string;
+}
+
+export interface AddMutualFundRequest {
+  schemeName: string;
+  schemeCode: string;
+  isin?: string;
+  plan?: string;
+  option?: string;
+  units: number;
+  navPerUnit: number;
+  date: string;
+  notes?: string;
+}
+
+export interface AddGoldRequest {
+  form: string;
+  purity: string;
+  weightGrams: number;
+  ratePerGram: number;
+  makingChargesInr: number;
+  date: string;
+  notes?: string;
+}
+
+export interface AddPpfRequest {
+  accountNo: string;
+  openedOn: string;
+  currentRatePercent: number;
+  initialContribution: number;
+  contributionDate: string;
+  notes?: string;
+}
+
+export interface AddFixedDepositRequest {
+  bank: string;
+  accountNo: string;
+  principal: number;
+  ratePercent: number;
+  compounding: string;
+  payoutFrequency: string;
+  startDate: string;
+  maturityDate: string;
+  prematurePenaltyPct: number;
+  notes?: string;
+}
+
+export interface AddRecurringDepositRequest {
+  bank: string;
+  accountNo: string;
+  monthlyAmount: number;
+  ratePercent: number;
+  startDate: string;
+  tenureMonths: number;
+  notes?: string;
+}
+
+export interface AssetIngestResponse {
+  instrumentId: string;
+  instrumentName: string;
+  symbol: string;
+  transactionId: string;
+  message: string;
+}
