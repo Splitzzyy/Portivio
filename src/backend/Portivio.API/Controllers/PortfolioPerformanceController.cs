@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.RateLimiting;
 using Portivio.Application.DTOs.PortfolioPerformance;
 using Portivio.Application.Results;
 using Portivio.Application.Services;
-using System.Security.Claims;
 
 namespace Portivio.API.Controllers
 {
@@ -12,7 +11,7 @@ namespace Portivio.API.Controllers
     [Authorize]
     [EnableRateLimiting("per-user")]
     [Route("api/profiles/{profileId:guid}/performance")]
-    public class PortfolioPerformanceController : ControllerBase
+    public class PortfolioPerformanceController : PortivioControllerBase
     {
         private readonly IPortfolioPerformanceService _performanceService;
 
@@ -24,10 +23,7 @@ namespace Portivio.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetPerformanceHistory(Guid profileId, [FromQuery] int days = 90)
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-                return Unauthorized(new { success = false, message = "User not authenticated" });
-
+            if (!TryGetCurrentUserId(out var userId)) return UserNotAuthenticated();
             var result = await _performanceService.GetPerformanceHistoryAsync(userId, profileId, days);
             return result.Match(
                 onSuccess: () => Ok(result.Data),
@@ -38,10 +34,7 @@ namespace Portivio.API.Controllers
         [HttpGet("latest")]
         public async Task<IActionResult> GetLatestPerformance(Guid profileId)
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-                return Unauthorized(new { success = false, message = "User not authenticated" });
-
+            if (!TryGetCurrentUserId(out var userId)) return UserNotAuthenticated();
             var result = await _performanceService.GetLatestPerformanceAsync(userId, profileId);
             return result.Match(
                 onSuccess: () => Ok(result.Data),
@@ -52,10 +45,7 @@ namespace Portivio.API.Controllers
         [HttpPost("snapshot")]
         public async Task<IActionResult> RecordSnapshot(Guid profileId, [FromBody] RecordSnapshotRequest? request = null)
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-                return Unauthorized(new { success = false, message = "User not authenticated" });
-
+            if (!TryGetCurrentUserId(out var userId)) return UserNotAuthenticated();
             var result = await _performanceService.RecordSnapshotAsync(userId, profileId, request);
             return result.Match(
                 onSuccess: () => Ok(result.Data),

@@ -5,7 +5,6 @@ using Portivio.API.Services;
 using Portivio.Application.DTOs.Auth;
 using Portivio.Application.Results;
 using Portivio.Application.Services;
-using System.Security.Claims;
 
 namespace Portivio.API.Controllers
 {
@@ -14,7 +13,7 @@ namespace Portivio.API.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Produces("application/json")]
-    public class AuthController : ControllerBase
+    public class AuthController : PortivioControllerBase
     {
         private readonly IAuthService _authService;
         private readonly IAuthHttpContextService _authHttpContextService;
@@ -171,12 +170,9 @@ namespace Portivio.API.Controllers
         /// </summary>
         [HttpPost("logout")]
         [Authorize]
-        public async Task<ActionResult> Logout()
+        public async Task<IActionResult> Logout()
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-                return Unauthorized(new { success = false, message = "User not authenticated" });
+            if (!TryGetCurrentUserId(out var userId)) return UserNotAuthenticated();
 
             var result = await _authService.LogoutAsync(userId);
 

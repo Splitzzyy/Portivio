@@ -5,7 +5,6 @@ using Portivio.Application.DTOs.Transaction;
 using Portivio.Application.Results;
 using Portivio.Application.Services;
 using Portivio.Domain.Enums;
-using System.Security.Claims;
 
 namespace Portivio.API.Controllers
 {
@@ -13,7 +12,7 @@ namespace Portivio.API.Controllers
     [Authorize]
     [EnableRateLimiting("per-user")]
     [Route("api/profiles/{profileId:guid}/transactions")]
-    public class TransactionController : ControllerBase
+    public class TransactionController : PortivioControllerBase
     {
         private readonly ITransactionService _transactionService;
         private readonly ITransactionIngestService _ingestService;
@@ -27,10 +26,7 @@ namespace Portivio.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetTransactions(Guid profileId, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-                return Unauthorized(new { success = false, message = "User not authenticated" });
-
+            if (!TryGetCurrentUserId(out var userId)) return UserNotAuthenticated();
             var result = await _transactionService.GetTransactionsAsync(userId, profileId, page, pageSize);
             return result.Match(
                 onSuccess: () => Ok(result.Data),
@@ -41,9 +37,7 @@ namespace Portivio.API.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateTransaction(Guid profileId, [FromBody] CreateTransactionRequest request, CancellationToken ct)
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-                return Unauthorized(new { success = false, message = "User not authenticated" });
+            if (!TryGetCurrentUserId(out var userId)) return UserNotAuthenticated();
 
             var cmd = new TransactionCommand(
                 ProfileId: profileId,
@@ -66,10 +60,7 @@ namespace Portivio.API.Controllers
         [HttpPut("{txId:guid}")]
         public async Task<IActionResult> UpdateTransaction(Guid profileId, Guid txId, [FromBody] UpdateTransactionRequest request)
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-                return Unauthorized(new { success = false, message = "User not authenticated" });
-
+            if (!TryGetCurrentUserId(out var userId)) return UserNotAuthenticated();
             var result = await _transactionService.UpdateTransactionAsync(userId, profileId, txId, request);
             return result.Match(
                 onSuccess: () => Ok(result.Data),
@@ -80,10 +71,7 @@ namespace Portivio.API.Controllers
         [HttpDelete("{txId:guid}")]
         public async Task<IActionResult> DeleteTransaction(Guid profileId, Guid txId)
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-                return Unauthorized(new { success = false, message = "User not authenticated" });
-
+            if (!TryGetCurrentUserId(out var userId)) return UserNotAuthenticated();
             var result = await _transactionService.DeleteTransactionAsync(userId, profileId, txId);
             return result.Match<IActionResult>(
                 onSuccess: () => NoContent(),
