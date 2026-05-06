@@ -29,6 +29,39 @@
   margin-top: 1rem;
 }
 
+.resend-verification {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  background: $auth-bg;
+  border-radius: $auth-radius-sm;
+  border: 1px solid $auth-border;
+  margin-top: 16px;
+
+  .email-display {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    color: $auth-text-soft;
+
+    strong {
+      color: $auth-text;
+      word-break: break-all;
+      margin-left: 8px;
+    }
+  }
+}
+
+.spinner-inline {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba($auth-white, 0.3);
+  border-top-color: $auth-white;
+  border-radius: 50%;
+  animation: auth-spin 0.7s linear infinite;
+}
+
 .mt-4 {
   margin-top: 1.5rem;
 }

@@ -14,9 +14,13 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
   verified = false;
   tokenValid = true;
   errorMessage: string | null = null;
+  successMessage: string | null = null;
   redirectCountdown = 3;
   email = '';
   token = '';
+
+  showResend = false;
+  resendLoading = false;
 
   private destroy$ = new Subject<void>();
   private redirectTimerId: ReturnType<typeof setInterval> | null = null;
@@ -57,15 +61,57 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
         next: (response) => {
           this.loading = false;
           if (response.success) {
-            this.verified = true;
-            this.startCountdown();
+            this.handleSuccess();
           } else {
             this.errorMessage = response.message || 'Verification failed.';
           }
         },
         error: (error) => {
           this.loading = false;
-          this.errorMessage = error?.error?.message || 'Verification failed.';
+
+          if (error.status === 400) {
+            if (this.isAlreadyVerifiedError(error)) {
+              this.handleSuccess();
+            } else {
+              this.errorMessage = 'Invalid or expired verification link.';
+              this.showResend = true;
+            }
+          } else if (error.status === 404) {
+            this.errorMessage = error?.error?.message || 'Account not found.';
+            this.showResend = false;
+          } else {
+            this.errorMessage = error?.error?.message || 'Verification failed. Please try again.';
+            this.showResend = false;
+          }
+        }
+      });
+  }
+
+  private handleSuccess(): void {
+    this.verified = true;
+    this.startCountdown();
+  }
+
+  private isAlreadyVerifiedError(error: { error?: { message?: string } }): boolean {
+    return !!error?.error?.message?.toLowerCase().includes('already verified');
+  }
+
+  onResend(): void {
+    this.resendLoading = true;
+    this.errorMessage = null;
+    this.successMessage = null;
+
+    this.authService
+      .resendVerificationEmail(this.email)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: response => {
+          this.resendLoading = false;
+          this.successMessage = response.message || 'Verification email sent.';
+        },
+        error: error => {
+          this.resendLoading = false;
+          this.errorMessage = error?.error?.message || 'Could not resend. Please try again.';
         }
       });
   }
