@@ -73,7 +73,6 @@
           <i class="fas fa-circle-exclamation alert-icon" aria-hidden="true"></i>
           <div class="alert-body">
             <span>{{ errorMessage || 'Invalid verification link.' }}</span>
-            <button type="button" class="alert-action" (click)="backToLogin()">Back to login</button>
           </div>
         </div>
 
@@ -108,9 +107,9 @@
           </button>
         </div>
 
-        <!-- Resend Control (Expired link) -->
-        <div *ngIf="showResend && !verified" class="resend-verification">
-          <div class="email-display">
+        <!-- Resend Control (Expired link OR email present but token missing) -->
+        <div *ngIf="(showResend || (!tokenValid && !manualEmailMode)) && !verified" class="resend-verification">
+          <div class="email-display" *ngIf="email">
             <span>Verifying:</span>
             <strong>{{ email }}</strong>
           </div>
@@ -121,8 +120,40 @@
           </button>
         </div>
 
+        <!-- Manual Resend Form (Missing email and token) -->
+        <div *ngIf="!tokenValid && manualEmailMode && !verified" class="manual-resend mt-4">
+          <form [formGroup]="manualResendForm" (ngSubmit)="onManualResend()" class="auth-form" novalidate>
+            <div class="field">
+              <label for="email">Email address</label>
+              <div class="input-shell" [class.has-error]="manualResendSubmitted && f['email'].errors">
+                <span class="input-icon" aria-hidden="true"><i class="fas fa-envelope"></i></span>
+                <input
+                  id="email"
+                  formControlName="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  autocomplete="email"
+                  inputmode="email"
+                  [attr.aria-invalid]="manualResendSubmitted && f['email'].errors ? 'true' : 'false'"
+                  aria-describedby="resend-email-error"
+                />
+              </div>
+              <div *ngIf="manualResendSubmitted && f['email'].errors" id="resend-email-error" class="field-error" role="alert">
+                <span *ngIf="f['email'].errors['required']">Email is required</span>
+                <span *ngIf="f['email'].errors['emailFormat']">Please enter a valid email</span>
+              </div>
+            </div>
+
+            <button type="submit" class="btn-submit" [disabled]="resendLoading">
+              <span *ngIf="resendLoading" class="spinner-inline"></span>
+              <span>{{ resendLoading ? 'Sending...' : 'Resend verification email' }}</span>
+              <i *ngIf="!resendLoading" class="fas fa-paper-plane" aria-hidden="true"></i>
+            </button>
+          </form>
+        </div>
+
         <!-- Back to login button if errored or showing resend -->
-        <button *ngIf="(errorMessage || showResend) && !loading && !verified" type="button" class="btn-ghost mt-4" (click)="backToLogin()">
+        <button *ngIf="(errorMessage || showResend || !tokenValid) && !loading && !verified" type="button" class="btn-ghost mt-4" (click)="backToLogin()">
           <i class="fas fa-arrow-left" aria-hidden="true"></i>
           <span>Back to login</span>
         </button>

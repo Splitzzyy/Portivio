@@ -1,8 +1,10 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { AuthService } from '../../../../core/services/auth.service';
+import { emailFormatValidator, normalizeEmailValue } from '../../auth-form.utils';
 
 @Component({
   selector: 'app-verify-email',
@@ -21,6 +23,9 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
 
   showResend = false;
   resendLoading = false;
+  manualEmailMode = false;
+  manualResendForm!: FormGroup;
+  manualResendSubmitted = false;
 
   private destroy$ = new Subject<void>();
   private redirectTimerId: ReturnType<typeof setInterval> | null = null;
@@ -28,8 +33,13 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
   constructor(
     private authService: AuthService,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private formBuilder: FormBuilder
   ) {}
+
+  get f() {
+    return this.manualResendForm?.controls;
+  }
 
   ngOnInit(): void {
     this.email = this.route.snapshot.queryParamMap.get('email') || '';
@@ -37,7 +47,13 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
 
     if (!this.email || !this.token) {
       this.tokenValid = false;
-      this.errorMessage = 'Invalid verification link.';
+      this.errorMessage = 'Invalid verification link. Please request a new email.';
+      this.manualEmailMode = !this.email;
+      if (this.manualEmailMode) {
+        this.manualResendForm = this.formBuilder.group({
+          email: ['', [Validators.required, emailFormatValidator()]]
+        });
+      }
       return;
     }
 
@@ -103,6 +119,30 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
 
     this.authService
       .resendVerificationEmail(this.email)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: response => {
+          this.resendLoading = false;
+          this.successMessage = response.message || 'Verification email sent.';
+        },
+        error: error => {
+          this.resendLoading = false;
+          this.errorMessage = error?.error?.message || 'Could not resend. Please try again.';
+        }
+      });
+  }
+
+  onManualResend(): void {
+    this.manualResendSubmitted = true;
+    if (this.manualResendForm.invalid) return;
+    
+    const email = normalizeEmailValue(this.manualResendForm.get('email')!.value);
+    this.resendLoading = true;
+    this.errorMessage = null;
+    this.successMessage = null;
+
+    this.authService
+      .resendVerificationEmail(email)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: response => {
