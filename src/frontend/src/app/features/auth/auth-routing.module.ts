@@ -5,6 +5,7 @@ import { LoginComponent } from './pages/login/login.component';
 import { SignupComponent } from './pages/signup/signup.component';
 import { ForgotPasswordComponent } from './pages/forgot-password/forgot-password.component';
 import { ResetPasswordComponent } from './pages/reset-password/reset-password.component';
+import { VerifyEmailComponent } from './pages/verify-email/verify-email.component';
 
 const routes: Routes = [
   {
@@ -33,6 +34,11 @@ const routes: Routes = [
         component: ResetPasswordComponent,
         canActivate: [NoAuthGuard],
         data: { title: 'Reset Password - Portivio' }
+      },
+      {
+        path: 'verify-email',
+        component: VerifyEmailComponent,
+        data: { title: 'Verify Email - Portivio' }
       }
     ]
   }

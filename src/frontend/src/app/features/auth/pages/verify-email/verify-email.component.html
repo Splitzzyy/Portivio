@@ -1,0 +1,116 @@
+<div class="auth-container">
+  <div class="auth-wrapper">
+    <header class="auth-mobile-header">
+      <a routerLink="/" class="mobile-brand" aria-label="Portivio home">
+        <i class="fas fa-chart-pie" aria-hidden="true"></i>
+        <span>Portivio</span>
+      </a>
+      <a href="javascript:void(0)" (click)="backToLogin()" class="mobile-back" aria-label="Back to login">
+        <i class="fas fa-arrow-left" aria-hidden="true"></i>
+        <span>Login</span>
+      </a>
+    </header>
+
+    <aside class="auth-brand-pane" aria-hidden="true">
+      <div class="brand-top">
+        <a href="javascript:void(0)" (click)="backToLogin()" class="brand-back-link">
+          <i class="fas fa-arrow-left"></i>
+          <span>Back to login</span>
+        </a>
+        <div class="brand-logo">
+          <i class="fas fa-chart-pie"></i>
+          <span>Portivio</span>
+        </div>
+      </div>
+
+      <div class="brand-middle">
+        <h2>You're almost in. Verify your email to activate your account.</h2>
+        <p>Verification ensures you can securely access your portfolio and receive important updates about your investments.</p>
+      </div>
+
+      <div class="brand-features">
+        <div class="feature">
+          <span class="feature-icon"><i class="fas fa-envelope-open-text"></i></span>
+          <span class="feature-text">
+            <strong>Secure activation</strong>
+            <span>One-time link to confirm your identity</span>
+          </span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon"><i class="fas fa-user-shield"></i></span>
+          <span class="feature-text">
+            <strong>Account protection</strong>
+            <span>Prevent unauthorized access to your data</span>
+          </span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon"><i class="fas fa-bell"></i></span>
+          <span class="feature-text">
+            <strong>Stay informed</strong>
+            <span>Get price alerts and performance reports</span>
+          </span>
+        </div>
+      </div>
+    </aside>
+
+    <main class="auth-form-pane">
+      <div class="auth-form-inner">
+        <div class="form-heading">
+          <h1>Email Verification</h1>
+          <p *ngIf="!verified && !errorMessage">Verifying your email address...</p>
+          <p *ngIf="verified">Account activated successfully.</p>
+          <p *ngIf="errorMessage">We couldn't verify your email.</p>
+        </div>
+
+        <!-- Initial Loading State -->
+        <div *ngIf="loading" class="verification-status" aria-live="polite">
+          <span class="spinner" aria-hidden="true"></span>
+          <span>Verifying your account...</span>
+        </div>
+
+        <!-- Missing or Invalid Token/Email -->
+        <div *ngIf="!tokenValid" class="alert alert-error" role="alert">
+          <i class="fas fa-circle-exclamation alert-icon" aria-hidden="true"></i>
+          <div class="alert-body">
+            <span>{{ errorMessage || 'Invalid verification link.' }}</span>
+            <button type="button" class="alert-action" (click)="backToLogin()">Back to login</button>
+          </div>
+        </div>
+
+        <!-- Error State (Valid params but API failed) -->
+        <div *ngIf="tokenValid && errorMessage && !loading" class="alert alert-error" role="alert">
+          <i class="fas fa-circle-exclamation alert-icon" aria-hidden="true"></i>
+          <span class="alert-body">{{ errorMessage }}</span>
+          <button type="button" class="alert-close" aria-label="Dismiss" (click)="errorMessage = null">
+            <i class="fas fa-times" aria-hidden="true"></i>
+          </button>
+        </div>
+
+        <!-- Success State -->
+        <div *ngIf="verified" class="success-state">
+          <div class="alert alert-success" role="status">
+            <i class="fas fa-circle-check alert-icon" aria-hidden="true"></i>
+            <span class="alert-body">Your email has been verified! Redirecting in {{ redirectCountdown }}...</span>
+          </div>
+
+          <button type="button" class="btn-submit" (click)="continueNow()">
+            <span>Continue now</span>
+            <i class="fas fa-arrow-right" aria-hidden="true"></i>
+          </button>
+        </div>
+
+        <!-- Back to login button if errored -->
+        <button *ngIf="errorMessage && !loading" type="button" class="btn-ghost mt-4" (click)="backToLogin()">
+          <i class="fas fa-arrow-left" aria-hidden="true"></i>
+          <span>Back to login</span>
+        </button>
+
+        <div class="auth-footer">
+          <a href="#">Privacy</a> •
+          <a href="#">Terms</a> •
+          <a href="#">Support</a>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
