@@ -19,7 +19,7 @@ public class SmtpEmailService : IEmailService
 
     public async Task SendEmailVerificationAsync(string toEmail, string toName, string verificationToken)
     {
-        var link = BuildLink("verify-email", toEmail, verificationToken);
+        var link = BuildVerificationLink(toEmail, verificationToken);
         var (subject, body) = EmailTemplates.VerificationEmail(toName, link);
         await SendAsync(toEmail, toName, subject, body);
     }
@@ -32,7 +32,7 @@ public class SmtpEmailService : IEmailService
 
     public async Task SendPasswordResetAsync(string toEmail, string toName, string resetToken)
     {
-        var link = BuildLink("reset-password", toEmail, resetToken);
+        var link = BuildResetPasswordLink(toEmail, resetToken);
         var (subject, body) = EmailTemplates.PasswordResetEmail(toName, link);
         await SendAsync(toEmail, toName, subject, body);
     }
@@ -67,6 +67,9 @@ public class SmtpEmailService : IEmailService
         }
     }
 
-    private string BuildLink(string path, string email, string token) =>
-        $"{_options.FrontendBaseUrl.TrimEnd('/')}/{path}?email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(token)}";
+    private string BuildVerificationLink(string email, string token) =>
+        $"{_options.FrontendBaseUrl.TrimEnd('/')}/auth/verify-email?email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(token)}";
+
+    private string BuildResetPasswordLink(string email, string token) =>
+        $"{_options.FrontendBaseUrl.TrimEnd('/')}/auth/reset-password/{Uri.EscapeDataString(token)}?email={Uri.EscapeDataString(email)}";
 }
