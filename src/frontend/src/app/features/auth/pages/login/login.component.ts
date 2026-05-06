@@ -55,6 +55,10 @@ export class LoginComponent implements OnInit, OnDestroy, AfterViewInit {
       this.successMessage = 'Password reset successful. Please log in.';
     }
 
+    if (this.route.snapshot.queryParams['verified']) {
+      this.successMessage = 'Email verified. Please log in.';
+    }
+
     if (prefilledEmail) {
       this.loginForm.patchValue({
         email: normalizeEmailValue(prefilledEmail)
