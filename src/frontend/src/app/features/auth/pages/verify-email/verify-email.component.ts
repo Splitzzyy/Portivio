@@ -23,6 +23,8 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
 
   showResend = false;
   resendLoading = false;
+  resendCooldownSeconds = 0;
+  private resendCooldownTimerId: ReturnType<typeof setInterval> | null = null;
   manualEmailMode = false;
   manualResendForm!: FormGroup;
   manualResendSubmitted = false;
@@ -62,6 +64,7 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.clearTimer();
+    this.clearResendCooldown();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -113,6 +116,7 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
   }
 
   onResend(): void {
+    if (this.resendCooldownSeconds > 0 || this.resendLoading) return;
     this.resendLoading = true;
     this.errorMessage = null;
     this.successMessage = null;
@@ -124,6 +128,7 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
         next: response => {
           this.resendLoading = false;
           this.successMessage = response.message || 'Verification email sent.';
+          this.startResendCooldown();
         },
         error: error => {
           this.resendLoading = false;
@@ -135,6 +140,7 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
   onManualResend(): void {
     this.manualResendSubmitted = true;
     if (this.manualResendForm.invalid) return;
+    if (this.resendCooldownSeconds > 0 || this.resendLoading) return;
     
     const email = normalizeEmailValue(this.manualResendForm.get('email')!.value);
     this.resendLoading = true;
@@ -148,12 +154,31 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
         next: response => {
           this.resendLoading = false;
           this.successMessage = response.message || 'Verification email sent.';
+          this.startResendCooldown();
         },
         error: error => {
           this.resendLoading = false;
           this.errorMessage = error?.error?.message || 'Could not resend. Please try again.';
         }
       });
+  }
+
+  private startResendCooldown(): void {
+    this.resendCooldownSeconds = 30;
+    this.resendCooldownTimerId = setInterval(() => {
+      this.resendCooldownSeconds -= 1;
+      if (this.resendCooldownSeconds <= 0) {
+        this.clearResendCooldown();
+      }
+    }, 1000);
+  }
+
+  private clearResendCooldown(): void {
+    if (this.resendCooldownTimerId !== null) {
+      clearInterval(this.resendCooldownTimerId);
+      this.resendCooldownTimerId = null;
+    }
+    this.resendCooldownSeconds = 0;
   }
 
   private startCountdown(): void {
