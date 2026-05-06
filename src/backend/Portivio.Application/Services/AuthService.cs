@@ -57,21 +57,41 @@ namespace Portivio.Application.Services
             {
                 // Validate input
                 if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+                {
+                    _logger.LogWarning("Login failed: missing credentials. AuthEvent={AuthEvent} Outcome={Outcome} IpAddress={IpAddress}",
+                        "Login", "BadRequest", request.IpAddress);
                     return Result<AuthResponse>.BadRequest("Email and password are required");
+                }
 
                 var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
 
                 if (user == null)
+                {
+                    _logger.LogWarning("Login failed: invalid credentials (user not found). AuthEvent={AuthEvent} Outcome={Outcome} Email={Email} IpAddress={IpAddress}",
+                        "Login", "Unauthorized", request.Email, request.IpAddress);
                     return Result<AuthResponse>.Unauthorized("Invalid credentials");
+                }
 
                 if (!user.IsVerified)
+                {
+                    _logger.LogWarning("Login failed: email not verified. AuthEvent={AuthEvent} Outcome={Outcome} Email={Email} UserId={UserId} IpAddress={IpAddress}",
+                        "Login", "BadRequest", request.Email, user.Id, request.IpAddress);
                     return Result<AuthResponse>.BadRequest("Email not verified. Please verify your email to login.");
+                }
 
                 if (!user.IsActive)
+                {
+                    _logger.LogWarning("Login failed: account is inactive. AuthEvent={AuthEvent} Outcome={Outcome} Email={Email} UserId={UserId} IpAddress={IpAddress}",
+                        "Login", "Forbidden", request.Email, user.Id, request.IpAddress);
                     return Result<AuthResponse>.Forbidden("Account is inactive");
+                }
 
                 if (!VerifyPassword(request.Password, user.PasswordHash))
+                {
+                    _logger.LogWarning("Login failed: invalid credentials (wrong password). AuthEvent={AuthEvent} Outcome={Outcome} Email={Email} UserId={UserId} IpAddress={IpAddress}",
+                        "Login", "Unauthorized", request.Email, user.Id, request.IpAddress);
                     return Result<AuthResponse>.Unauthorized("Invalid credentials");
+                }
 
                 user.LastLoginAt = DateTime.UtcNow;
                 _context.Users.Update(user);
@@ -81,10 +101,18 @@ namespace Portivio.Application.Services
                     request.IpAddress ?? "Unknown",
                     request.DeviceInfo ?? "Unknown",
                     request.IssueRefreshToken);
+                
                 if (tokensResult.IsFailure)
+                {
+                    _logger.LogError("Login failed: token generation error. AuthEvent={AuthEvent} Outcome={Outcome} Email={Email} UserId={UserId} Error={Error}",
+                        "Login", "Failure", request.Email, user.Id, tokensResult.Message);
                     return Result<AuthResponse>.Failure(tokensResult.Message, tokensResult.Errors, tokensResult.StatusCode ?? 500);
+                }
 
                 await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Login successful. AuthEvent={AuthEvent} Outcome={Outcome} Email={Email} UserId={UserId} IpAddress={IpAddress} DeviceInfo={DeviceInfo} IssueRefreshToken={IssueRefreshToken}",
+                    "Login", "Success", request.Email, user.Id, request.IpAddress, request.DeviceInfo, request.IssueRefreshToken);
 
                 var response = new AuthResponse
                 {
@@ -108,6 +136,8 @@ namespace Portivio.Application.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Login failed: unexpected exception. AuthEvent={AuthEvent} Outcome={Outcome} Email={Email} IpAddress={IpAddress}",
+                    "Login", "InternalServerError", request.Email, request.IpAddress);
                 return Result<AuthResponse>.InternalServerError($"Login failed: {ex.Message}");
             }
         }
