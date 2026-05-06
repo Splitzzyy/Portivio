@@ -3,7 +3,8 @@
     "allow": [
       "Bash(docker compose:*)",
       "Bash(dotnet build:*)",
-      "Bash(bun install *)"
+      "Bash(bun install *)",
+      "Bash(dotnet test *)"
     ]
   }
 }

@@ -40,6 +40,16 @@ namespace Portivio.API.Controllers
             );
         }
 
+        [HttpPut("{assetTypeId:guid}")]
+        public async Task<IActionResult> UpdateAssetType(Guid assetTypeId, [FromBody] UpdateAssetTypeRequest request)
+        {
+            var result = await _instrumentService.UpdateAssetTypeAsync(assetTypeId, request);
+            return result.Match(
+                onSuccess: () => Ok(result.Data),
+                onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
+            );
+        }
+
         [HttpDelete("{assetTypeId:guid}")]
         public async Task<IActionResult> DeleteAssetType(Guid assetTypeId)
         {

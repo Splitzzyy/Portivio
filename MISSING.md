@@ -2,7 +2,7 @@
 
 > Full audit of backend, frontend, infrastructure, CI/CD, and security.
 > Stack: .NET 10 · Angular 18 · PostgreSQL · Docker · Hangfire
-> Last audited: 2026-05-02
+> Last audited: 2026-05-07
 
 ---
 
@@ -14,6 +14,10 @@
 - **I1** `/health` endpoint — `MapHealthChecks("/health").AllowAnonymous()` mapped; `AddDbContextCheck<PortivioDbContext>()` + custom `HangfireHealthCheck` registered
 - **X2** Health checks for external services — Hangfire health check live (DB + Hangfire covered)
 - **B5 (partial)** Google SSO returns `Result<AuthResponse>` for token validation failures (`InvalidJwtException` → `Unauthorized`); only remaining throw is `InvalidOperationException` for missing `GoogleAuth:ClientId` (startup-config error)
+- **B3** DTO validation attributes — `[Required]`/`[EmailAddress]`/`[StringLength]`/`[Compare]` added across all Auth DTOs + `CreateAssetTypeRequest`/`UpdateAssetTypeRequest`; ASP.NET `[ApiController]` triggers automatic 400 `ValidationProblemDetails` on invalid ModelState
+- **B4** Password strength enforcement — new `StrongPasswordAttribute` (`Portivio.Application/Validation/`) requires ≥8 chars + upper + lower + digit; applied to `SignupRequest.Password` and `ResetPasswordRequest.NewPassword`
+- **B5b** `GoogleLoginAsync` `InvalidOperationException` for missing `GoogleAuth:ClientId` → `Result<AuthResponse>.InternalServerError(...)` — full Result-pattern consistency
+- **B6** `PUT /api/asset-types/{id}` — `IInstrumentService.UpdateAssetTypeAsync` + controller route added
 - **X1 (partial)** `AllowedHosts` changed from `"*"` → `""` in base `appsettings.json`; still no production override
 - **I10 (partial)** Dependabot configured (`.github/dependabot.yml`) for nuget/npm/github-actions; no SAST (CodeQL/Snyk) yet
 
@@ -34,10 +38,7 @@
 ## 🟠 High
 
 ### Backend
-- [ ] **B3** No DTO validation attributes — no `[Required]`/`[EmailAddress]`/`[StringLength]` on any DTO; manual checks scattered through `AuthService.SignupAsync` etc. Move to DataAnnotations or FluentValidation
-- [ ] **B4** No password strength enforcement — signup + reset accept any password (only `IsNullOrWhiteSpace` check); no min length, complexity, breach check
-- [ ] **B6** `AssetTypeController` missing UPDATE — has `GET` / `POST` / `DELETE`, no `PUT` / `PATCH`
-- [ ] **B5b** `GoogleLoginAsync` still `throws InvalidOperationException` on missing `GoogleAuth:ClientId` — convert to `Result<AuthResponse>.InternalServerError(...)` for full Result-pattern consistency
+- [ ] **B4b** No password breach check — strength rules now enforced (length + upper/lower/digit); HIBP/k-anonymity check still TODO
 
 ### Frontend
 - [ ] **F2** Settings page + nav wiring — `goToProfile()` and `goToSettings()` in `home.component.ts` still have commented-out `router.navigate(...)` calls; `ProfilesComponent` route exists at `/home/profiles` but not linked; no `SettingsComponent` at all
@@ -95,8 +96,6 @@
 - [ ] Replace `Validators.email` → `emailFormatValidator()` in `forgot-password.component.ts:34`
 - [ ] Delete unused functional `authGuard` export from `auth.guard.ts:23`
 - [ ] Add `restart: unless-stopped` to all services in `docker-compose.yml`
-- [ ] Add `PUT /api/asset-types/{id}` to `AssetTypeController`
 - [ ] Uncomment + wire `goToProfile()` → `/home/profiles` in `home.component.ts:72`
 - [ ] Add `USER app` directive after `WORKDIR /app` in backend `Dockerfile`
-- [ ] Replace `InvalidOperationException` with `Result<AuthResponse>.InternalServerError(...)` in `AuthService.GoogleLoginAsync` line ~417
 - [ ] Add `gzip on; gzip_types text/css application/javascript application/json;` to `nginx.conf`

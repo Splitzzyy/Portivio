@@ -414,7 +414,7 @@ namespace Portivio.Application.Services
                 if (string.IsNullOrWhiteSpace(_googleAppSettings.ClientId))
                 {
                     _logger.LogCritical("Google login cannot proceed: GoogleAuth:ClientId is not configured");
-                    throw new InvalidOperationException("Google Client ID is not configured");
+                    return Result<AuthResponse>.InternalServerError("Google Client ID is not configured");
                 }
 
                 var validAudiences = new List<string> { _googleAppSettings.ClientId };

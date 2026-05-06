@@ -12,6 +12,7 @@ namespace Portivio.Application.Services
     {
         Task<Result<List<AssetTypeResponse>>> GetAssetTypesAsync();
         Task<Result<AssetTypeResponse>> CreateAssetTypeAsync(CreateAssetTypeRequest request);
+        Task<Result<AssetTypeResponse>> UpdateAssetTypeAsync(Guid assetTypeId, UpdateAssetTypeRequest request);
         Task<Result> DeleteAssetTypeAsync(Guid assetTypeId);
 
         Task<Result<List<InstrumentResponse>>> GetInstrumentsAsync(Guid? assetTypeId = null);
@@ -85,6 +86,47 @@ namespace Portivio.Application.Services
             {
                 _logger.LogError(ex, "Error creating asset type. Name={Name}", request.Name);
                 return Result<AssetTypeResponse>.InternalServerError($"Error creating asset type: {ex.Message}");
+            }
+        }
+
+        public async Task<Result<AssetTypeResponse>> UpdateAssetTypeAsync(Guid assetTypeId, UpdateAssetTypeRequest request)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request.Name))
+                    return Result<AssetTypeResponse>.BadRequest("Asset type name is required");
+
+                var assetType = await _context.AssetTypes.FirstOrDefaultAsync(a => a.Id == assetTypeId);
+                if (assetType == null)
+                {
+                    _logger.LogWarning("Asset type update rejected: not found. AssetTypeId={AssetTypeId}", assetTypeId);
+                    return Result<AssetTypeResponse>.NotFound("Asset type not found");
+                }
+
+                var newName = request.Name.Trim();
+
+                var duplicate = await _context.AssetTypes
+                    .AnyAsync(a => a.Id != assetTypeId && a.Name.ToLower() == newName.ToLower());
+
+                if (duplicate)
+                {
+                    _logger.LogWarning("Asset type update rejected: duplicate name. AssetTypeId={AssetTypeId} Name={Name}", assetTypeId, newName);
+                    return Result<AssetTypeResponse>.Conflict("Asset type with this name already exists");
+                }
+
+                assetType.Name = newName;
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Asset type updated. AssetTypeId={AssetTypeId} Name={Name}", assetType.Id, assetType.Name);
+
+                return Result<AssetTypeResponse>.Success(
+                    new AssetTypeResponse { Id = assetType.Id, Name = assetType.Name },
+                    "Asset type updated successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating asset type. AssetTypeId={AssetTypeId}", assetTypeId);
+                return Result<AssetTypeResponse>.InternalServerError($"Error updating asset type: {ex.Message}");
             }
         }
 
