@@ -38,6 +38,11 @@ export interface ResetPassword {
   confirmPassword: string;
 }
 
+export interface VerifyEmailRequest {
+  email: string;
+  verificationToken: string;
+}
+
 export interface GoogleLoginRequest {
   token: string;
   deviceInfo?: string;

@@ -10,6 +10,7 @@ import {
   AuthResponse,
   ForgotPasswordRequest,
   ResetPassword,
+  VerifyEmailRequest,
   GoogleLoginRequest,
   SimpleResponse
 } from '../models/auth.model';
@@ -107,6 +108,10 @@ export class AuthService {
 
   resetPassword(reset: ResetPassword): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.API_URL}/reset-password`, reset);
+  }
+
+  verifyEmail(request: VerifyEmailRequest): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.API_URL}/verify-email`, request);
   }
 
   /**
