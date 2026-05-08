@@ -107,6 +107,7 @@ export interface Transaction {
   amount: number;
   transactionDate: string;
   notes: string;
+  isDeleted: boolean;
 }
 
 export interface CreateTransactionRequest {

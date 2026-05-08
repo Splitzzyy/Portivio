@@ -45,6 +45,10 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   saving = false;
   error: string | null = null;
 
+  showDeleted = false;
+  instrumentQuery = '';
+  editingInstrumentLabel = '';
+
   showForm = false;
   editingId: string | null = null;
   form: TxForm = this.emptyForm();
@@ -96,12 +100,18 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     if (!this.selectedProfileId) return;
     this.loading = true;
     this.error = null;
-    this.transactionService.list(this.selectedProfileId, this.page, this.pageSize)
+    this.transactionService.list(this.selectedProfileId, this.page, this.pageSize, this.showDeleted)
       .pipe(takeUntil(this.destroy$), finalize(() => (this.loading = false)))
       .subscribe({
         next: (data) => (this.paged = data ?? null),
         error: (err) => (this.error = err?.error?.message || 'Failed to load transactions.')
       });
+  }
+
+  toggleShowDeleted(): void {
+    this.showDeleted = !this.showDeleted;
+    this.page = 1;
+    this.fetch();
   }
 
   get transactions(): Transaction[] {
@@ -126,14 +136,25 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     return this.rangeStart + this.paged.items.length - 1;
   }
 
+  get filteredInstruments(): Instrument[] {
+    const q = this.instrumentQuery.toLowerCase().trim();
+    if (!q) return this.instruments.slice(0, 100);
+    return this.instruments
+      .filter(i => i.symbol.toLowerCase().includes(q) || i.name.toLowerCase().includes(q))
+      .slice(0, 100);
+  }
+
   openCreate(): void {
     this.editingId = null;
+    this.instrumentQuery = '';
     this.form = { ...this.emptyForm(), instrumentId: this.instruments[0]?.id || '' };
     this.showForm = true;
   }
 
   openEdit(tx: Transaction): void {
     this.editingId = tx.id;
+    this.instrumentQuery = '';
+    this.editingInstrumentLabel = `${tx.instrumentSymbol} — ${tx.instrumentName || tx.instrumentId}`;
     this.form = {
       instrumentId: tx.instrumentId,
       type: tx.type,
@@ -149,7 +170,12 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   cancelForm(): void {
     this.showForm = false;
     this.editingId = null;
+    this.instrumentQuery = '';
+    this.editingInstrumentLabel = '';
   }
+
+  trackInstrumentById(_: number, i: Instrument): string { return i.id; }
+  trackTxById(_: number, tx: Transaction): string { return tx.id; }
 
   onQuantityOrPriceChange(): void {
     const q = Number(this.form.quantity) || 0;

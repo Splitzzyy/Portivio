@@ -39,11 +39,19 @@
     <form (ngSubmit)="submit()" #f="ngForm" class="form-grid">
       <div class="form-field">
         <label>Instrument</label>
-        <select name="instrumentId" [(ngModel)]="form.instrumentId" required>
-          <option *ngFor="let i of instruments" [ngValue]="i.id">
-            {{ i.symbol }} — {{ i.name }} ({{ i.assetTypeName }})
-          </option>
-        </select>
+        <input *ngIf="editingId && editingInstrument" type="text"
+               [value]="editingInstrument.symbol + ' — ' + editingInstrument.name + ' (' + editingInstrument.assetTypeName + ')'"
+               readonly />
+        <ng-container *ngIf="!editingId">
+          <input type="text" placeholder="Search symbol or name…"
+                 [(ngModel)]="instrumentQuery" name="instrumentSearch" autocomplete="off" />
+          <select name="instrumentId" [(ngModel)]="form.instrumentId" required>
+            <option value="">— select —</option>
+            <option *ngFor="let i of filteredInstruments; trackBy: trackInstrumentById" [ngValue]="i.id">
+              {{ i.symbol }} — {{ i.name }} ({{ i.assetTypeName }})
+            </option>
+          </select>
+        </ng-container>
       </div>
       <div class="form-field">
         <label>Quantity</label>
@@ -73,7 +81,7 @@
     <button type="button" class="tab-btn" [class.active]="activeAssetType === ''" (click)="activeAssetType = ''">
       All <span class="tab-count">{{ holdings.length }}</span>
     </button>
-    <button type="button" class="tab-btn" *ngFor="let t of availableTypes"
+    <button type="button" class="tab-btn" *ngFor="let t of availableTypes; trackBy: trackByString"
       [class.active]="activeAssetType === t" (click)="activeAssetType = t">
       {{ t }} <span class="tab-count">{{ countByType(t) }}</span>
     </button>
@@ -96,7 +104,9 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let h of filteredHoldings">
+        <tr *ngFor="let h of filteredHoldings; trackBy: trackHoldingById"
+            [class.row-positive]="h.unrealizedPnL > 0"
+            [class.row-negative]="h.unrealizedPnL < 0">
           <td class="strong">{{ h.instrumentSymbol }}</td>
           <td class="col-hide-sm">{{ h.instrumentName }}</td>
           <td class="col-hide-md"><span class="pill" [ngClass]="assetPillClass(h.assetTypeName)">{{ h.assetTypeName }}</span></td>
@@ -105,7 +115,11 @@
           <td class="num">{{ formatCurrency(h.currentPrice) }}</td>
           <td class="num strong">{{ formatCurrency(h.marketValue) }}</td>
           <td class="num" [class.positive]="h.unrealizedPnL >= 0" [class.negative]="h.unrealizedPnL < 0">
-            {{ h.unrealizedPnL >= 0 ? '+' : '' }}{{ formatCurrency(h.unrealizedPnL) }}
+            <span class="pnl-cell">
+              <i class="fas" [class.fa-caret-up]="h.unrealizedPnL >= 0" [class.fa-caret-down]="h.unrealizedPnL < 0"></i>
+              <span>{{ h.unrealizedPnL >= 0 ? '+' : '' }}{{ formatCurrency(h.unrealizedPnL) }}</span>
+              <span class="pnl-pct">({{ h.unrealizedPnL >= 0 ? '+' : '' }}{{ formatNumber(returnPct(h)) }}%)</span>
+            </span>
           </td>
           <td class="num muted col-hide-md">{{ formatRelative(h.lastUpdated) }}</td>
           <td class="actions">

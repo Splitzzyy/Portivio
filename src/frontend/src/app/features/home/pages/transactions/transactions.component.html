@@ -4,10 +4,15 @@
       <h1 class="page-heading">Transactions</h1>
       <p class="page-subtitle">Buys, sells, SIP contributions, dividends.</p>
     </div>
-    <button class="btn btn-primary" (click)="openCreate()"
-            *ngIf="!showForm && selectedProfileId && instruments.length">
-      <i class="fas fa-plus"></i> New Transaction
-    </button>
+    <div class="page-actions" *ngIf="!showForm && selectedProfileId">
+      <button class="btn btn-secondary" (click)="toggleShowDeleted()">
+        <i class="fas" [class.fa-eye]="!showDeleted" [class.fa-eye-slash]="showDeleted"></i>
+        {{ showDeleted ? 'Hide deleted' : 'Show deleted' }}
+      </button>
+      <button class="btn btn-primary" (click)="openCreate()" *ngIf="instruments.length">
+        <i class="fas fa-plus"></i> New Transaction
+      </button>
+    </div>
   </div>
 
   <div class="toolbar">
@@ -34,11 +39,17 @@
     <form (ngSubmit)="submit()" #f="ngForm" class="form-grid">
       <div class="form-field">
         <label>Instrument</label>
-        <select name="instrumentId" [(ngModel)]="form.instrumentId" required [disabled]="!!editingId">
-          <option *ngFor="let i of instruments" [ngValue]="i.id">
-            {{ i.symbol }} — {{ i.name }}
-          </option>
-        </select>
+        <input *ngIf="!!editingId" type="text" readonly [value]="editingInstrumentLabel" />
+        <ng-container *ngIf="!editingId">
+          <input type="text" placeholder="Search symbol or name…"
+                 [(ngModel)]="instrumentQuery" name="instrumentSearch" autocomplete="off" />
+          <select name="instrumentId" [(ngModel)]="form.instrumentId" required>
+            <option value="">— select —</option>
+            <option *ngFor="let i of filteredInstruments; trackBy: trackInstrumentById" [ngValue]="i.id">
+              {{ i.symbol }} — {{ i.name }}
+            </option>
+          </select>
+        </ng-container>
       </div>
       <div class="form-field">
         <label>Type</label>
@@ -95,17 +106,23 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let tx of transactions">
+        <tr *ngFor="let tx of transactions; trackBy: trackTxById"
+            [class.row-deleted]="tx.isDeleted">
           <td class="muted">{{ formatDate(tx.transactionDate) }}</td>
-          <td><span class="pill" [class]="typeClass(tx.type)">{{ tx.type }}</span></td>
-          <td class="strong">{{ tx.instrumentSymbol }}</td>
+          <td>
+            <span class="pill" [class]="typeClass(tx.type)">{{ tx.type }}</span>
+            <span *ngIf="tx.isDeleted" class="pill pill-deleted">DELETED</span>
+          </td>
+          <td class="strong" [class.text-deleted]="tx.isDeleted">{{ tx.instrumentSymbol }}</td>
           <td class="num col-hide-sm">{{ formatNumber(tx.quantity, 4) }}</td>
           <td class="num col-hide-sm">{{ formatCurrency(tx.price) }}</td>
           <td class="num strong">{{ formatCurrency(tx.amount) }}</td>
           <td class="muted truncate col-hide-md" [title]="tx.notes || ''">{{ tx.notes || '—' }}</td>
           <td class="actions">
-            <button class="icon-btn" title="Edit" (click)="openEdit(tx)"><i class="fas fa-pen"></i></button>
-            <button class="icon-btn danger" title="Delete" (click)="delete(tx)"><i class="fas fa-trash"></i></button>
+            <ng-container *ngIf="!tx.isDeleted">
+              <button class="icon-btn" title="Edit" (click)="openEdit(tx)"><i class="fas fa-pen"></i></button>
+              <button class="icon-btn danger" title="Delete" (click)="delete(tx)"><i class="fas fa-trash"></i></button>
+            </ng-container>
           </td>
         </tr>
       </tbody>

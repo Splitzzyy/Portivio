@@ -11,7 +11,7 @@ namespace Portivio.Application.Services
 {
     public interface ITransactionService
     {
-        Task<Result<PagedResult<TransactionResponse>>> GetTransactionsAsync(Guid userId, Guid profileId, int page = 1, int pageSize = 50);
+        Task<Result<PagedResult<TransactionResponse>>> GetTransactionsAsync(Guid userId, Guid profileId, int page = 1, int pageSize = 50, bool includeDeleted = false);
         Task<Result<TransactionResponse>> CreateTransactionAsync(Guid userId, Guid profileId, CreateTransactionRequest request);
         Task<Result<TransactionResponse>> UpdateTransactionAsync(Guid userId, Guid profileId, Guid txId, UpdateTransactionRequest request);
         Task<Result> DeleteTransactionAsync(Guid userId, Guid profileId, Guid txId);
@@ -32,7 +32,8 @@ namespace Portivio.Application.Services
 
         private async Task<Result<T>> ExecuteInTransactionAsync<T>(Func<Task<Result<T>>> action)
         {
-            if (!_context.Database.IsRelational())
+            // Skip creating a nested transaction if one is already active (e.g. TransactionFilter).
+            if (!_context.Database.IsRelational() || _context.Database.CurrentTransaction is not null)
                 return await action();
 
             await using var dbTx = await _context.Database.BeginTransactionAsync();
@@ -56,7 +57,8 @@ namespace Portivio.Application.Services
 
         private async Task<Result> ExecuteInTransactionAsync(Func<Task<Result>> action)
         {
-            if (!_context.Database.IsRelational())
+            // Skip creating a nested transaction if one is already active (e.g. TransactionFilter).
+            if (!_context.Database.IsRelational() || _context.Database.CurrentTransaction is not null)
                 return await action();
 
             await using var dbTx = await _context.Database.BeginTransactionAsync();
@@ -78,7 +80,7 @@ namespace Portivio.Application.Services
             }
         }
 
-        public async Task<Result<PagedResult<TransactionResponse>>> GetTransactionsAsync(Guid userId, Guid profileId, int page = 1, int pageSize = 50)
+        public async Task<Result<PagedResult<TransactionResponse>>> GetTransactionsAsync(Guid userId, Guid profileId, int page = 1, int pageSize = 50, bool includeDeleted = false)
         {
             try
             {
@@ -90,8 +92,9 @@ namespace Portivio.Application.Services
                 if (access.IsFailure)
                     return access.ToFailure<PagedResult<TransactionResponse>>();
 
-                var baseQuery = _context.Transactions
-                    .Where(t => t.ProfileId == profileId);
+                var baseQuery = includeDeleted
+                    ? _context.Transactions.IgnoreQueryFilters().Where(t => t.ProfileId == profileId)
+                    : _context.Transactions.Where(t => t.ProfileId == profileId);
 
                 var total = await baseQuery.CountAsync();
 
@@ -99,6 +102,7 @@ namespace Portivio.Application.Services
                 var transactions = await baseQuery
                     .Include(t => t.Instrument)
                     .OrderByDescending(t => t.TransactionDate)
+                    .ThenByDescending(t => t.CreatedAtUtc)
                     .Skip(skip)
                     .Take(pageSize)
                     .Select(t => MapToResponse(t))
@@ -283,7 +287,8 @@ namespace Portivio.Application.Services
             Price = t.Price,
             Amount = t.Amount,
             TransactionDate = t.TransactionDate,
-            Notes = t.Notes
+            Notes = t.Notes,
+            IsDeleted = t.IsDeleted
         };
     }
 }

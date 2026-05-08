@@ -31,6 +31,8 @@ export class HoldingsComponent implements OnInit, OnDestroy {
 
   showForm = false;
   editingId: string | null = null;
+  editingInstrument: Instrument | null = null;
+  instrumentQuery = '';
   form: UpsertHoldingRequest = { instrumentId: '', quantity: 0, avgPrice: 0, currentPrice: 0 };
 
   private destroy$ = new Subject<void>();
@@ -96,14 +98,32 @@ export class HoldingsComponent implements OnInit, OnDestroy {
       });
   }
 
+  get filteredInstruments(): Instrument[] {
+    const q = this.instrumentQuery.toLowerCase().trim();
+    if (!q) return this.instruments.slice(0, 100);
+    return this.instruments
+      .filter(i => i.symbol.toLowerCase().includes(q) || i.name.toLowerCase().includes(q))
+      .slice(0, 100);
+  }
+
   openCreate(): void {
     this.editingId = null;
+    this.editingInstrument = null;
+    this.instrumentQuery = '';
     this.form = { instrumentId: this.instruments[0]?.id || '', quantity: 0, avgPrice: 0, currentPrice: 0 };
     this.showForm = true;
   }
 
   openEdit(h: Holding): void {
     this.editingId = h.id;
+    this.editingInstrument = {
+      id: h.instrumentId,
+      assetTypeId: '',
+      assetTypeName: h.assetTypeName,
+      name: h.instrumentName,
+      symbol: h.instrumentSymbol,
+      currency: h.currency
+    };
     this.form = {
       instrumentId: h.instrumentId,
       quantity: h.quantity,
@@ -116,6 +136,18 @@ export class HoldingsComponent implements OnInit, OnDestroy {
   cancelForm(): void {
     this.showForm = false;
     this.editingId = null;
+    this.editingInstrument = null;
+    this.instrumentQuery = '';
+  }
+
+  trackInstrumentById(_: number, i: Instrument): string { return i.id; }
+  trackHoldingById(_: number, h: Holding): string { return h.id; }
+  trackByString(_: number, v: string): string { return v; }
+
+  returnPct(h: Holding): number {
+    const cost = h.avgPrice * h.quantity;
+    if (!cost) return 0;
+    return (h.unrealizedPnL / cost) * 100;
   }
 
   submit(): void {

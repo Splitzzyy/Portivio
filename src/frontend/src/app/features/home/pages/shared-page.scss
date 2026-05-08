@@ -280,6 +280,17 @@
     &:last-child { border-bottom: none; }
     &:hover { background: var(--bg-canvas); }
 
+    // Subtle row tint based on gain/loss. Hover uses a slightly stronger tint
+    // to keep affordance.
+    &.row-positive {
+      background: rgba(22, 163, 74, 0.06);
+      &:hover { background: rgba(22, 163, 74, 0.10); }
+    }
+    &.row-negative {
+      background: rgba(220, 38, 38, 0.06);
+      &:hover { background: rgba(220, 38, 38, 0.10); }
+    }
+
     td {
       padding: 10px 12px;
       font-size: 14px;
@@ -299,7 +310,43 @@
         overflow: hidden;
         text-overflow: ellipsis;
       }
+
+      .pnl-cell {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 6px;
+        justify-content: flex-end;
+
+        i { font-size: 12px; }
+        .pnl-pct { font-size: 12px; opacity: 0.85; font-weight: 500; }
+      }
     }
+  }
+}
+
+:root[data-theme='dark'] .table tbody tr {
+  &.row-positive {
+    background: rgba(34, 197, 94, 0.10);
+    &:hover { background: rgba(34, 197, 94, 0.16); }
+  }
+  &.row-negative {
+    background: rgba(248, 113, 113, 0.10);
+    &:hover { background: rgba(248, 113, 113, 0.16); }
+  }
+  &.row-deleted {
+    background: rgba(100, 116, 139, 0.08);
+    &:hover { background: rgba(100, 116, 139, 0.12); }
+  }
+}
+
+// Deleted transaction rows
+.table tbody tr.row-deleted {
+  background: rgba(100, 116, 139, 0.06);
+  &:hover { background: rgba(100, 116, 139, 0.10); }
+
+  td {
+    opacity: 0.6;
+    &.text-deleted { text-decoration: line-through; }
   }
 }
 
@@ -348,6 +395,7 @@
   &.pill-info    { background: rgba(59, 130, 246, 0.14);  color: #3b82f6; }
   &.pill-warning { background: rgba(245, 158, 11, 0.14);  color: var(--warning); }
   &.pill-muted   { background: var(--bg-canvas);          color: var(--text-muted); }
+  &.pill-deleted { background: rgba(100, 116, 139, 0.15); color: var(--text-muted); font-size: 10px; margin-left: 4px; }
 
   // Asset-type pills (Holdings page).
   &.pill-asset-equity { background: rgba(59, 130, 246, 0.14); color: #3b82f6; }

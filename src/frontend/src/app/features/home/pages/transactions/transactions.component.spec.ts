@@ -30,13 +30,13 @@ describe('TransactionsComponent', () => {
     return { items, page, pageSize, total, hasMore: page * pageSize < total };
   }
 
-  function buildTx(id: string): Transaction {
+  function buildTx(id: string, isDeleted = false): Transaction {
     return {
       id, profileId: 'p1', instrumentId: 'i1',
       instrumentName: 'TCS', instrumentSymbol: 'TCS',
       type: 'BUY', quantity: 1, price: 100, amount: 100,
-      transactionDate: '2026-05-01T00:00:00Z', notes: ''
-    } as Transaction;
+      transactionDate: '2026-05-01T00:00:00Z', notes: '', isDeleted
+    };
   }
 
   beforeEach(async () => {
@@ -66,7 +66,7 @@ describe('TransactionsComponent', () => {
   });
 
   it('fetch populates items and total from PagedResult envelope', () => {
-    expect(transactionSvc.list).toHaveBeenCalledWith('p1', 1, 25);
+    expect(transactionSvc.list).toHaveBeenCalledWith('p1', 1, 25, false);
     expect(component.transactions.length).toBe(2);
     expect(component.total).toBe(2);
     expect(component.rangeStart).toBe(1);

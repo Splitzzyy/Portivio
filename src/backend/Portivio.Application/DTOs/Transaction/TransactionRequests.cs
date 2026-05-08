@@ -35,5 +35,6 @@ namespace Portivio.Application.DTOs.Transaction
         public decimal Amount { get; set; }
         public DateTime TransactionDate { get; set; }
         public string Notes { get; set; } = string.Empty;
+        public bool IsDeleted { get; set; }
     }
 }

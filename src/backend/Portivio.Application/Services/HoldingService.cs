@@ -120,6 +120,12 @@ namespace Portivio.Application.Services
                     isNew = true;
                 }
 
+                // Reconcile transactions so the recalculation pipeline re-derives the
+                // same quantity as the user just set.  Without this, the next Refresh call
+                // would recompute from transactions and silently overwrite the direct edit.
+                await ReconcileTransactionQuantityAsync(
+                    profileId, request.InstrumentId, request.Quantity, request.AvgPrice);
+
                 await _context.SaveChangesAsync();
 
                 _logger.LogInformation("Holding {Action}. HoldingId={HoldingId} ProfileId={ProfileId} InstrumentId={InstrumentId}",
@@ -169,10 +175,25 @@ namespace Portivio.Application.Services
                     return Result.NotFound("Holding not found");
                 }
 
+                var instrumentId = holding.InstrumentId;
+
+                var transactions = await _context.Transactions
+                    .Where(t => t.ProfileId == profileId && t.InstrumentId == instrumentId)
+                    .ToListAsync();
+
+                var now = DateTime.UtcNow;
+                foreach (var tx in transactions)
+                {
+                    tx.IsDeleted = true;
+                    tx.UpdatedAtUtc = now;
+                }
+
                 _context.Holdings.Remove(holding);
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation("Holding deleted. HoldingId={HoldingId} ProfileId={ProfileId}", holdingId, profileId);
+                _logger.LogInformation(
+                    "Holding deleted with {TxCount} transaction(s). HoldingId={HoldingId} ProfileId={ProfileId} InstrumentId={InstrumentId}",
+                    transactions.Count, holdingId, profileId, instrumentId);
 
                 return Result.Success("Holding deleted successfully");
             }
@@ -181,6 +202,44 @@ namespace Portivio.Application.Services
                 _logger.LogError(ex, "Error deleting holding. HoldingId={HoldingId} ProfileId={ProfileId}", holdingId, profileId);
                 return Result.InternalServerError($"Error deleting holding: {ex.Message}");
             }
+        }
+
+        private async Task ReconcileTransactionQuantityAsync(
+            Guid profileId, Guid instrumentId, decimal targetQty, decimal pricePerUnit)
+        {
+            var txs = await _context.Transactions
+                .Where(t => t.ProfileId == profileId && t.InstrumentId == instrumentId)
+                .ToListAsync();
+
+            if (!txs.Any()) return;
+
+            var netBuy  = txs.Where(t => t.Type == TransactionType.Buy  || t.Type == TransactionType.BonusUnits).Sum(t => t.Quantity);
+            var netSell = txs.Where(t => t.Type == TransactionType.Sell || t.Type == TransactionType.Withdrawal).Sum(t => t.Quantity);
+            var currentNetQty = netBuy - netSell;
+
+            var delta = targetQty - currentNetQty;
+            if (Math.Abs(delta) < 0.00001m) return;
+
+            var now = DateTime.UtcNow;
+            _context.Transactions.Add(new Transaction
+            {
+                Id = Guid.NewGuid(),
+                ProfileId = profileId,
+                InstrumentId = instrumentId,
+                Type = delta > 0 ? TransactionType.Buy : TransactionType.Sell,
+                Quantity = Math.Abs(delta),
+                Price = pricePerUnit,
+                Amount = Math.Abs(delta) * pricePerUnit,
+                TransactionDate = now,
+                Notes = "Direct holding adjustment",
+                Source = TransactionSource.Manual,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            });
+
+            _logger.LogInformation(
+                "Holding reconciliation transaction created. ProfileId={ProfileId} InstrumentId={InstrumentId} Delta={Delta} Type={Type}",
+                profileId, instrumentId, delta, delta > 0 ? "Buy" : "Sell");
         }
 
         public async Task<Result> RecalculateHoldingFromTransactionsAsync(Guid profileId, Guid instrumentId)

@@ -17,10 +17,11 @@ export class TransactionService {
 
   constructor(private http: HttpClient) {}
 
-  list(profileId: string, page = 1, pageSize = 50): Observable<PagedResult<Transaction>> {
-    const params = new HttpParams()
+  list(profileId: string, page = 1, pageSize = 50, includeDeleted = false): Observable<PagedResult<Transaction>> {
+    let params = new HttpParams()
       .set('page', page)
       .set('pageSize', pageSize);
+    if (includeDeleted) params = params.set('includeDeleted', 'true');
     return this.http.get<PagedResult<Transaction>>(this.base(profileId), { params });
   }
 

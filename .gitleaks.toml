@@ -25,9 +25,18 @@ regexes = [
 ]
 
 [[rules.allowlist]]
-description = "Skip test files"
+description = "Skip backend test project and frontend spec files"
 paths = [
   '''Portivio\.Tests/''',
+  '''\.spec\.ts$''',
+  '''\.spec\.js$''',
+]
+
+[[rules.allowlist]]
+description = "Skip example and template config files"
+paths = [
+  '''appsettings\.example\.json$''',
+  '''environment\.ts$''',
 ]
 
 [[rules.allowlist]]
