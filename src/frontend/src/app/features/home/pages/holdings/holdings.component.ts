@@ -26,6 +26,7 @@ export class HoldingsComponent implements OnInit, OnDestroy {
   activeAssetType = '';
   loading = false;
   saving = false;
+  refreshing = false;
   error: string | null = null;
 
   showForm = false;
@@ -156,11 +157,39 @@ export class HoldingsComponent implements OnInit, OnDestroy {
     return this.holdings.filter(h => h.assetTypeName === type).length;
   }
 
+  refreshPrices(): void {
+    if (!this.selectedProfileId || this.refreshing) return;
+    this.refreshing = true;
+    this.holdingService.refresh(this.selectedProfileId)
+      .pipe(takeUntil(this.destroy$), finalize(() => (this.refreshing = false)))
+      .subscribe({
+        next: (data) => {
+          this.holdings = data ?? [];
+          this.toastr.success('Holdings refreshed');
+        },
+        error: (err) => this.toastr.error(err?.error?.message || 'Refresh failed')
+      });
+  }
+
   formatNumber(n: number, digits = 2): string {
     return Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: digits });
   }
 
   formatCurrency(n: number): string {
     return '₹' + this.formatNumber(n);
+  }
+
+  formatRelative(value: string | Date | null | undefined): string {
+    if (!value) return '—';
+    const then = value instanceof Date ? value.getTime() : new Date(value).getTime();
+    if (!isFinite(then)) return '—';
+    const diffSec = Math.max(0, Math.floor((Date.now() - then) / 1000));
+    if (diffSec < 60) return 'just now';
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    const diffDay = Math.floor(diffHr / 24);
+    return diffDay === 1 ? '1 day ago' : `${diffDay} days ago`;
   }
 }

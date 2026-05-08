@@ -56,6 +56,8 @@ public static class ApplicationServicesExtensions
         services.AddScoped<AssetStrategyResolver>();
         services.AddScoped<ITransactionIngestService, TransactionIngestService>();
         services.AddScoped<IAssetInstrumentService, AssetInstrumentService>();
+        services.AddScoped<IHoldingRecalculationService, HoldingRecalculationService>();
+        services.AddSingleton<IRefreshThrottle, RealRefreshThrottle>();
     }
 
     private static void RegisterEmailServices(IServiceCollection services)
@@ -87,6 +89,7 @@ public static class ApplicationServicesExtensions
         services.AddScoped<IStockPriceProvider, AlphaVantageStockProvider>();
         services.AddScoped<IMutualFundNavProvider, AmfiNavProvider>();
         services.AddScoped<IStandardRateProvider, ConfigStandardRateProvider>();
+        services.AddSingleton<IGoldRateProvider, GoldRateProvider>();
         services.AddScoped<IMarketDataService, MarketDataService>();
         services.AddScoped<IStandardRateService, StandardRateService>();
     }
