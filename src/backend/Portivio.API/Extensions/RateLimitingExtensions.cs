@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 
 namespace Portivio.API.Extensions;
@@ -45,6 +46,24 @@ public static class RateLimitingExtensions
                 opt.Window = TimeSpan.FromMinutes(1);
                 opt.PermitLimit = 5;
                 opt.QueueLimit = 0;
+            });
+
+            options.AddPolicy("manual-refresh", context =>
+            {
+                var userId =
+                    context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                    ?? context.User.FindFirst("sub")?.Value
+                    ?? context.User.FindFirst("userId")?.Value
+                    ?? context.Connection.RemoteIpAddress?.ToString();
+
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    userId!,
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 1,
+                        Window = TimeSpan.FromSeconds(60),
+                        QueueLimit = 0
+                    });
             });
         });
 

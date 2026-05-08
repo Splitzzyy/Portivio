@@ -4,10 +4,18 @@
       <h1 class="page-heading">Holdings</h1>
       <p class="page-subtitle">Current positions per profile.</p>
     </div>
-    <button class="btn btn-primary" (click)="openCreate()"
-            *ngIf="!showForm && selectedProfileId && instruments.length">
-      <i class="fas fa-plus"></i> Add / Update Holding
-    </button>
+    <div class="page-actions">
+      <button class="btn btn-secondary" (click)="refreshPrices()"
+              *ngIf="!showForm && selectedProfileId && holdings.length"
+              [disabled]="refreshing">
+        <i class="fas fa-sync" [class.fa-spin]="refreshing"></i>
+        {{ refreshing ? 'Refreshing…' : 'Refresh prices' }}
+      </button>
+      <button class="btn btn-primary" (click)="openCreate()"
+              *ngIf="!showForm && selectedProfileId && instruments.length">
+        <i class="fas fa-plus"></i> Add / Update Holding
+      </button>
+    </div>
   </div>
 
   <div class="toolbar">
@@ -83,6 +91,7 @@
           <th class="num">Current</th>
           <th class="num">Market Value</th>
           <th class="num">P&amp;L</th>
+          <th class="num">Updated</th>
           <th class="actions"></th>
         </tr>
       </thead>
@@ -98,6 +107,7 @@
           <td class="num" [class.positive]="h.unrealizedPnL >= 0" [class.negative]="h.unrealizedPnL < 0">
             {{ h.unrealizedPnL >= 0 ? '+' : '' }}{{ formatCurrency(h.unrealizedPnL) }}
           </td>
+          <td class="num muted">{{ formatRelative(h.lastUpdated) }}</td>
           <td class="actions">
             <button class="icon-btn" title="Edit" (click)="openEdit(h)"><i class="fas fa-pen"></i></button>
             <button class="icon-btn danger" title="Delete" (click)="delete(h)"><i class="fas fa-trash"></i></button>

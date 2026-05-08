@@ -14,10 +14,12 @@ namespace Portivio.API.Controllers
     public class HoldingController : PortivioControllerBase
     {
         private readonly IHoldingService _holdingService;
+        private readonly IHoldingRecalculationService _recalc;
 
-        public HoldingController(IHoldingService holdingService)
+        public HoldingController(IHoldingService holdingService, IHoldingRecalculationService recalc)
         {
             _holdingService = holdingService;
+            _recalc = recalc;
         }
 
         [HttpGet]
@@ -36,6 +38,18 @@ namespace Portivio.API.Controllers
         {
             if (!TryGetCurrentUserId(out var userId)) return UserNotAuthenticated();
             var result = await _holdingService.UpsertHoldingAsync(userId, profileId, request);
+            return result.Match(
+                onSuccess: () => Ok(result.Data),
+                onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
+            );
+        }
+
+        [HttpPost("refresh")]
+        [EnableRateLimiting("manual-refresh")]
+        public async Task<IActionResult> RefreshHoldings(Guid profileId, CancellationToken ct)
+        {
+            if (!TryGetCurrentUserId(out var userId)) return UserNotAuthenticated();
+            var result = await _recalc.RefreshProfileAsync(userId, profileId, ct);
             return result.Match(
                 onSuccess: () => Ok(result.Data),
                 onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })

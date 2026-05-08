@@ -23,4 +23,8 @@ export class HoldingService {
   delete(profileId: string, holdingId: string): Observable<void> {
     return this.http.delete<void>(`${this.base(profileId)}/${holdingId}`);
   }
+
+  refresh(profileId: string): Observable<Holding[]> {
+    return this.http.post<Holding[]>(`${this.base(profileId)}/refresh`, {});
+  }
 }
