@@ -211,6 +211,24 @@ namespace Portivio.Application.Services
                     .Where(h => h.ProfileId == profileId)
                     .ToListAsync(ct);
 
+                // Refresh gold rates from config first so the recompute below picks up today's PriceHistory.
+                var goldInstruments = holdings
+                    .Where(h => h.Instrument.Category == AssetCategory.Gold && h.Instrument.PriceSource == PriceSource.Manual)
+                    .Select(h => h.Instrument)
+                    .GroupBy(i => i.Id)
+                    .Select(g => g.First())
+                    .ToList();
+                foreach (var inst in goldInstruments)
+                {
+                    try { await TryUpsertGoldPriceAsync(inst, ct); }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex,
+                            "Gold rate upsert failed during manual refresh. InstrumentId={InstrumentId} Symbol={Symbol}",
+                            inst.Id, inst.Symbol);
+                    }
+                }
+
                 var asOf = DateTime.UtcNow;
                 var recomputed = 0;
 
