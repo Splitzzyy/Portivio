@@ -5,6 +5,7 @@ import { ToastrService } from 'ngx-toastr';
 import {
   CreateTransactionRequest,
   Instrument,
+  PagedResult,
   Profile,
   Transaction,
   UpdateTransactionRequest
@@ -33,7 +34,7 @@ const TX_TYPES = ['BUY', 'SELL', 'SIP', 'DIVIDEND'];
 export class TransactionsComponent implements OnInit, OnDestroy {
   profiles: Profile[] = [];
   instruments: Instrument[] = [];
-  transactions: Transaction[] = [];
+  paged: PagedResult<Transaction> | null = null;
   readonly types = TX_TYPES;
 
   selectedProfileId: string | null = null;
@@ -98,9 +99,31 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     this.transactionService.list(this.selectedProfileId, this.page, this.pageSize)
       .pipe(takeUntil(this.destroy$), finalize(() => (this.loading = false)))
       .subscribe({
-        next: (data) => (this.transactions = data ?? []),
+        next: (data) => (this.paged = data ?? null),
         error: (err) => (this.error = err?.error?.message || 'Failed to load transactions.')
       });
+  }
+
+  get transactions(): Transaction[] {
+    return this.paged?.items ?? [];
+  }
+
+  get hasMore(): boolean {
+    return this.paged?.hasMore ?? false;
+  }
+
+  get total(): number {
+    return this.paged?.total ?? 0;
+  }
+
+  get rangeStart(): number {
+    if (!this.paged || this.paged.items.length === 0) return 0;
+    return (this.paged.page - 1) * this.paged.pageSize + 1;
+  }
+
+  get rangeEnd(): number {
+    if (!this.paged || this.paged.items.length === 0) return 0;
+    return this.rangeStart + this.paged.items.length - 1;
   }
 
   openCreate(): void {
@@ -180,7 +203,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   }
 
   nextPage(): void {
-    if (this.transactions.length < this.pageSize) return;
+    if (!this.hasMore) return;
     this.page++;
     this.fetch();
   }

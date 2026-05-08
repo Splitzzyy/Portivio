@@ -46,7 +46,7 @@ describe('AddInvestmentComponent', () => {
 
     profileSvc.list.and.returnValue(of([mockProfile]));
     instrumentSvc.listInstruments.and.returnValue(of(mockInstruments));
-    transactionSvc.list.and.returnValue(of([]));
+    transactionSvc.list.and.returnValue(of({ items: [], page: 1, pageSize: 5, total: 0, hasMore: false }));
 
     await TestBed.configureTestingModule({
       imports: [RouterTestingModule, FormsModule, CommonModule],

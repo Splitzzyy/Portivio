@@ -5,7 +5,8 @@ import { environment } from '../../../environments/environment';
 import {
   Transaction,
   CreateTransactionRequest,
-  UpdateTransactionRequest
+  UpdateTransactionRequest,
+  PagedResult
 } from '../models/portfolio.model';
 
 @Injectable({ providedIn: 'root' })
@@ -16,11 +17,11 @@ export class TransactionService {
 
   constructor(private http: HttpClient) {}
 
-  list(profileId: string, page = 1, pageSize = 50): Observable<Transaction[]> {
+  list(profileId: string, page = 1, pageSize = 50): Observable<PagedResult<Transaction>> {
     const params = new HttpParams()
       .set('page', page)
       .set('pageSize', pageSize);
-    return this.http.get<Transaction[]>(this.base(profileId), { params });
+    return this.http.get<PagedResult<Transaction>>(this.base(profileId), { params });
   }
 
   create(profileId: string, body: CreateTransactionRequest): Observable<Transaction> {

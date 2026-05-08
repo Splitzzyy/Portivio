@@ -18,9 +18,10 @@
     </select>
 
     <div class="pagination-controls" *ngIf="selectedProfileId">
-      <span>Page {{ page }}</span>
+      <span class="muted" *ngIf="paged && total > 0">Showing {{ rangeStart }}-{{ rangeEnd }} of {{ total }}</span>
+      <span class="muted" *ngIf="paged && total === 0">No transactions yet</span>
       <button class="btn btn-secondary" (click)="prevPage()" [disabled]="page <= 1">Prev</button>
-      <button class="btn btn-secondary" (click)="nextPage()" [disabled]="transactions.length < pageSize">Next</button>
+      <button class="btn btn-secondary" (click)="nextPage()" [disabled]="!hasMore">Next</button>
     </div>
   </div>
 
