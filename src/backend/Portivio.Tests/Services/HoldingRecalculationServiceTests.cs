@@ -1,8 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Portivio.Application.DTOs.MarketData;
+using Portivio.Application.Results;
 using Portivio.Application.Services;
 using Portivio.Application.Services.Authorization;
+using Portivio.Application.Services.MarketData;
 using Portivio.Application.Services.Strategies;
 using Portivio.Domain.Entities;
 using Portivio.Domain.Enums;
@@ -24,11 +27,32 @@ namespace Portivio.Tests.Services
         private static ILogger<HoldingRecalculationService> CreateMockLogger()
             => new Mock<ILogger<HoldingRecalculationService>>().Object;
 
+        private sealed class RecordingThrottle : IRefreshThrottle
+        {
+            public List<TimeSpan> Calls { get; } = new();
+            public Task DelayAsync(TimeSpan delay, CancellationToken ct)
+            {
+                Calls.Add(delay);
+                return Task.CompletedTask;
+            }
+        }
+
+        private static IMarketDataService NoopMarketData()
+        {
+            var mock = new Mock<IMarketDataService>();
+            mock.Setup(m => m.SyncAllNavsAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Result<SyncSummaryResponse>.Success(new SyncSummaryResponse()));
+            mock.Setup(m => m.SyncStockPriceAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Result<StockPriceResponse>.Success(new StockPriceResponse()));
+            return mock.Object;
+        }
+
         private static (User user, Profile profile, Instrument instrument) SeedEquityHolding(
             PortivioDbContext context,
             decimal quantity,
             decimal avgPrice,
             decimal? latestPriceHistory,
+            string symbol = "TEST",
             DateTime? priceDate = null)
         {
             var user = new User
@@ -56,16 +80,16 @@ namespace Portivio.Tests.Services
                 Id = Guid.NewGuid(),
                 AssetTypeId = assetType.Id,
                 Category = AssetCategory.Equity,
-                Name = "Test Corp",
-                Symbol = "TEST",
-                Currency = "USD"
+                Name = $"Inst-{symbol}",
+                Symbol = symbol,
+                Currency = "USD",
+                PriceSource = PriceSource.AlphaVantage
             };
             context.Users.Add(user);
             context.Profiles.Add(profile);
             context.AssetTypes.Add(assetType);
             context.Instruments.Add(instrument);
 
-            // Seed a Buy transaction matching the requested cost basis.
             context.Transactions.Add(new Transaction
             {
                 Id = Guid.NewGuid(),
@@ -95,7 +119,6 @@ namespace Portivio.Tests.Services
                 });
             }
 
-            // Pre-existing holding row carrying stale derived fields the service should overwrite.
             context.Holdings.Add(new Holding
             {
                 Id = Guid.NewGuid(),
@@ -115,23 +138,33 @@ namespace Portivio.Tests.Services
 
         private static AssetStrategyResolver BuildResolver(PortivioDbContext context, params IAssetStrategy[] extra)
         {
-            // Real EquityStrategy keeps the test honest about price-history lookups.
-            // Tests can pass extra mocked strategies for other categories.
             var list = new List<IAssetStrategy> { new EquityStrategy(context) };
             list.AddRange(extra);
             return new AssetStrategyResolver(list);
         }
 
+        private static HoldingRecalculationService BuildService(
+            PortivioDbContext context,
+            IMarketDataService? marketData = null,
+            IRefreshThrottle? throttle = null,
+            params IAssetStrategy[] extraStrategies) =>
+            new(
+                context,
+                BuildResolver(context, extraStrategies),
+                new ProfileAccessGuard(context),
+                marketData ?? NoopMarketData(),
+                throttle ?? new RecordingThrottle(),
+                CreateMockLogger());
+
+        // ---------- RefreshProfileAsync (slice #28) ----------
+
         [Fact]
         public async Task RefreshProfileAsync_RecomputesHoldings_UsingLatestPriceHistory()
         {
             using var context = CreateInMemoryDbContext();
-            var (user, profile, instrument) = SeedEquityHolding(context, quantity: 10m, avgPrice: 100m, latestPriceHistory: 150m);
-            var service = new HoldingRecalculationService(
-                context,
-                BuildResolver(context),
-                new ProfileAccessGuard(context),
-                CreateMockLogger());
+            var (user, profile, _) = SeedEquityHolding(context, quantity: 10m, avgPrice: 100m, latestPriceHistory: 150m);
+            var market = new Mock<IMarketDataService>();
+            var service = BuildService(context, market.Object);
 
             var result = await service.RefreshProfileAsync(user.Id, profile.Id);
 
@@ -142,6 +175,8 @@ namespace Portivio.Tests.Services
             Assert.Equal(1500m, holding.MarketValue);          // 10 * 150
             Assert.Equal(500m, holding.UnrealizedPnL);         // (150 - 100) * 10
             Assert.True(holding.LastUpdated > DateTime.UtcNow.AddDays(-1));
+            market.Verify(m => m.SyncStockPriceAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+            market.Verify(m => m.SyncAllNavsAsync(It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -150,7 +185,6 @@ namespace Portivio.Tests.Services
             using var context = CreateInMemoryDbContext();
             var (user, profile, instrument) = SeedEquityHolding(context, quantity: 10m, avgPrice: 100m, latestPriceHistory: 150m);
 
-            // Add an offsetting Sell so net qty == 0; strategy snapshot will return Quantity=0.
             context.Transactions.Add(new Transaction
             {
                 Id = Guid.NewGuid(),
@@ -168,11 +202,7 @@ namespace Portivio.Tests.Services
             });
             await context.SaveChangesAsync();
 
-            var service = new HoldingRecalculationService(
-                context,
-                BuildResolver(context),
-                new ProfileAccessGuard(context),
-                CreateMockLogger());
+            var service = BuildService(context);
 
             var result = await service.RefreshProfileAsync(user.Id, profile.Id);
 
@@ -186,17 +216,89 @@ namespace Portivio.Tests.Services
         {
             using var context = CreateInMemoryDbContext();
             var (_, profile, _) = SeedEquityHolding(context, quantity: 10m, avgPrice: 100m, latestPriceHistory: 150m);
-            var otherUser = Guid.NewGuid();
-            var service = new HoldingRecalculationService(
-                context,
-                BuildResolver(context),
-                new ProfileAccessGuard(context),
-                CreateMockLogger());
+            var service = BuildService(context);
 
-            var result = await service.RefreshProfileAsync(otherUser, profile.Id);
+            var result = await service.RefreshProfileAsync(Guid.NewGuid(), profile.Id);
 
             Assert.True(result.IsFailure);
             Assert.Equal(403, result.StatusCode);
+        }
+
+        // ---------- RunDailyRefreshAsync (slice #29) ----------
+
+        [Fact]
+        public async Task RunDailyRefreshAsync_ContinuesOnPerInstrumentFailure()
+        {
+            using var context = CreateInMemoryDbContext();
+            var (_, profileGood, instGood) = SeedEquityHolding(context, 10m, 100m, latestPriceHistory: 150m, symbol: "GOOD");
+            var (_, _, instBad) = SeedEquityHolding(context, 5m, 50m, latestPriceHistory: 55m, symbol: "BAD");
+
+            var market = new Mock<IMarketDataService>();
+            market.Setup(m => m.SyncAllNavsAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Result<SyncSummaryResponse>.Success(new SyncSummaryResponse()));
+            market.Setup(m => m.SyncStockPriceAsync("GOOD", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Result<StockPriceResponse>.Success(new StockPriceResponse { Symbol = "GOOD", Price = 150m }));
+            market.Setup(m => m.SyncStockPriceAsync("BAD", It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("provider exploded"));
+
+            var service = BuildService(context, market.Object);
+
+            var result = await service.RunDailyRefreshAsync();
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(1, result.Data!.Errors);
+            Assert.Contains(result.Data.ErrorMessages, m => m.Contains("BAD"));
+            Assert.Equal(2, result.Data.HoldingsRecomputed);
+
+            // Both holdings still recomputed via strategy snapshot regardless of provider failure.
+            var goodHolding = await context.Holdings.FirstAsync(h => h.InstrumentId == instGood.Id);
+            Assert.Equal(150m, goodHolding.CurrentPrice);
+            var badHolding = await context.Holdings.FirstAsync(h => h.InstrumentId == instBad.Id);
+            Assert.Equal(55m, badHolding.CurrentPrice);
+        }
+
+        [Fact]
+        public async Task RunDailyRefreshAsync_ThrottlesAlphaVantageCalls()
+        {
+            using var context = CreateInMemoryDbContext();
+            SeedEquityHolding(context, 10m, 100m, latestPriceHistory: 110m, symbol: "AAA");
+            SeedEquityHolding(context, 5m, 200m, latestPriceHistory: 210m, symbol: "BBB");
+            SeedEquityHolding(context, 1m, 300m, latestPriceHistory: 310m, symbol: "CCC");
+
+            var throttle = new RecordingThrottle();
+            var service = BuildService(context, NoopMarketData(), throttle);
+
+            var result = await service.RunDailyRefreshAsync();
+
+            Assert.True(result.IsSuccess);
+            // 3 AlphaVantage calls → throttle invoked twice (between 1↔2 and 2↔3).
+            Assert.Equal(2, throttle.Calls.Count);
+            Assert.All(throttle.Calls, c => Assert.Equal(TimeSpan.FromSeconds(12), c));
+        }
+
+        [Fact]
+        public async Task RunDailyRefreshAsync_IsIdempotent_OnSameDay()
+        {
+            using var context = CreateInMemoryDbContext();
+            var (_, _, instrument) = SeedEquityHolding(context, 10m, 100m, latestPriceHistory: 150m);
+            var service = BuildService(context);
+
+            var first = await service.RunDailyRefreshAsync();
+            var firstUpdated = await context.Holdings
+                .Where(h => h.InstrumentId == instrument.Id)
+                .Select(h => h.LastUpdated).FirstAsync();
+
+            var second = await service.RunDailyRefreshAsync();
+            var secondUpdated = await context.Holdings
+                .Where(h => h.InstrumentId == instrument.Id)
+                .Select(h => h.LastUpdated).FirstAsync();
+
+            Assert.True(first.IsSuccess);
+            Assert.True(second.IsSuccess);
+            // Holding row count is stable across runs (no duplicates).
+            Assert.Equal(1, await context.Holdings.CountAsync(h => h.InstrumentId == instrument.Id));
+            // Second run advances LastUpdated (or matches it within the same tick).
+            Assert.True(secondUpdated >= firstUpdated);
         }
     }
 }

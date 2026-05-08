@@ -3,8 +3,10 @@ using Microsoft.Extensions.Logging;
 using Portivio.Application.DTOs.Holding;
 using Portivio.Application.Results;
 using Portivio.Application.Services.Authorization;
+using Portivio.Application.Services.MarketData;
 using Portivio.Application.Services.Strategies;
 using Portivio.Domain.Entities;
+using Portivio.Domain.Enums;
 using Portivio.Infrastructure.Data;
 
 namespace Portivio.Application.Services
@@ -27,29 +29,160 @@ namespace Portivio.Application.Services
 
     public class HoldingRecalculationService : IHoldingRecalculationService
     {
+        // AlphaVantage free tier: 5 calls/min and 500 calls/day. Stay under both.
+        private static readonly TimeSpan AlphaVantageThrottle = TimeSpan.FromSeconds(12);
+        private const int AlphaVantageDailyCap = 500;
+
         private readonly PortivioDbContext _context;
         private readonly AssetStrategyResolver _strategies;
         private readonly IProfileAccessGuard _profileAccess;
+        private readonly IMarketDataService _marketData;
+        private readonly IRefreshThrottle _throttle;
         private readonly ILogger<HoldingRecalculationService> _logger;
 
         public HoldingRecalculationService(
             PortivioDbContext context,
             AssetStrategyResolver strategies,
             IProfileAccessGuard profileAccess,
+            IMarketDataService marketData,
+            IRefreshThrottle throttle,
             ILogger<HoldingRecalculationService> logger)
         {
             _context = context;
             _strategies = strategies;
             _profileAccess = profileAccess;
+            _marketData = marketData;
+            _throttle = throttle;
             _logger = logger;
         }
 
-        public Task<Result<RecalculationSummary>> RunDailyRefreshAsync(CancellationToken ct = default)
+        public async Task<Result<RecalculationSummary>> RunDailyRefreshAsync(CancellationToken ct = default)
         {
-            // Slice #29 fills this in (external price fetch + per-instrument failure tolerance + throttling).
-            // Returning a no-op success keeps the interface stable for DI registration today.
-            var summary = new RecalculationSummary(0, 0, 0, 0, 0, Array.Empty<string>());
-            return Task.FromResult(Result<RecalculationSummary>.Success(summary, "Daily refresh not yet implemented"));
+            _logger.LogInformation("Daily holdings refresh started");
+
+            var attempted = 0;
+            var pricesUpdated = 0;
+            var pricesSkipped = 0;
+            var holdingsRecomputed = 0;
+            var errorMessages = new List<string>();
+
+            // Bulk AMFI sync once per run (single network call covers all MF instruments).
+            try
+            {
+                var amfi = await _marketData.SyncAllNavsAsync(ct);
+                if (amfi.IsSuccess && amfi.Data != null)
+                    pricesUpdated += amfi.Data.Inserted;
+            }
+            catch (Exception ex)
+            {
+                errorMessages.Add($"AMFI bulk sync: {ex.Message}");
+                _logger.LogWarning(ex, "AMFI bulk sync failed");
+            }
+
+            // Per-instrument external fetch for non-AMFI sources.
+            var instruments = await _context.Instruments.AsNoTracking().ToListAsync(ct);
+            var alphaCallCount = 0;
+
+            foreach (var inst in instruments)
+            {
+                attempted++;
+                try
+                {
+                    switch (inst.PriceSource)
+                    {
+                        case PriceSource.AlphaVantage:
+                            if (alphaCallCount >= AlphaVantageDailyCap)
+                            {
+                                pricesSkipped++;
+                                continue;
+                            }
+                            if (alphaCallCount > 0)
+                                await _throttle.DelayAsync(AlphaVantageThrottle, ct);
+                            alphaCallCount++;
+                            var stock = await _marketData.SyncStockPriceAsync(inst.Symbol, ct);
+                            if (stock.IsSuccess) pricesUpdated++;
+                            else pricesSkipped++;
+                            break;
+
+                        case PriceSource.AmfiNav:
+                            // Already handled by the bulk sync above.
+                            break;
+
+                        case PriceSource.AccrualFormula:
+                            // No external call — accrual is computed by the per-strategy snapshot below.
+                            break;
+
+                        case PriceSource.Manual:
+                            // Slice #3 plugs IGoldRateProvider in here for Gold instruments.
+                            pricesSkipped++;
+                            break;
+
+                        default:
+                            pricesSkipped++;
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    errorMessages.Add($"{inst.Symbol}: {ex.Message}");
+                    _logger.LogWarning(ex,
+                        "Per-instrument refresh failed. InstrumentId={InstrumentId} Symbol={Symbol} Source={Source}",
+                        inst.Id, inst.Symbol, inst.PriceSource);
+                }
+            }
+
+            // Recompute holdings per profile via strategy snapshots.
+            var holdings = await _context.Holdings
+                .Include(h => h.Instrument)
+                .ToListAsync(ct);
+            var asOf = DateTime.UtcNow;
+            var groups = holdings.GroupBy(h => h.ProfileId);
+
+            foreach (var group in groups)
+            {
+                foreach (var holding in group)
+                {
+                    try
+                    {
+                        var strategy = _strategies.For(holding.Instrument.Category);
+                        var snapshot = await strategy.ComputeHoldingAsync(
+                            holding.ProfileId, holding.InstrumentId, asOf, ct);
+
+                        if (snapshot.Quantity <= 0)
+                        {
+                            _context.Holdings.Remove(holding);
+                            continue;
+                        }
+
+                        holding.Quantity = snapshot.Quantity;
+                        holding.AvgPrice = snapshot.AvgPrice;
+                        holding.CurrentPrice = snapshot.CurrentPrice;
+                        holding.MarketValue = snapshot.MarketValue;
+                        holding.UnrealizedPnL = snapshot.UnrealizedPnL;
+                        holding.RealizedPnL = snapshot.RealizedPnL;
+                        holding.AccruedInterest = snapshot.AccruedInterest;
+                        holding.Snapshot = snapshot.Snapshot;
+                        holding.LastUpdated = asOf;
+                        holdingsRecomputed++;
+                    }
+                    catch (Exception ex)
+                    {
+                        errorMessages.Add($"holding {holding.Id}: {ex.Message}");
+                        _logger.LogWarning(ex, "Per-holding recompute failed. HoldingId={HoldingId}", holding.Id);
+                    }
+                }
+                await _context.SaveChangesAsync(ct);
+            }
+
+            var summary = new RecalculationSummary(
+                attempted, pricesUpdated, pricesSkipped, holdingsRecomputed,
+                errorMessages.Count, errorMessages);
+
+            _logger.LogInformation(
+                "Daily holdings refresh complete. Attempted={InstrumentsAttempted} Updated={PricesUpdated} Skipped={PricesSkipped} Recomputed={HoldingsRecomputed} Errors={Errors}",
+                attempted, pricesUpdated, pricesSkipped, holdingsRecomputed, errorMessages.Count);
+
+            return Result<RecalculationSummary>.Success(summary, "Daily refresh complete");
         }
 
         public async Task<Result<List<HoldingResponse>>> RefreshProfileAsync(

@@ -57,6 +57,7 @@ public static class ApplicationServicesExtensions
         services.AddScoped<ITransactionIngestService, TransactionIngestService>();
         services.AddScoped<IAssetInstrumentService, AssetInstrumentService>();
         services.AddScoped<IHoldingRecalculationService, HoldingRecalculationService>();
+        services.AddSingleton<IRefreshThrottle, RealRefreshThrottle>();
     }
 
     private static void RegisterEmailServices(IServiceCollection services)

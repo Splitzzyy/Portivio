@@ -45,5 +45,6 @@ app.UseRateLimiter();
 app.MapControllers();
 app.MapHealthChecks("/health").AllowAnonymous();
 app.MapHangfireDashboardIfDevelopment(environment);
+app.RegisterRecurringJobs();
 
 await app.RunWithMigrationAsync();
