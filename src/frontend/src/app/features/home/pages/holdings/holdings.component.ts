@@ -157,6 +157,17 @@ export class HoldingsComponent implements OnInit, OnDestroy {
     return this.holdings.filter(h => h.assetTypeName === type).length;
   }
 
+  assetPillClass(assetTypeName: string | undefined | null): string {
+    const name = (assetTypeName || '').toLowerCase();
+    if (name.includes('equity') || name.includes('stock')) return 'pill-asset-equity';
+    if (name.includes('mutual') || name.includes('fund'))  return 'pill-asset-mf';
+    if (name.includes('gold'))                              return 'pill-asset-gold';
+    if (name.includes('recurring'))                         return 'pill-asset-rd';
+    if (name.includes('fixed') || name.includes('fd'))      return 'pill-asset-fd';
+    if (name.includes('ppf'))                               return 'pill-asset-ppf';
+    return 'pill-muted';
+  }
+
   refreshPrices(): void {
     if (!this.selectedProfileId || this.refreshing) return;
     this.refreshing = true;

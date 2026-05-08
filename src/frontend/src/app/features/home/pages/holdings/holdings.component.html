@@ -84,30 +84,30 @@
       <thead>
         <tr>
           <th>Symbol</th>
-          <th>Name</th>
-          <th>Asset</th>
+          <th class="col-hide-sm">Name</th>
+          <th class="col-hide-md">Asset</th>
           <th class="num">Qty</th>
-          <th class="num">Avg</th>
+          <th class="num col-hide-sm">Avg</th>
           <th class="num">Current</th>
           <th class="num">Market Value</th>
           <th class="num">P&amp;L</th>
-          <th class="num">Updated</th>
+          <th class="num col-hide-md">Updated</th>
           <th class="actions"></th>
         </tr>
       </thead>
       <tbody>
         <tr *ngFor="let h of filteredHoldings">
           <td class="strong">{{ h.instrumentSymbol }}</td>
-          <td>{{ h.instrumentName }}</td>
-          <td class="muted">{{ h.assetTypeName }}</td>
+          <td class="col-hide-sm">{{ h.instrumentName }}</td>
+          <td class="col-hide-md"><span class="pill" [ngClass]="assetPillClass(h.assetTypeName)">{{ h.assetTypeName }}</span></td>
           <td class="num">{{ formatNumber(h.quantity, 4) }}</td>
-          <td class="num">{{ formatCurrency(h.avgPrice) }}</td>
+          <td class="num col-hide-sm">{{ formatCurrency(h.avgPrice) }}</td>
           <td class="num">{{ formatCurrency(h.currentPrice) }}</td>
           <td class="num strong">{{ formatCurrency(h.marketValue) }}</td>
           <td class="num" [class.positive]="h.unrealizedPnL >= 0" [class.negative]="h.unrealizedPnL < 0">
             {{ h.unrealizedPnL >= 0 ? '+' : '' }}{{ formatCurrency(h.unrealizedPnL) }}
           </td>
-          <td class="num muted">{{ formatRelative(h.lastUpdated) }}</td>
+          <td class="num muted col-hide-md">{{ formatRelative(h.lastUpdated) }}</td>
           <td class="actions">
             <button class="icon-btn" title="Edit" (click)="openEdit(h)"><i class="fas fa-pen"></i></button>
             <button class="icon-btn danger" title="Delete" (click)="delete(h)"><i class="fas fa-trash"></i></button>
@@ -116,7 +116,10 @@
       </tbody>
     </table>
     <ng-template #empty>
-      <div class="empty-hint">No holdings in this profile yet.</div>
+      <div class="empty-hint">
+        <i class="fas fa-wallet"></i>
+        No holdings in this profile yet.
+      </div>
     </ng-template>
   </div>
 </div>

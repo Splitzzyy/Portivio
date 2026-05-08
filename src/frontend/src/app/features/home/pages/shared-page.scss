@@ -1,18 +1,11 @@
-$primary-color: #6366f1;
-$secondary-color: #0ea5e9;
-$success-color: #10b981;
-$info-color: #3b82f6;
-$warning-color: #f59e0b;
-$danger-color: #ef4444;
-$text-dark: #1f2937;
-$text-light: #6b7280;
-$border-color: #e5e7eb;
-$bg-light: #f9fafb;
-$white: #ffffff;
+// All colors below come from the global token layer (styles/_tokens.scss).
+// Light + dark palettes flip automatically via the data-theme attribute on
+// <html>. Do not reintroduce hard-coded color literals here.
 
 .page-container {
   max-width: 1400px;
   margin: 0 auto;
+  padding: 0 4px;
 }
 
 .page-header {
@@ -26,14 +19,22 @@ $white: #ffffff;
   .page-heading {
     font-size: 28px;
     font-weight: 700;
-    color: $text-dark;
+    color: var(--text-primary);
     margin: 0 0 4px 0;
   }
 
   .page-subtitle {
-    color: $text-light;
+    color: var(--text-muted);
     font-size: 14px;
     margin: 0;
+  }
+
+  .page-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 
   .btn {
@@ -44,24 +45,36 @@ $white: #ffffff;
     border-radius: 8px;
     font-weight: 600;
     font-size: 14px;
-    border: none;
+    border: 1px solid transparent;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 
     &.btn-primary {
-      background: $primary-color;
-      color: white;
-      &:hover { background: #4f46e5; }
+      background: var(--accent);
+      color: #ffffff;
+      &:hover { filter: brightness(0.95); }
     }
     &.btn-secondary {
-      background: $bg-light;
-      color: $text-dark;
-      &:hover { background: #e5e7eb; }
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      border-color: var(--border);
+      &:hover { background: var(--bg-elev-1); }
     }
-    &.btn-success { background: $success-color; color: white; }
-    &.btn-warning { background: $warning-color; color: white; }
-    &.btn-danger { background: $danger-color; color: white; }
+    &.btn-success { background: var(--positive); color: #ffffff; }
+    &.btn-warning { background: var(--warning); color: #ffffff; }
+    &.btn-danger  { background: var(--negative); color: #ffffff; }
     &:disabled { opacity: 0.55; cursor: not-allowed; }
+  }
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    align-items: stretch;
+
+    .page-actions {
+      width: 100%;
+      .btn { flex: 1 1 auto; justify-content: center; }
+    }
   }
 }
 
@@ -75,18 +88,19 @@ $white: #ffffff;
   label {
     font-size: 13px;
     font-weight: 600;
-    color: $text-light;
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.4px;
   }
 
   select, input {
     padding: 8px 12px;
-    border: 1px solid $border-color;
+    border: 1px solid var(--border);
     border-radius: 6px;
     font-size: 14px;
     min-width: 200px;
-    background: $white;
+    background: var(--bg-surface);
+    color: var(--text-primary);
   }
 
   .pagination-controls {
@@ -95,15 +109,26 @@ $white: #ffffff;
     gap: 8px;
     margin-left: auto;
     font-size: 13px;
-    color: $text-light;
+    color: var(--text-muted);
 
     .btn { padding: 6px 12px; font-size: 13px; }
+    .muted { color: var(--text-muted); }
+  }
+}
+
+@media (max-width: 768px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+
+    select, input { width: 100%; min-width: 0; }
+    .pagination-controls { margin-left: 0; justify-content: space-between; }
   }
 }
 
 .form-card {
-  background: $white;
-  border: 1px solid $border-color;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 20px 24px;
   margin-bottom: 24px;
@@ -111,7 +136,7 @@ $white: #ffffff;
   .form-title {
     font-size: 16px;
     font-weight: 700;
-    color: $text-dark;
+    color: var(--text-primary);
     margin: 0 0 16px 0;
   }
 
@@ -128,24 +153,24 @@ $white: #ffffff;
       label {
         font-size: 12px;
         font-weight: 600;
-        color: $text-light;
+        color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: 0.4px;
       }
 
       input, select, textarea {
         padding: 9px 12px;
-        border: 1px solid $border-color;
+        border: 1px solid var(--border);
         border-radius: 6px;
         font-size: 14px;
         font-family: inherit;
-        color: $text-dark;
-        background: $white;
+        color: var(--text-primary);
+        background: var(--bg-surface);
 
         &:focus {
           outline: none;
-          border-color: $primary-color;
-          box-shadow: 0 0 0 3px rgba($primary-color, 0.15);
+          border-color: var(--accent);
+          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
         }
       }
     }
@@ -162,11 +187,11 @@ $white: #ffffff;
         border-radius: 6px;
         font-weight: 600;
         font-size: 14px;
-        border: none;
+        border: 1px solid transparent;
         cursor: pointer;
 
-        &.btn-primary { background: $primary-color; color: white; &:hover { background: #4f46e5; } }
-        &.btn-secondary { background: $bg-light; color: $text-dark; &:hover { background: #e5e7eb; } }
+        &.btn-primary { background: var(--accent); color: #ffffff; &:hover { filter: brightness(0.95); } }
+        &.btn-secondary { background: var(--bg-elev-1); color: var(--text-primary); border-color: var(--border); &:hover { filter: brightness(0.97); } }
         &:disabled { opacity: 0.55; cursor: not-allowed; }
       }
     }
@@ -184,44 +209,44 @@ $white: #ffffff;
     align-items: center;
     gap: 6px;
     padding: 7px 14px;
-    border: 1px solid $border-color;
+    border: 1px solid var(--border);
     border-radius: 8px;
-    background: $white;
-    color: $text-light;
+    background: var(--bg-surface);
+    color: var(--text-muted);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.15s ease;
 
     .tab-count {
-      background: $bg-light;
-      color: $text-light;
+      background: var(--bg-canvas);
+      color: var(--text-muted);
       border-radius: 999px;
       padding: 1px 7px;
       font-size: 11px;
     }
 
     &:hover {
-      border-color: $primary-color;
-      color: $primary-color;
+      border-color: var(--accent);
+      color: var(--accent);
     }
 
     &.active {
-      background: $primary-color;
-      border-color: $primary-color;
-      color: $white;
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
 
       .tab-count {
-        background: rgba(255, 255, 255, 0.25);
-        color: $white;
+        background: rgba(255, 255, 255, 0.2);
+        color: #ffffff;
       }
     }
   }
 }
 
 .data-card {
-  background: $white;
-  border: 1px solid $border-color;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 0;
   overflow: hidden;
@@ -232,15 +257,15 @@ $white: #ffffff;
   border-collapse: collapse;
 
   thead tr {
-    background: $bg-light;
-    border-bottom: 1px solid $border-color;
+    background: var(--bg-canvas);
+    border-bottom: 1px solid var(--border);
 
     th {
-      padding: 12px 16px;
+      padding: 10px 12px;
       text-align: left;
       font-size: 12px;
       font-weight: 700;
-      color: $text-light;
+      color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.5px;
 
@@ -250,46 +275,63 @@ $white: #ffffff;
   }
 
   tbody tr {
-    border-bottom: 1px solid $border-color;
+    border-bottom: 1px solid var(--border);
 
     &:last-child { border-bottom: none; }
-    &:hover { background: $bg-light; }
+    &:hover { background: var(--bg-canvas); }
 
     td {
-      padding: 14px 16px;
+      padding: 10px 12px;
       font-size: 14px;
-      color: $text-dark;
+      color: var(--text-primary);
+      line-height: 1.4;
 
       &.strong { font-weight: 600; }
-      &.muted { color: $text-light; }
+      &.muted { color: var(--text-muted); }
       &.num { text-align: right; font-variant-numeric: tabular-nums; }
       &.actions { text-align: right; white-space: nowrap; }
-      &.positive { color: $success-color; font-weight: 600; }
-      &.negative { color: $danger-color; font-weight: 600; }
+      &.positive { color: var(--positive); font-weight: 600; }
+      &.negative { color: var(--negative); font-weight: 600; }
+
+      &.truncate {
+        max-width: 220px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
     }
   }
+}
+
+// Hide non-essential columns on tablet / phone. Pages opt rows in/out via
+// the .col-hide-md (≤768) and .col-hide-sm (≤480) helper classes on <th>/<td>.
+@media (max-width: 768px) {
+  .table .col-hide-md { display: none; }
+}
+@media (max-width: 480px) {
+  .table .col-hide-sm { display: none; }
 }
 
 .icon-btn {
   background: transparent;
   border: 1px solid transparent;
-  color: $text-light;
+  color: var(--text-muted);
   width: 32px;
   height: 32px;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 
   &:hover {
-    background: $bg-light;
-    color: $primary-color;
-    border-color: $border-color;
+    background: var(--bg-canvas);
+    color: var(--accent);
+    border-color: var(--border);
   }
 
   &.danger:hover {
-    color: $danger-color;
-    background: rgba($danger-color, 0.08);
-    border-color: rgba($danger-color, 0.3);
+    color: var(--negative);
+    background: rgba(220, 38, 38, 0.08);
+    border-color: rgba(220, 38, 38, 0.3);
   }
 }
 
@@ -300,36 +342,48 @@ $white: #ffffff;
   font-size: 12px;
   font-weight: 600;
 
-  &.pill-success { background: rgba($success-color, 0.12); color: $success-color; }
-  &.pill-danger { background: rgba($danger-color, 0.12); color: $danger-color; }
-  &.pill-primary { background: rgba($primary-color, 0.12); color: $primary-color; }
-  &.pill-info { background: rgba($info-color, 0.12); color: $info-color; }
-  &.pill-warning { background: rgba($warning-color, 0.12); color: $warning-color; }
-  &.pill-muted { background: $bg-light; color: $text-light; }
+  &.pill-success { background: rgba(22, 163, 74, 0.14);   color: var(--positive); }
+  &.pill-danger  { background: rgba(220, 38, 38, 0.14);   color: var(--negative); }
+  &.pill-primary { background: rgba(99, 102, 241, 0.14);  color: var(--accent); }
+  &.pill-info    { background: rgba(59, 130, 246, 0.14);  color: #3b82f6; }
+  &.pill-warning { background: rgba(245, 158, 11, 0.14);  color: var(--warning); }
+  &.pill-muted   { background: var(--bg-canvas);          color: var(--text-muted); }
+
+  // Asset-type pills (Holdings page).
+  &.pill-asset-equity { background: rgba(59, 130, 246, 0.14); color: #3b82f6; }
+  &.pill-asset-mf     { background: rgba(139, 92, 246, 0.14); color: #8b5cf6; }
+  &.pill-asset-gold   { background: rgba(245, 158, 11, 0.18); color: #d97706; }
+  &.pill-asset-fd     { background: rgba(22, 163, 74, 0.14);  color: var(--positive); }
+  &.pill-asset-rd     { background: rgba(20, 184, 166, 0.14); color: #14b8a6; }
+  &.pill-asset-ppf    { background: rgba(8, 145, 178, 0.14);  color: #0891b2; }
 }
 
 .state-message {
   padding: 24px;
   text-align: center;
-  color: $text-light;
+  color: var(--text-muted);
   font-size: 14px;
-  background: $white;
-  border: 1px solid $border-color;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
   margin-bottom: 24px;
 
   &.error {
-    color: $danger-color;
-    border-color: rgba($danger-color, 0.3);
-    background: rgba($danger-color, 0.05);
+    color: var(--negative);
+    border-color: rgba(220, 38, 38, 0.3);
+    background: rgba(220, 38, 38, 0.05);
   }
 }
 
 .empty-hint {
   padding: 40px 24px;
   text-align: center;
-  color: $text-light;
+  color: var(--text-muted);
   font-size: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  margin: 12px;
 
-  a, strong { color: $primary-color; font-weight: 600; }
+  i { display: block; font-size: 28px; margin-bottom: 12px; opacity: 0.6; }
+  a, strong { color: var(--accent); font-weight: 600; }
 }

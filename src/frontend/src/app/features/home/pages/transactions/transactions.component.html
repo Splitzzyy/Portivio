@@ -87,10 +87,10 @@
           <th>Date</th>
           <th>Type</th>
           <th>Symbol</th>
-          <th class="num">Qty</th>
-          <th class="num">Price</th>
+          <th class="num col-hide-sm">Qty</th>
+          <th class="num col-hide-sm">Price</th>
           <th class="num">Amount</th>
-          <th>Notes</th>
+          <th class="col-hide-md">Notes</th>
           <th class="actions"></th>
         </tr>
       </thead>
@@ -99,10 +99,10 @@
           <td class="muted">{{ formatDate(tx.transactionDate) }}</td>
           <td><span class="pill" [class]="typeClass(tx.type)">{{ tx.type }}</span></td>
           <td class="strong">{{ tx.instrumentSymbol }}</td>
-          <td class="num">{{ formatNumber(tx.quantity, 4) }}</td>
-          <td class="num">{{ formatCurrency(tx.price) }}</td>
+          <td class="num col-hide-sm">{{ formatNumber(tx.quantity, 4) }}</td>
+          <td class="num col-hide-sm">{{ formatCurrency(tx.price) }}</td>
           <td class="num strong">{{ formatCurrency(tx.amount) }}</td>
-          <td class="muted">{{ tx.notes || '—' }}</td>
+          <td class="muted truncate col-hide-md" [title]="tx.notes || ''">{{ tx.notes || '—' }}</td>
           <td class="actions">
             <button class="icon-btn" title="Edit" (click)="openEdit(tx)"><i class="fas fa-pen"></i></button>
             <button class="icon-btn danger" title="Delete" (click)="delete(tx)"><i class="fas fa-trash"></i></button>
@@ -111,7 +111,10 @@
       </tbody>
     </table>
     <ng-template #empty>
-      <div class="empty-hint">No transactions on this page.</div>
+      <div class="empty-hint">
+        <i class="fas fa-exchange-alt"></i>
+        No transactions on this page.
+      </div>
     </ng-template>
   </div>
 </div>
