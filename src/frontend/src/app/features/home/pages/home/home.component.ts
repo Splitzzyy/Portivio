@@ -70,10 +70,11 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 
-  /** Close the dropdown on Escape for keyboard users. */
+  /** Close the dropdown / mobile drawer on Escape for keyboard users. */
   @HostListener('document:keydown.escape')
   onEscape(): void {
     if (this.dropdownOpen) this.dropdownOpen = false;
+    if (this.showMobileMenu) this.showMobileMenu = false;
   }
 
   toggleSidebar(): void {
