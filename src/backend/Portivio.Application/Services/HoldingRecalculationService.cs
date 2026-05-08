@@ -37,6 +37,7 @@ namespace Portivio.Application.Services
         private readonly AssetStrategyResolver _strategies;
         private readonly IProfileAccessGuard _profileAccess;
         private readonly IMarketDataService _marketData;
+        private readonly IGoldRateProvider _goldRate;
         private readonly IRefreshThrottle _throttle;
         private readonly ILogger<HoldingRecalculationService> _logger;
 
@@ -45,6 +46,7 @@ namespace Portivio.Application.Services
             AssetStrategyResolver strategies,
             IProfileAccessGuard profileAccess,
             IMarketDataService marketData,
+            IGoldRateProvider goldRate,
             IRefreshThrottle throttle,
             ILogger<HoldingRecalculationService> logger)
         {
@@ -52,6 +54,7 @@ namespace Portivio.Application.Services
             _strategies = strategies;
             _profileAccess = profileAccess;
             _marketData = marketData;
+            _goldRate = goldRate;
             _throttle = throttle;
             _logger = logger;
         }
@@ -112,8 +115,13 @@ namespace Portivio.Application.Services
                             // No external call — accrual is computed by the per-strategy snapshot below.
                             break;
 
+                        case PriceSource.Manual when inst.Category == AssetCategory.Gold:
+                            var goldUpdated = await TryUpsertGoldPriceAsync(inst, ct);
+                            if (goldUpdated) pricesUpdated++;
+                            else pricesSkipped++;
+                            break;
+
                         case PriceSource.Manual:
-                            // Slice #3 plugs IGoldRateProvider in here for Gold instruments.
                             pricesSkipped++;
                             break;
 
@@ -248,6 +256,41 @@ namespace Portivio.Application.Services
                 _logger.LogError(ex, "Error refreshing holdings. ProfileId={ProfileId} UserId={UserId}", profileId, userId);
                 return Result<List<HoldingResponse>>.InternalServerError($"Error refreshing holdings: {ex.Message}");
             }
+        }
+
+        private async Task<bool> TryUpsertGoldPriceAsync(Instrument inst, CancellationToken ct)
+        {
+            if (inst.Metadata == null) return false;
+
+            string? purity = null;
+            if (inst.Metadata.RootElement.TryGetProperty("purity", out var purityProp))
+                purity = purityProp.GetString();
+            if (string.IsNullOrWhiteSpace(purity)) return false;
+
+            var rate = await _goldRate.GetRatePerGramAsync(purity!, ct);
+            if (rate is null || rate <= 0)
+            {
+                _logger.LogWarning("Gold rate unavailable. InstrumentId={InstrumentId} Symbol={Symbol} Purity={Purity}",
+                    inst.Id, inst.Symbol, purity);
+                return false;
+            }
+
+            var today = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
+            var alreadyToday = await _context.PriceHistories.AnyAsync(
+                ph => ph.InstrumentId == inst.Id && ph.Date.Date == today.Date, ct);
+            if (alreadyToday) return false;
+
+            _context.PriceHistories.Add(new PriceHistory
+            {
+                Id = Guid.NewGuid(),
+                InstrumentId = inst.Id,
+                Price = rate.Value,
+                Date = today,
+                Source = "config",
+                CreatedAt = DateTime.UtcNow
+            });
+            await _context.SaveChangesAsync(ct);
+            return true;
         }
 
         private static HoldingResponse MapToResponse(Holding h) => new()

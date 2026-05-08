@@ -89,6 +89,7 @@ public static class ApplicationServicesExtensions
         services.AddScoped<IStockPriceProvider, AlphaVantageStockProvider>();
         services.AddScoped<IMutualFundNavProvider, AmfiNavProvider>();
         services.AddScoped<IStandardRateProvider, ConfigStandardRateProvider>();
+        services.AddSingleton<IGoldRateProvider, GoldRateProvider>();
         services.AddScoped<IMarketDataService, MarketDataService>();
         services.AddScoped<IStandardRateService, StandardRateService>();
     }

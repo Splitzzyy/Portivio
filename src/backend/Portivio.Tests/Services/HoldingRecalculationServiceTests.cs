@@ -47,6 +47,14 @@ namespace Portivio.Tests.Services
             return mock.Object;
         }
 
+        private static IGoldRateProvider NoopGoldRate()
+        {
+            var mock = new Mock<IGoldRateProvider>();
+            mock.Setup(m => m.GetRatePerGramAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((decimal?)null);
+            return mock.Object;
+        }
+
         private static (User user, Profile profile, Instrument instrument) SeedEquityHolding(
             PortivioDbContext context,
             decimal quantity,
@@ -147,12 +155,14 @@ namespace Portivio.Tests.Services
             PortivioDbContext context,
             IMarketDataService? marketData = null,
             IRefreshThrottle? throttle = null,
+            IGoldRateProvider? goldRate = null,
             params IAssetStrategy[] extraStrategies) =>
             new(
                 context,
                 BuildResolver(context, extraStrategies),
                 new ProfileAccessGuard(context),
                 marketData ?? NoopMarketData(),
+                goldRate ?? NoopGoldRate(),
                 throttle ?? new RecordingThrottle(),
                 CreateMockLogger());
 
@@ -274,6 +284,96 @@ namespace Portivio.Tests.Services
             // 3 AlphaVantage calls → throttle invoked twice (between 1↔2 and 2↔3).
             Assert.Equal(2, throttle.Calls.Count);
             Assert.All(throttle.Calls, c => Assert.Equal(TimeSpan.FromSeconds(12), c));
+        }
+
+        [Fact]
+        public async Task RunDailyRefreshAsync_AppliesGoldRateFromOptions()
+        {
+            using var context = CreateInMemoryDbContext();
+
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = $"u-{Guid.NewGuid()}@t.com",
+                Name = "U",
+                PasswordHash = "h",
+                IsVerified = true,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            var profile = new Profile
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                Name = "P",
+                BaseCurrency = "INR",
+                Description = "",
+                CreatedAt = DateTime.UtcNow
+            };
+            var assetType = new AssetType { Id = Guid.NewGuid(), Name = "Gold" };
+            var instrument = new Instrument
+            {
+                Id = Guid.NewGuid(),
+                AssetTypeId = assetType.Id,
+                Category = AssetCategory.Gold,
+                Name = "Gold 24K Digital",
+                Symbol = "GOLD:24K:DIGITAL",
+                Currency = "INR",
+                PriceSource = PriceSource.Manual,
+                Metadata = System.Text.Json.JsonDocument.Parse("{\"purity\":\"24K\",\"form\":\"DIGITAL\"}")
+            };
+            context.Users.Add(user);
+            context.Profiles.Add(profile);
+            context.AssetTypes.Add(assetType);
+            context.Instruments.Add(instrument);
+            context.Transactions.Add(new Transaction
+            {
+                Id = Guid.NewGuid(),
+                ProfileId = profile.Id,
+                InstrumentId = instrument.Id,
+                Type = TransactionType.Buy,
+                Quantity = 10m,
+                Price = 7000m,
+                Amount = 70000m,
+                TransactionDate = DateTime.UtcNow.AddDays(-30),
+                Notes = "",
+                Source = TransactionSource.Manual,
+                CreatedAtUtc = DateTime.UtcNow.AddDays(-30),
+                UpdatedAtUtc = DateTime.UtcNow.AddDays(-30)
+            });
+            context.Holdings.Add(new Holding
+            {
+                Id = Guid.NewGuid(),
+                ProfileId = profile.Id,
+                InstrumentId = instrument.Id,
+                Quantity = 10m,
+                AvgPrice = 7000m,
+                CurrentPrice = 7000m,
+                MarketValue = 70000m,
+                UnrealizedPnL = 0m,
+                LastUpdated = DateTime.UtcNow.AddDays(-30)
+            });
+            await context.SaveChangesAsync();
+
+            var goldRate = new Mock<IGoldRateProvider>();
+            goldRate.Setup(g => g.GetRatePerGramAsync("24K", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(7480m);
+
+            var service = BuildService(
+                context,
+                marketData: NoopMarketData(),
+                throttle: new RecordingThrottle(),
+                goldRate: goldRate.Object,
+                extraStrategies: new GoldStrategy(context));
+
+            var result = await service.RunDailyRefreshAsync();
+
+            Assert.True(result.IsSuccess);
+            Assert.True(result.Data!.PricesUpdated >= 1);
+            Assert.True(await context.PriceHistories.AnyAsync(p => p.InstrumentId == instrument.Id && p.Source == "config"));
+            var holding = await context.Holdings.FirstAsync(h => h.InstrumentId == instrument.Id);
+            Assert.Equal(7480m, holding.CurrentPrice);
+            Assert.Equal(74800m, holding.MarketValue);     // 10 * 7480
         }
 
         [Fact]

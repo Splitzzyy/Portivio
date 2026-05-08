@@ -7,6 +7,13 @@ namespace Portivio.Application.Services.MarketData
         public AmfiOptions Amfi { get; set; } = new();
         public AlphaVantageOptions AlphaVantage { get; set; } = new();
         public StandardRatesOptions StandardRates { get; set; } = new();
+        public GoldOptions Gold { get; set; } = new();
+    }
+
+    public class GoldOptions
+    {
+        public decimal RatePerGram24K { get; set; }
+        public decimal Purity22KMultiplier { get; set; } = 0.9167m;
     }
 
     public class AmfiOptions
