@@ -1,8 +1,11 @@
-using System.Text.Json.Serialization;
+using Hangfire;
+using Microsoft.Extensions.DependencyInjection;
 using Portivio.API.Extensions;
 using Portivio.API.Filters;
 using Portivio.API.Middleware;
+using Portivio.Application.Services;
 using Serilog;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -46,5 +49,18 @@ app.MapControllers();
 app.MapHealthChecks("/health").AllowAnonymous();
 app.MapHangfireDashboardIfDevelopment(environment);
 app.RegisterRecurringJobs();
+
+// Boot-time refresh: cron is daily 06:00 IST, but if the API just started up
+// outside that window, enqueue one fresh run so users don't sit on stale prices
+// until tomorrow. Idempotent on same-day re-runs (PriceHistory per-day uniqueness).
+try
+{
+    var jobClient = app.Services.GetRequiredService<IBackgroundJobClient>();
+    jobClient.Enqueue<IHoldingRecalculationService>(svc => svc.RunDailyRefreshAsync(CancellationToken.None));
+}
+catch (Exception ex)
+{
+    app.Logger.LogWarning(ex, "Startup holdings refresh enqueue failed; daily cron will still run");
+}
 
 await app.RunWithMigrationAsync();

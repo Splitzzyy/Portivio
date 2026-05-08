@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { AuthService } from '../../../../core/services/auth.service';
+import { ThemeService } from '../../../../core/services/theme.service';
 import { User } from '../../../../core/models/auth.model';
 
 /**
@@ -24,8 +25,29 @@ export class HomeComponent implements OnInit, OnDestroy {
   constructor(
     private authService: AuthService,
     private router: Router,
-    private elementRef: ElementRef
+    private elementRef: ElementRef,
+    public themeService: ThemeService
   ) {}
+
+  cycleTheme(): void {
+    this.themeService.cycle();
+  }
+
+  themeIcon(): string {
+    switch (this.themeService.mode()) {
+      case 'light': return 'fa-sun';
+      case 'dark':  return 'fa-moon';
+      default:      return 'fa-desktop';
+    }
+  }
+
+  themeLabel(): string {
+    switch (this.themeService.mode()) {
+      case 'light': return 'Light theme';
+      case 'dark':  return 'Dark theme';
+      default:      return 'System theme';
+    }
+  }
 
   ngOnInit(): void {
     this.authService.user$
@@ -48,10 +70,11 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 
-  /** Close the dropdown on Escape for keyboard users. */
+  /** Close the dropdown / mobile drawer on Escape for keyboard users. */
   @HostListener('document:keydown.escape')
   onEscape(): void {
     if (this.dropdownOpen) this.dropdownOpen = false;
+    if (this.showMobileMenu) this.showMobileMenu = false;
   }
 
   toggleSidebar(): void {

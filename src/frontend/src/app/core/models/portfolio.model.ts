@@ -4,6 +4,15 @@
  * properties as camelCase JSON, so keep these camelCase.
  */
 
+// ---------- Paging ----------
+export interface PagedResult<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+  hasMore: boolean;
+}
+
 // ---------- Profile ----------
 export interface Profile {
   id: string;

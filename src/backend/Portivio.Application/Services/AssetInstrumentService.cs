@@ -95,8 +95,6 @@ namespace Portivio.Application.Services
         {
             if (string.IsNullOrWhiteSpace(req.Bank))
                 return Result<AssetIngestResponse>.BadRequest("Bank is required");
-            if (string.IsNullOrWhiteSpace(req.AccountNo))
-                return Result<AssetIngestResponse>.BadRequest("AccountNo is required");
             if (req.Principal <= 0)
                 return Result<AssetIngestResponse>.BadRequest("Principal must be greater than zero");
             if (req.RatePercent <= 0)
@@ -105,8 +103,13 @@ namespace Portivio.Application.Services
                 return Result<AssetIngestResponse>.BadRequest("MaturityDate must be after StartDate");
 
             var assetType = await GetOrCreateAssetTypeAsync("Fixed Deposit", ct);
-            var symbol = $"FD:{req.Bank.Trim().ToUpperInvariant()}:{req.AccountNo.Trim().ToUpperInvariant()}";
-            var name = $"FD - {req.Bank.Trim()} ({req.AccountNo.Trim()})";
+            var hasAccountNo = !string.IsNullOrWhiteSpace(req.AccountNo);
+            var accountTrimmed = hasAccountNo ? req.AccountNo!.Trim() : null;
+            var symbolSlot = hasAccountNo ? accountTrimmed!.ToUpperInvariant() : GenerateInstrumentSlot();
+            var symbol = $"FD:{req.Bank.Trim().ToUpperInvariant()}:{symbolSlot}";
+            var name = hasAccountNo
+                ? $"FD - {req.Bank.Trim()} ({accountTrimmed})"
+                : $"FD - {req.Bank.Trim()}";
 
             var instrument = await GetOrCreateInstrumentAsync(
                 name: name,
@@ -120,7 +123,7 @@ namespace Portivio.Application.Services
                 metadata: JsonDocument.Parse(JsonSerializer.Serialize(new
                 {
                     bank = req.Bank.Trim(),
-                    accountNo = req.AccountNo.Trim(),
+                    accountNo = accountTrimmed,
                     principal = req.Principal,
                     rate = req.RatePercent,
                     compounding = req.Compounding,
@@ -161,8 +164,6 @@ namespace Portivio.Application.Services
         {
             if (string.IsNullOrWhiteSpace(req.Bank))
                 return Result<AssetIngestResponse>.BadRequest("Bank is required");
-            if (string.IsNullOrWhiteSpace(req.AccountNo))
-                return Result<AssetIngestResponse>.BadRequest("AccountNo is required");
             if (req.MonthlyAmount <= 0)
                 return Result<AssetIngestResponse>.BadRequest("MonthlyAmount must be greater than zero");
             if (req.RatePercent <= 0)
@@ -171,8 +172,13 @@ namespace Portivio.Application.Services
                 return Result<AssetIngestResponse>.BadRequest("TenureMonths must be greater than zero");
 
             var assetType = await GetOrCreateAssetTypeAsync("Recurring Deposit", ct);
-            var symbol = $"RD:{req.Bank.Trim().ToUpperInvariant()}:{req.AccountNo.Trim().ToUpperInvariant()}";
-            var name = $"RD - {req.Bank.Trim()} ({req.AccountNo.Trim()})";
+            var hasAccountNo = !string.IsNullOrWhiteSpace(req.AccountNo);
+            var accountTrimmed = hasAccountNo ? req.AccountNo!.Trim() : null;
+            var symbolSlot = hasAccountNo ? accountTrimmed!.ToUpperInvariant() : GenerateInstrumentSlot();
+            var symbol = $"RD:{req.Bank.Trim().ToUpperInvariant()}:{symbolSlot}";
+            var name = hasAccountNo
+                ? $"RD - {req.Bank.Trim()} ({accountTrimmed})"
+                : $"RD - {req.Bank.Trim()}";
 
             var instrument = await GetOrCreateInstrumentAsync(
                 name: name,
@@ -186,7 +192,7 @@ namespace Portivio.Application.Services
                 metadata: JsonDocument.Parse(JsonSerializer.Serialize(new
                 {
                     bank = req.Bank.Trim(),
-                    accountNo = req.AccountNo.Trim(),
+                    accountNo = accountTrimmed,
                     monthly = req.MonthlyAmount,
                     rate = req.RatePercent,
                     startDate = req.StartDate.ToString("yyyy-MM-dd"),
@@ -426,6 +432,12 @@ namespace Portivio.Application.Services
                 Message = "Stock purchase recorded"
             }, "Stock purchase recorded", 201);
         }
+
+        // Internal-only uniqueness slot for FD/RD when AccountNo is blank.
+        // Never displayed to users — it sits inside Instrument.Symbol so the
+        // unique index `(AssetTypeId, Symbol)` admits multiple anonymous deposits.
+        private static string GenerateInstrumentSlot()
+            => Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
 
         private async Task<AssetType> GetOrCreateAssetTypeAsync(string name, CancellationToken ct)
         {

@@ -1,0 +1,55 @@
+// Design tokens — single source of truth for color/elevation across the app.
+// Two scopes: :root (light) and :root[data-theme="dark"]. The ThemeService
+// flips the data-theme attribute on <html>; everything below cascades.
+//
+// Slices E and F consume these tokens via var(--token-name). New tokens
+// should be added here, never hard-coded in per-page SCSS.
+
+:root {
+  // Surfaces
+  --bg-canvas:   #f8f9fb;
+  --bg-surface:  #ffffff;
+  --bg-elev-1:   #ffffff;
+
+  // Text
+  --text-primary: #0f172a;
+  --text-muted:   #64748b;
+
+  // Lines
+  --border:       #e2e8f0;
+
+  // Brand + semantic
+  --accent:       #6366f1;   // matches existing $primary-color
+  --positive:     #16a34a;
+  --negative:     #dc2626;
+  --warning:      #f59e0b;
+
+  // Elevation (used sparingly)
+  --shadow-sm:    0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md:    0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+:root[data-theme='dark'] {
+  --bg-canvas:   #0b0f1a;
+  --bg-surface:  #111827;
+  --bg-elev-1:   #1f2937;
+
+  --text-primary: #e5e7eb;
+  --text-muted:   #94a3b8;
+
+  --border:       #1f2937;
+
+  --accent:       #818cf8;
+  --positive:     #22c55e;
+  --negative:     #f87171;
+  --warning:      #fbbf24;
+
+  --shadow-sm:    0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md:    0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+// Body palette responds to active theme without per-component changes.
+html, body {
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+}

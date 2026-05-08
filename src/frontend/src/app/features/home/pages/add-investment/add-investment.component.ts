@@ -131,7 +131,7 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
     if (!this.selectedProfileId) return;
     this.transactionService.list(this.selectedProfileId, 1, 5)
       .pipe(takeUntil(this.destroy$))
-      .subscribe({ next: (data) => (this.recentTransactions = data ?? []) });
+      .subscribe({ next: (data) => (this.recentTransactions = data?.items ?? []) });
   }
 
   onProfileChange(): void {

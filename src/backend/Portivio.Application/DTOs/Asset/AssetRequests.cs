@@ -16,7 +16,7 @@ namespace Portivio.Application.DTOs.Asset
     public class AddFixedDepositRequest
     {
         public string Bank { get; set; } = string.Empty;
-        public string AccountNo { get; set; } = string.Empty;
+        public string? AccountNo { get; set; }
         public decimal Principal { get; set; }
         public decimal RatePercent { get; set; }
         public string Compounding { get; set; } = "Quarterly";
@@ -30,7 +30,7 @@ namespace Portivio.Application.DTOs.Asset
     public class AddRecurringDepositRequest
     {
         public string Bank { get; set; } = string.Empty;
-        public string AccountNo { get; set; } = string.Empty;
+        public string? AccountNo { get; set; }
         public decimal MonthlyAmount { get; set; }
         public decimal RatePercent { get; set; }
         public DateTime StartDate { get; set; }
