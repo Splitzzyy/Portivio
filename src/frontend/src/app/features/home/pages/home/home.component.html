@@ -86,6 +86,11 @@
 
         <!-- Notifications -->
         <div class="header-icons">
+          <button class="icon-btn theme-toggle" type="button"
+                  (click)="cycleTheme()" [attr.aria-label]="themeLabel()" [title]="themeLabel()">
+            <i class="fas" [ngClass]="themeIcon()"></i>
+          </button>
+
           <button class="icon-btn" title="Notifications">
             <i class="fas fa-bell"></i>
             <span class="notification-badge">3</span>
