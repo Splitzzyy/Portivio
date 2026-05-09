@@ -1,11 +1,30 @@
-$primary: #6366f1;
-$primary-dark: #4f46e5;
-$success: #10b981;
-$text-dark: #1f2937;
-$text-light: #6b7280;
-$border: #e5e7eb;
-$bg-light: #f9fafb;
-$white: #ffffff;
+.dashboard-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+// ---- Header & Actions ----
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+
+  .title-group {
+    h1 {
+      font-size: 30px;
+      font-weight: 800;
+      color: var(--text-primary);
+      margin: 0 0 6px 0;
+      letter-spacing: -0.5px;
+    }
+    p {
+      color: var(--text-muted);
+      margin: 0;
+      font-size: 15px;
+    }
+  }
+}
 
 // ---- Profile pill ----
 .profile-pill {
@@ -13,27 +32,27 @@ $white: #ffffff;
   align-items: center;
   gap: 8px;
   padding: 4px 12px;
-  border: 1px solid $border;
+  border: 1px solid var(--border);
   border-radius: 999px;
-  background: $bg-light;
+  background: var(--bg-canvas);
   transition: all 0.2s ease;
   height: 36px;
   cursor: pointer;
 
   &:hover {
-    border-color: $primary;
-    background: $white;
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08);
+    border-color: var(--accent);
+    background: var(--bg-surface);
+    box-shadow: var(--shadow-sm);
   }
 
   .label {
-    color: $text-light;
+    color: var(--text-muted);
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.8px;
     font-weight: 700;
     margin-right: 4px;
-    border-right: 1px solid $border;
+    border-right: 1px solid var(--border);
     padding-right: 8px;
     height: 16px;
     display: flex;
@@ -45,7 +64,7 @@ $white: #ffffff;
     background: transparent !important;
     font-weight: 700;
     font-size: 13px;
-    color: $text-dark;
+    color: var(--text-primary);
     cursor: pointer;
     appearance: none;
     -webkit-appearance: none;
@@ -70,259 +89,201 @@ $white: #ffffff;
 .stepper {
   display: flex;
   align-items: center;
-  margin-bottom: 24px;
-  background: $white;
-  border: 1px solid $border;
+  gap: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  padding: 16px 24px;
   border-radius: 12px;
-  padding: 14px 20px;
-}
+  margin-bottom: 32px;
+  box-shadow: var(--shadow-sm);
 
-.step {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: $text-light;
-  font-size: 13px;
-  font-weight: 500;
-
-  .dot {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    border: 1.5px solid $border;
-    background: $white;
+  .step {
     display: flex;
     align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 700;
-    color: $text-light;
-    flex-shrink: 0;
-  }
+    gap: 10px;
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 600;
 
-  &.done .dot {
-    background: $success;
-    border-color: $success;
-    color: $white;
-  }
-
-  &.active {
-    color: $text-dark;
+    &.active { color: var(--accent); }
+    &.done { color: var(--positive); }
 
     .dot {
-      background: $primary;
-      border-color: $primary;
-      color: $white;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--bg-canvas);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      border: 1px solid var(--border);
     }
+
+    &.active .dot { background: var(--accent); color: var(--text-on-accent); border-color: var(--accent); }
+    &.done .dot { background: var(--positive); color: var(--text-on-accent); border-color: var(--positive); }
+  }
+
+  .bar {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
   }
 }
 
-.bar {
-  height: 1.5px;
-  background: $border;
-  flex: 1;
-  min-width: 40px;
-  margin: 0 12px;
-}
-
-// ---- Section title ----
-.section-title {
-  font-size: 12px;
-  font-weight: 700;
-  color: $text-light;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin: 0 0 14px 2px;
-}
-
-// ---- Asset type grid ----
+// ---- Cards & Grid ----
 .asset-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 14px;
-  margin-bottom: 0;
-
-  @media (max-width: 480px) { grid-template-columns: 1fr; }
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
 }
 
 .asset-card {
-  background: $white;
-  border: 1px solid $border;
-  border-radius: 14px;
-  padding: 18px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
   cursor: pointer;
-  text-align: left;
-  transition: all 0.18s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  font-family: inherit;
+  align-items: flex-start;
+  text-align: left;
+  box-shadow: var(--shadow-sm);
 
   &:hover {
-    border-color: $primary;
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.1);
-    transform: translateY(-2px);
+    border-color: var(--accent);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
   }
 
-  .name {
-    font-size: 15px;
-    font-weight: 700;
-    color: $text-dark;
-    margin: 0 0 4px;
-  }
-
-  .desc {
-    font-size: 12px;
-    color: $text-light;
-    margin: 0;
-    line-height: 1.5;
-  }
+  .name { font-size: 17px; font-weight: 700; color: var(--text-primary); margin: 0 0 6px 0; }
+  .desc { font-size: 13px; color: var(--text-muted); margin: 0; line-height: 1.5; }
 
   .fields {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-top: auto;
-    padding-top: 8px;
+    margin-top: 16px;
   }
 
   .field-chip {
     font-size: 11px;
     padding: 3px 8px;
     border-radius: 999px;
-    background: $bg-light;
-    color: $text-light;
-    font-weight: 500;
+    background: var(--bg-canvas);
+    color: var(--text-muted);
+    font-weight: 600;
   }
 }
 
-// ---- Asset icon variants ----
 .icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  flex-shrink: 0;
+  font-size: 24px;
+  margin-bottom: 16px;
 }
 
-.icon-stocks { background: rgba(99, 102, 241, 0.12); color: $primary; }
-.icon-mf     { background: rgba(16, 185, 129, 0.12); color: $success; }
-.icon-gold   { background: rgba(245, 158, 11, 0.14); color: #b45309; }
-.icon-ppf    { background: rgba(14, 165, 233, 0.12); color: #0ea5e9; }
+.icon-stocks { background: var(--accent-light); color: var(--accent); }
+.icon-mf     { background: rgba(16, 185, 129, 0.12); color: var(--positive); }
+.icon-gold   { background: rgba(245, 158, 11, 0.14); color: var(--warning); }
+.icon-ppf    { background: rgba(14, 165, 233, 0.12); color: var(--info); }
 .icon-fd     { background: rgba(139, 92, 246, 0.12); color: #7c3aed; }
 
-// ---- Form card (overrides shared) ----
+// ---- Form styles ----
 .ai-form-card {
-  background: $white;
-  border: 1px solid $border;
-  border-radius: 14px;
-  padding: 24px 28px;
-  margin-bottom: 20px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: var(--shadow-md);
 }
 
 .form-card-header {
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 14px;
-  padding-bottom: 18px;
-  margin-bottom: 20px;
-  border-bottom: 1px solid $border;
-
-  .icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    font-size: 16px;
-  }
+  margin-bottom: 32px;
 
   .meta {
-    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 16px;
 
-    h2 {
-      font-size: 16px;
-      font-weight: 700;
-      margin: 0;
-      color: $text-dark;
-    }
+    .icon { margin-bottom: 0; }
 
-    p {
-      font-size: 13px;
-      color: $text-light;
-      margin: 0;
-    }
+    h2 { font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 0; }
+    p { font-size: 13px; color: var(--text-muted); margin: 2px 0 0 0; }
   }
 
   .change-btn {
-    background: transparent;
-    border: 1px solid $border;
-    padding: 7px 12px;
+    padding: 8px 16px;
     border-radius: 8px;
-    font-size: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-canvas);
+    color: var(--text-muted);
+    font-size: 13px;
     font-weight: 600;
-    color: $text-light;
     cursor: pointer;
-    font-family: inherit;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.15s;
+    transition: all 0.2s;
 
     &:hover {
-      color: $primary;
-      border-color: $primary;
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--bg-surface);
     }
   }
 }
 
-// ---- Form grid (2-col) ----
 .ai-form-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  margin-bottom: 0;
+  gap: 24px;
 
-  @media (max-width: 680px) { grid-template-columns: 1fr; }
+  @media (max-width: 600px) { grid-template-columns: 1fr; }
 }
 
 .ai-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 
   &.full { grid-column: 1 / -1; }
 
   label {
-    font-size: 11px;
-    font-weight: 600;
-    color: $text-light;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-
-    .req { color: #ef4444; }
+    .req { color: var(--negative); }
   }
 
   input, select, textarea {
-    padding: 10px 14px;
-    border: 1px solid $border;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
     border-radius: 8px;
     font-size: 14px;
     font-family: inherit;
-    background: $white;
-    color: $text-dark;
+    background: var(--bg-surface);
+    color: var(--text-primary);
     transition: all 0.15s;
 
     &:focus {
       outline: none;
-      border-color: $primary;
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-light);
     }
 
     &:disabled {
-      background: $bg-light;
-      color: $text-light;
+      background: var(--bg-canvas);
+      color: var(--text-muted);
       cursor: not-allowed;
     }
   }
@@ -337,58 +298,42 @@ $white: #ffffff;
     padding-right: 40px;
   }
 
-  &.invalid input,
-  &.invalid select {
-    border-color: #ef4444;
-    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+  &.invalid {
+    input, select {
+      border-color: var(--negative);
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    }
   }
 
-  .hint {
-    font-size: 12px;
-    color: $text-light;
-    margin-top: 2px;
-  }
-
-  .err {
-    font-size: 12px;
-    color: #ef4444;
-    margin-top: 2px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
+  .err { color: var(--negative); font-size: 12px; font-weight: 500; margin-top: 4px; }
+  .hint { color: var(--text-muted); font-size: 12px; margin-top: 4px; }
 }
 
-// ---- Affixed inputs ----
 .input-affix {
   position: relative;
   display: flex;
   align-items: center;
 
-  .prefix,
-  .suffix {
+  .prefix, .suffix {
     position: absolute;
-    color: $text-light;
-    font-weight: 500;
-    font-size: 14px;
+    color: var(--text-muted);
+    font-weight: 600;
     pointer-events: none;
   }
+  .prefix { left: 14px; }
+  .suffix { right: 14px; font-size: 12px; }
 
-  .prefix { left: 12px; }
-  .suffix { right: 12px; font-size: 12px; }
-
-  input.has-prefix { padding-left: 28px; }
-  input.has-suffix { padding-right: 52px; }
+  input.has-prefix { padding-left: 32px; }
+  input.has-suffix { padding-right: 56px; }
 }
 
-// ---- Segmented control ----
 .segmented {
   display: inline-flex;
-  background: $bg-light;
-  border: 1px solid $border;
+  background: var(--bg-canvas);
+  border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 3px;
-  gap: 2px;
+  padding: 4px;
+  gap: 4px;
 
   button {
     border: none;
@@ -396,254 +341,141 @@ $white: #ffffff;
     padding: 8px 16px;
     font-size: 13px;
     font-weight: 600;
-    color: $text-light;
+    color: var(--text-muted);
     border-radius: 7px;
     cursor: pointer;
-    font-family: inherit;
-    transition: all 0.12s;
+    transition: all 0.2s;
 
     &.on {
-      background: $white;
-      color: $text-dark;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+      background: var(--bg-surface);
+      color: var(--accent);
+      box-shadow: var(--shadow-sm);
     }
   }
 }
 
-// ---- Typeahead ----
 .typeahead {
   position: relative;
-
   .results {
     position: absolute;
-    top: calc(100% + 4px);
-    left: 0;
-    right: 0;
-    background: $white;
-    border: 1px solid $border;
-    border-radius: 10px;
-    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
-    z-index: 20;
-    max-height: 280px;
+    top: 100%; left: 0; right: 0;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    z-index: 100;
+    max-height: 300px;
     overflow-y: auto;
+    margin-top: 4px;
   }
-
   .row {
-    display: flex;
-    align-items: center;
-    padding: 10px 14px;
+    padding: 12px 16px;
     cursor: pointer;
-    border-bottom: 1px solid $border;
-
-    &:last-child { border-bottom: none; }
-    &:hover { background: $bg-light; }
-
-    .symbol {
-      font-weight: 700;
-      color: $text-dark;
-      font-size: 13px;
-    }
-
-    .iname {
-      color: $text-light;
-      font-size: 12px;
-      margin-top: 1px;
-    }
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    &:hover { background: var(--bg-canvas); }
+    .symbol { font-weight: 700; color: var(--text-primary); }
+    .iname { font-size: 12px; color: var(--text-muted); }
   }
 }
 
-// ---- Selected stock name display ----
 .selected-name {
-  font-size: 12px;
-  color: $text-light;
-  margin-top: 3px;
-  padding-left: 2px;
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 600;
+  margin-top: 4px;
 }
 
-// ---- Summary card ----
+// Summary bar
 .summary-card {
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-  color: $white;
+  margin-top: 40px;
+  background: var(--grad-stat);
+  color: var(--text-on-accent);
   border-radius: 14px;
-  padding: 20px 24px;
-  margin-top: 20px;
+  padding: 24px;
   display: flex;
   align-items: center;
-  gap: 24px;
-  flex-wrap: wrap;
+  box-shadow: 0 12px 32px rgba(99, 102, 241, 0.2);
 
-  .label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    font-weight: 600;
-    opacity: 0.8;
-  }
-
-  .value {
-    font-size: 24px;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    margin-top: 2px;
+  & > div:not(.divider) {
+    flex: 1;
+    text-align: center;
   }
 
   .divider {
     width: 1px;
-    height: 36px;
-    background: rgba(255, 255, 255, 0.25);
+    height: 40px;
+    background: rgba(255, 255, 255, 0.2);
+    margin: 0 20px;
   }
 
-  .grow {
-    flex: 1;
-    display: flex;
-    gap: 24px;
-    flex-wrap: wrap;
+  .label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.8;
+    margin-bottom: 6px;
   }
 
-  .small {
-    font-size: 14px;
-    font-weight: 600;
-    margin-top: 2px;
-    opacity: 0.9;
+  .value {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
   }
 }
 
-// ---- Form actions ----
 .ai-form-actions {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding-top: 20px;
-  margin-top: 20px;
-  border-top: 1px solid $border;
-  flex-wrap: wrap;
-
-  .left {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    color: $text-light;
-    font-size: 13px;
-  }
-
-  .right {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  // Sticky bottom action bar on phones so users don't have to scroll
-  // back up on long FD/RD forms.
-  @media (max-width: 768px) {
-    position: sticky;
-    bottom: 0;
-    background: $white;
-    margin-left: -20px;
-    margin-right: -20px;
-    padding: 12px 20px;
-    border-top: 1px solid $border;
-
-    .left { display: none; }
-    .right { width: 100%; justify-content: stretch;
-      .btn { flex: 1 1 auto; justify-content: center; }
-    }
-  }
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
 }
 
-.btn-ghost {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 14px;
-  border: none;
-  cursor: pointer;
-  background: transparent;
-  color: $text-light;
-  font-family: inherit;
-  transition: color 0.15s;
-
-  &:hover { color: $primary; }
-  &:disabled { opacity: 0.55; cursor: not-allowed; }
-}
-
-// ---- Recent list ----
 .recent-list {
-  background: $white;
-  border: 1px solid $border;
-  border-radius: 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 
   .head {
+    padding: 16px 24px;
+    background: var(--bg-canvas);
+    border-bottom: 1px solid var(--border);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 14px 20px;
-    border-bottom: 1px solid $border;
-    background: $bg-light;
 
-    h3 {
-      font-size: 14px;
-      font-weight: 700;
-      margin: 0;
-      color: $text-dark;
-    }
-
-    a {
-      font-size: 12px;
-      color: $primary;
-      text-decoration: none;
-      font-weight: 600;
-
-      &:hover { text-decoration: underline; }
-    }
+    h3 { font-size: 15px; font-weight: 700; color: var(--text-primary); margin: 0; }
   }
 }
 
 .recent-row {
-  display: grid;
-  grid-template-columns: 36px 1fr auto auto;
-  gap: 14px;
+  padding: 16px 24px;
+  display: flex;
   align-items: center;
-  padding: 12px 20px;
-  border-bottom: 1px solid $border;
-
+  gap: 16px;
+  border-bottom: 1px solid var(--border);
   &:last-child { border-bottom: none; }
 
   .ico {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
   }
 
-  .rname {
-    font-weight: 600;
-    color: $text-dark;
-    font-size: 14px;
+  .meta {
+    flex: 1;
+    .rname { font-weight: 600; color: var(--text-primary); }
+    .sub { font-size: 12px; color: var(--text-muted); }
   }
 
-  .sub {
-    font-size: 12px;
-    color: $text-light;
-    margin-top: 2px;
-  }
-
-  .amt {
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    font-size: 14px;
-    color: $text-dark;
-  }
-
-  .date {
-    font-size: 12px;
-    color: $text-light;
-  }
+  .amt { font-weight: 700; color: var(--text-primary); }
+  .date { font-size: 12px; color: var(--text-muted); }
 }

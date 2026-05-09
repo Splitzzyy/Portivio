@@ -31,13 +31,13 @@ $white: #ffffff;
   .welcome-title {
     font-size: 32px;
     font-weight: 700;
-    color: $text-dark;
+    color: var(--text-primary);
     margin: 0 0 8px 0;
   }
 
   .welcome-subtitle {
     font-size: 16px;
-    color: $text-light;
+    color: var(--text-muted);
     margin: 0;
   }
 
@@ -51,7 +51,7 @@ $white: #ffffff;
 
     &:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 16px rgba($primary-color, 0.2);
+      box-shadow: 0 8px 16px rgba(99, 102, 241, 0.2);
     }
   }
 }
@@ -64,15 +64,16 @@ $white: #ffffff;
   margin-bottom: 40px;
 
   .stat-card {
-    background: $white;
-    border: 1px solid $border-color;
-    border-radius: 12px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
     padding: 24px;
     transition: all 0.3s ease;
+    box-shadow: var(--shadow-sm);
 
     &:hover {
-      border-color: $primary-color;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      border-color: var(--accent);
+      box-shadow: var(--shadow-md);
     }
 
     .card-header {
@@ -82,59 +83,69 @@ $white: #ffffff;
       margin-bottom: 16px;
 
       .card-title {
-        font-size: 13px;
-        font-weight: 600;
-        color: $text-light;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text-muted);
         margin: 0;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.8px;
       }
 
       .card-icon {
         font-size: 24px;
-        color: $primary-color;
-        opacity: 0.2;
+        color: var(--accent);
+        opacity: 0.4;
       }
     }
 
     .card-value {
-      font-size: 28px;
+      font-size: 30px;
       font-weight: 700;
-      color: $text-dark;
-      margin-bottom: 8px;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+      letter-spacing: -0.5px;
     }
 
     .card-description {
       font-size: 13px;
-      color: $text-light;
+      color: var(--text-muted);
       margin: 0;
     }
 
     &.highlight {
-      background: linear-gradient(135deg, $primary-color 0%, rgba($primary-color, 0.05) 100%);
-      border: 1px solid rgba($primary-color, 0.2);
+      background: var(--grad-stat);
+      border: none;
+      color: var(--text-on-accent);
+
+      .card-header .card-title,
+      .card-description {
+        color: var(--text-on-accent);
+        opacity: 0.85;
+      }
 
       .card-value {
-        background: linear-gradient(135deg, $primary-color, $secondary-color);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: var(--text-on-accent);
+      }
+
+      .card-icon {
+        color: var(--text-on-accent);
+        opacity: 0.3;
+      }
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 32px rgba(99, 102, 241, 0.25);
       }
     }
 
     &.success {
-      border: 1px solid rgba($success-color, 0.2);
-
-      .card-icon {
-        color: $success-color;
-      }
+      border-left: 4px solid var(--positive);
+      .card-icon { color: var(--positive); opacity: 0.6; }
     }
 
     &.info {
-      border: 1px solid rgba($info-color, 0.2);
-
-      .card-icon {
-        color: $info-color;
-      }
+      border-left: 4px solid var(--info);
+      .card-icon { color: var(--info); opacity: 0.6; }
     }
   }
 }
@@ -151,16 +162,19 @@ $white: #ffffff;
   }
 
   .chart-card {
-    background: $white;
-    border: 1px solid $border-color;
-    border-radius: 12px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
     padding: 24px;
+    box-shadow: var(--shadow-sm);
 
     .chart-title {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 700;
-      color: $text-dark;
+      color: var(--text-primary);
       margin: 0 0 20px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
   }
 }
@@ -181,17 +195,19 @@ $white: #ffffff;
         font-weight: 600;
 
         .allocation-name {
-          color: $text-dark;
+          color: var(--text-primary);
         }
 
         .allocation-value {
-          color: $primary-color;
+          color: var(--accent);
         }
       }
 
       .progress {
+        height: 8px;
         border-radius: 4px;
-        background: $bg-light;
+        background: var(--bg-canvas);
+        overflow: hidden;
 
         .progress-bar {
           border-radius: 4px;
@@ -201,44 +217,21 @@ $white: #ffffff;
 
       .allocation-amount {
         font-size: 12px;
-        color: $text-light;
+        color: var(--text-muted);
         margin: 6px 0 0 0;
       }
     }
   }
 }
 
-// Performance Chart
-.performance-chart {
-  .chart-placeholder {
-    height: 300px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: $bg-light;
-    border-radius: 8px;
-    color: $text-light;
-
-    p {
-      font-size: 16px;
-      font-weight: 600;
-      margin: 0 0 8px 0;
-    }
-
-    small {
-      font-size: 12px;
-    }
-  }
-}
-
 // Activity Section
 .activity-section {
-  background: $white;
-  border: 1px solid $border-color;
-  border-radius: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
   padding: 24px;
   margin-bottom: 40px;
+  box-shadow: var(--shadow-sm);
 
   .section-header {
     display: flex;
@@ -247,124 +240,56 @@ $white: #ffffff;
     margin-bottom: 24px;
 
     .section-title {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 700;
-      color: $text-dark;
+      color: var(--text-primary);
       margin: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
     .view-all {
-      color: $primary-color;
+      color: var(--accent);
       text-decoration: none;
       font-weight: 600;
-      font-size: 14px;
+      font-size: 13px;
       transition: all 0.3s ease;
 
       &:hover {
-        color: #4f46e5;
+        opacity: 0.8;
       }
     }
   }
 
   .activity-table {
-    overflow-x: auto;
-
     .table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 0;
-
       thead tr {
-        border-bottom: 2px solid $border-color;
+        border-bottom: 2px solid var(--border);
 
         th {
-          padding: 12px 16px;
-          text-align: left;
-          font-size: 12px;
-          font-weight: 700;
-          color: $text-light;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
+          color: var(--text-muted);
+          border: none;
         }
       }
 
       tbody tr {
-        border-bottom: 1px solid $border-color;
-        transition: background 0.3s ease;
+        border-bottom: 1px solid var(--border);
 
         &:hover {
-          background: $bg-light;
+          background: var(--bg-canvas);
         }
 
         td {
-          padding: 16px;
-          font-size: 14px;
+          color: var(--text-primary);
+          border: none;
 
-          .transaction-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            white-space: nowrap;
-
-            i {
-              font-size: 12px;
-            }
-
-            &.badge-success {
-              background: rgba($success-color, 0.1);
-              color: $success-color;
-            }
-
-            &.badge-danger {
-              background: rgba($danger-color, 0.1);
-              color: $danger-color;
-            }
-
-            &.badge-primary {
-              background: rgba($primary-color, 0.1);
-              color: $primary-color;
-            }
-
-            &.badge-info {
-              background: rgba($info-color, 0.1);
-              color: $info-color;
-            }
-          }
-
-          &.security-name {
-            font-weight: 600;
-            color: $text-dark;
-          }
-
+          &.security-name,
           &.amount {
-            font-weight: 600;
-            color: $text-dark;
+            color: var(--text-primary);
           }
 
           &.date {
-            color: $text-light;
-          }
-
-          .status-badge {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-
-            &.completed {
-              background: rgba($success-color, 0.1);
-              color: $success-color;
-            }
-
-            &.received {
-              background: rgba($info-color, 0.1);
-              color: $info-color;
-            }
+            color: var(--text-muted);
           }
         }
       }
@@ -380,103 +305,56 @@ $white: #ffffff;
   margin-bottom: 40px;
 
   .action-card {
-    background: $white;
-    border: 1px solid $border-color;
-    border-radius: 12px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
     padding: 24px;
     text-align: center;
     transition: all 0.3s ease;
     cursor: pointer;
+    box-shadow: var(--shadow-sm);
 
     &:hover {
-      border-color: $primary-color;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+      border-color: var(--accent);
+      box-shadow: var(--shadow-md);
       transform: translateY(-4px);
     }
 
     .action-icon {
-      font-size: 40px;
-      color: $primary-color;
+      font-size: 32px;
+      color: var(--accent);
       margin-bottom: 16px;
-      opacity: 0.8;
     }
 
     h3 {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 700;
-      color: $text-dark;
+      color: var(--text-primary);
       margin: 0 0 8px 0;
     }
 
     p {
       font-size: 13px;
-      color: $text-light;
+      color: var(--text-muted);
       margin: 0;
     }
   }
 }
 
-// Badges
-.badge {
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
+.profile-list {
+  .profile-row {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
 
-  &.badge-success {
-    background: rgba($success-color, 0.2);
-    color: $success-color;
-  }
-
-  &.badge-danger {
-    background: rgba($danger-color, 0.2);
-    color: $danger-color;
+    .muted { color: var(--text-muted); }
   }
 }
 
 .state-message {
-  padding: 24px;
-  text-align: center;
-  color: $text-light;
-  font-size: 14px;
-  background: $white;
-  border: 1px solid $border-color;
-  border-radius: 12px;
-  margin-bottom: 24px;
-
-  &.error {
-    color: $danger-color;
-    border-color: rgba($danger-color, 0.3);
-    background: rgba($danger-color, 0.05);
-  }
-}
-
-.empty-hint {
-  padding: 24px;
-  text-align: center;
-  color: $text-light;
-  font-size: 14px;
-
-  a { color: $primary-color; font-weight: 600; }
-}
-
-.profile-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-
-  .profile-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 16px;
-    border: 1px solid $border-color;
-    border-radius: 8px;
-    font-size: 14px;
-
-    .muted { color: $text-light; font-size: 13px; }
-  }
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
 }
 
 // Responsive adjustments

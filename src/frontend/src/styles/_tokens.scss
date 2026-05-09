@@ -12,40 +12,58 @@
   --bg-elev-1:   #ffffff;
 
   // Text
-  --text-primary: #0f172a;
-  --text-muted:   #64748b;
+  --text-primary: #1f2937; // $text-dark
+  --text-muted:   #6b7280; // $text-light
+  --text-on-accent: #ffffff;
 
   // Lines
-  --border:       #e2e8f0;
+  --border:       #e5e7eb; // $border-color
 
   // Brand + semantic
-  --accent:       #6366f1;   // matches existing $primary-color
-  --positive:     #16a34a;
-  --negative:     #dc2626;
+  --accent:       #6366f1;
+  --accent-light: rgba(99, 102, 241, 0.12);
+  --positive:     #10b981; // $success-color
+  --negative:     #ef4444; // $danger-color
   --warning:      #f59e0b;
+  --info:         #3b82f6;
 
-  // Elevation (used sparingly)
+  // Gradients
+  --grad-accent: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  --grad-stat: linear-gradient(135deg, #6366f1 0%, #0ea5e9 100%);
+
+  // Elevation
   --shadow-sm:    0 1px 2px rgba(15, 23, 42, 0.06);
   --shadow-md:    0 4px 12px rgba(15, 23, 42, 0.08);
 }
 
 :root[data-theme='dark'] {
-  --bg-canvas:   #0b0f1a;
-  --bg-surface:  #111827;
-  --bg-elev-1:   #1f2937;
+  // Surfaces - deeper, less "flat" black
+  --bg-canvas:   #0f172a;
+  --bg-surface:  #1e293b;
+  --bg-elev-1:   #334155;
 
-  --text-primary: #e5e7eb;
+  // Text - softer whites/grays
+  --text-primary: #f1f5f9;
   --text-muted:   #94a3b8;
+  --text-on-accent: #ffffff;
 
-  --border:       #1f2937;
+  // Lines
+  --border:       #334155;
 
+  // Brand + semantic - slightly more vibrant for dark backgrounds
   --accent:       #818cf8;
-  --positive:     #22c55e;
+  --accent-light: rgba(129, 140, 248, 0.15);
+  --positive:     #34d399;
   --negative:     #f87171;
   --warning:      #fbbf24;
+  --info:         #60a5fa;
 
-  --shadow-sm:    0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md:    0 4px 12px rgba(0, 0, 0, 0.5);
+  // Gradients
+  --grad-accent: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+  --grad-stat: linear-gradient(135deg, #4338ca 0%, #0369a1 100%);
+
+  --shadow-sm:    0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-md:    0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 // Body palette responds to active theme without per-component changes.
