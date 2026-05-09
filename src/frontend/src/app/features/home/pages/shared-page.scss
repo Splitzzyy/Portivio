@@ -405,6 +405,8 @@
   &.pill-primary { background: rgba(99, 102, 241, 0.14);  color: var(--accent); }
   &.pill-info    { background: rgba(59, 130, 246, 0.14);  color: #3b82f6; }
   &.pill-warning { background: rgba(245, 158, 11, 0.14);  color: var(--warning); }
+  &.pill-indigo  { background: rgba(79, 70, 229, 0.14);   color: #4f46e5; }
+  &.pill-orange  { background: rgba(234, 88, 12, 0.14);   color: #ea580c; }
   &.pill-muted   { background: var(--bg-canvas);          color: var(--text-muted); }
   &.pill-deleted { background: rgba(100, 116, 139, 0.15); color: var(--text-muted); font-size: 10px; margin-left: 4px; }
 

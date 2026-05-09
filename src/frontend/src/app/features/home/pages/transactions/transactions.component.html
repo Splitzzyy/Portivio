@@ -9,18 +9,30 @@
         <i class="fas" [class.fa-eye]="!showDeleted" [class.fa-eye-slash]="showDeleted"></i>
         {{ showDeleted ? 'Hide deleted' : 'Show deleted' }}
       </button>
-      <button class="btn btn-primary" (click)="openCreate()" *ngIf="instruments.length">
+      <a class="btn btn-primary" routerLink="/dashboard/add-investment" *ngIf="instruments.length">
         <i class="fas fa-plus"></i> New Transaction
-      </button>
+      </a>
     </div>
   </div>
 
   <div class="toolbar">
-    <label for="profileSelect">Profile</label>
-    <select id="profileSelect" [(ngModel)]="selectedProfileId" (change)="onProfileChange()" name="profileSelect">
-      <option *ngIf="!profiles.length" [ngValue]="null">No profiles yet</option>
-      <option *ngFor="let p of profiles" [ngValue]="p.id">{{ p.name }} ({{ p.baseCurrency }})</option>
-    </select>
+    <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+      <div>
+        <label for="profileSelect">Profile</label>
+        <select id="profileSelect" [(ngModel)]="selectedProfileId" (change)="onProfileChange()" name="profileSelect" style="min-width: 180px;">
+          <option *ngIf="!profiles.length" [ngValue]="null">No profiles yet</option>
+          <option *ngFor="let p of profiles" [ngValue]="p.id">{{ p.name }} ({{ p.baseCurrency }})</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="sortSelect">Sort By</label>
+        <select id="sortSelect" [(ngModel)]="sortBy" (change)="onSortChange()" name="sortSelect" style="min-width: 160px;">
+          <option value="added">Date Added (Newest)</option>
+          <option value="date">Trade Date (Newest)</option>
+        </select>
+      </div>
+    </div>
 
     <div class="pagination-controls" *ngIf="selectedProfileId">
       <span class="muted" *ngIf="paged && total > 0">Showing {{ rangeStart }}-{{ rangeEnd }} of {{ total }}</span>

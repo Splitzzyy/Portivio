@@ -41,6 +41,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   selectedProfileId: string | null = null;
   page = 1;
   pageSize = 25;
+  sortBy = 'added';
 
   loading = false;
   saving = false;
@@ -101,12 +102,17 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     if (!this.selectedProfileId) return;
     this.loading = true;
     this.error = null;
-    this.transactionService.list(this.selectedProfileId, this.page, this.pageSize, this.showDeleted)
+    this.transactionService.list(this.selectedProfileId, this.page, this.pageSize, this.showDeleted, this.sortBy)
       .pipe(takeUntil(this.destroy$), finalize(() => (this.loading = false)))
       .subscribe({
         next: (data) => (this.paged = data ?? null),
         error: (err) => (this.error = err?.error?.message || 'Failed to load transactions.')
       });
+  }
+
+  onSortChange(): void {
+    this.page = 1;
+    this.fetch();
   }
 
   toggleShowDeleted(): void {
@@ -243,11 +249,14 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   }
 
   typeClass(type: string): string {
-    switch (type) {
+    switch (type.toUpperCase()) {
       case 'BUY': return 'pill-success';
       case 'SELL': return 'pill-danger';
       case 'SIP': return 'pill-primary';
       case 'DIVIDEND': return 'pill-info';
+      case 'DEPOSIT': return 'pill-warning';
+      case 'CONTRIBUTION': return 'pill-indigo';
+      case 'INTEREST': return 'pill-orange';
       default: return 'pill-muted';
     }
   }
