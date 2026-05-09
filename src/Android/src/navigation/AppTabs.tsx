@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Text } from 'react-native-paper';
+import Constants from 'expo-constants';
 
 import type {
   AppTabsParamList,
@@ -112,19 +113,25 @@ function TransactionsStack(): React.JSX.Element {
 }
 
 function MoreStack(): React.JSX.Element {
+  const showSip = Constants.expoConfig?.extra?.showSip ?? true;
+
   return (
     <MoreNav.Navigator>
       <MoreNav.Screen name="MoreHome" component={MoreScreen} options={{ title: 'More' }} />
-      <MoreNav.Screen
-        name="SipPlansList"
-        component={SipPlansListScreen}
-        options={{ title: 'SIP Plans' }}
-      />
-      <MoreNav.Screen
-        name="SipPlanEdit"
-        component={SipPlanEditScreen}
-        options={{ title: 'SIP Plan' }}
-      />
+      {showSip && (
+        <>
+          <MoreNav.Screen
+            name="SipPlansList"
+            component={SipPlansListScreen}
+            options={{ title: 'SIP Plans' }}
+          />
+          <MoreNav.Screen
+            name="SipPlanEdit"
+            component={SipPlanEditScreen}
+            options={{ title: 'SIP Plan' }}
+          />
+        </>
+      )}
       <MoreNav.Screen
         name="InstrumentsList"
         component={InstrumentsListScreen}

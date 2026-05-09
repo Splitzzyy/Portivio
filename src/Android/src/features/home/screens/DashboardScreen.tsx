@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, Divider, Text } from 'react-native-paper';
+import Constants from 'expo-constants';
 
 import { useHome } from '../../../queries/home';
 import { useLogout } from '../../../queries/auth';
@@ -15,6 +16,7 @@ export function DashboardScreen(): React.JSX.Element {
   const { data, isLoading, isError, error, refetch, isRefetching } = useHome();
   const logout = useLogout();
   const user = useAuthStore((s) => s.user);
+  const showSip = Constants.expoConfig?.extra?.showSip;
 
   const onRefresh = useCallback(() => {
     void refetch();
@@ -48,7 +50,7 @@ export function DashboardScreen(): React.JSX.Element {
           <Row label="Profiles" value={s.profileCount} />
           <Row label="Holdings" value={s.holdingCount} />
           <Row label="Transactions" value={s.transactionCount} />
-          <Row label="Active SIPs" value={s.activeSIPCount} />
+          {showSip && <Row label="Active SIPs" value={s.activeSIPCount} />}
           <Divider style={styles.divider} />
           <RowMoney label="Total Investment" value={s.totalInvestment} />
           <RowMoney label="Market Value" value={s.totalMarketValue} />
@@ -72,7 +74,7 @@ export function DashboardScreen(): React.JSX.Element {
               <Divider style={styles.divider} />
               <Row label="Holdings" value={p.holdings.length} />
               <Row label="Transactions" value={p.transactions.length} />
-              <Row label="SIP Plans" value={p.sipPlans.length} />
+              {showSip && <Row label="SIP Plans" value={p.sipPlans.length} />}
               {p.latestPerformance ? (
                 <>
                   <Divider style={styles.divider} />

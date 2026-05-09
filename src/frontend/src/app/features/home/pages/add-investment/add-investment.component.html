@@ -238,7 +238,7 @@
               <label>Mode <span class="req">*</span></label>
               <div class="segmented">
                 <button type="button" [class.on]="mfForm.mode === 'Lumpsum'" (click)="mfForm.mode = 'Lumpsum'">Lumpsum</button>
-                <button type="button" [class.on]="mfForm.mode === 'SIP'" (click)="mfForm.mode = 'SIP'">SIP</button>
+                <button type="button" [class.on]="mfForm.mode === 'SIP'" (click)="mfForm.mode = 'SIP'" *ngIf="environment.showSip">SIP</button>
               </div>
             </div>
 

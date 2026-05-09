@@ -2,6 +2,7 @@ import React from 'react';
 import { ScrollView } from 'react-native';
 import { List, Divider } from 'react-native-paper';
 import Toast from 'react-native-toast-message';
+import Constants from 'expo-constants';
 
 import type { MoreScreenProps } from '../../../navigation/types';
 import { useProfiles } from '../../../queries/profiles';
@@ -9,6 +10,7 @@ import { useProfiles } from '../../../queries/profiles';
 export function MoreScreen({ navigation }: MoreScreenProps<'MoreHome'>): React.JSX.Element {
   const { data: profiles } = useProfiles();
   const firstProfileId = profiles?.[0]?.id;
+  const showSip = Constants.expoConfig?.extra?.showSip ?? true;
 
   const requireProfile = (
     fn: (id: string) => void,
@@ -38,12 +40,14 @@ export function MoreScreen({ navigation }: MoreScreenProps<'MoreHome'>): React.J
         />
         <Divider />
         <List.Subheader>Per Profile</List.Subheader>
-        <List.Item
-          title="SIP Plans"
-          description={firstProfileId ? `Profile: ${profiles?.[0]?.name}` : 'Pick first profile'}
-          left={(p) => <List.Icon {...p} icon="calendar-clock" />}
-          onPress={requireProfile((id) => navigation.navigate('SipPlansList', { profileId: id }))}
-        />
+        {showSip && (
+          <List.Item
+            title="SIP Plans"
+            description={firstProfileId ? `Profile: ${profiles?.[0]?.name}` : 'Pick first profile'}
+            left={(p) => <List.Icon {...p} icon="calendar-clock" />}
+            onPress={requireProfile((id) => navigation.navigate('SipPlansList', { profileId: id }))}
+          />
+        )}
         <List.Item
           title="Performance"
           description={firstProfileId ? `Profile: ${profiles?.[0]?.name}` : 'Pick first profile'}

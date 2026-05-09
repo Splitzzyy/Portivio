@@ -47,7 +47,7 @@
         </p>
       </div>
 
-      <div class="stat-card info">
+      <div class="stat-card info" *ngIf="environment.showSip">
         <div class="card-header">
           <h3 class="card-title">Active SIPs</h3>
           <i class="fas fa-repeat card-icon"></i>
@@ -90,7 +90,9 @@
               <strong>{{ p.name }}</strong>
               <span class="muted"> · {{ p.baseCurrency }}</span>
             </div>
-            <div class="muted">{{ p.holdings.length }} holdings · {{ p.sipPlans.length }} SIPs</div>
+            <div class="muted">
+              {{ p.holdings.length }} holdings<ng-container *ngIf="environment.showSip"> · {{ p.sipPlans.length }} SIPs</ng-container>
+            </div>
           </div>
         </div>
         <ng-template #noProfiles>
@@ -152,7 +154,7 @@
         <h3>Holdings</h3>
         <p>View current positions</p>
       </a>
-      <a routerLink="/dashboard/sip-plans" class="action-card">
+      <a routerLink="/dashboard/sip-plans" class="action-card" *ngIf="environment.showSip">
         <div class="action-icon"><i class="fas fa-repeat"></i></div>
         <h3>SIP Plans</h3>
         <p>Manage recurring investments</p>
