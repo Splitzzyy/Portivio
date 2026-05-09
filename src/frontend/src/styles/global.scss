@@ -1,11 +1,6 @@
 @use 'sass:color';
 @use 'tokens';
 
-// Global Variables - Keep for SCSS compatibility but map to tokens where possible
-$primary-color: #6366f1;
-$primary-dark: #4f46e5;
-$white: #ffffff;
-
 // Reset and Base Styles
 * {
   margin: 0;
@@ -20,8 +15,8 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   font-size: 14px;
   line-height: 1.6;
-  color: var(--text-primary);
-  background: var(--bg-canvas);
+  color: var(--text-primary) !important;
+  background: var(--bg-canvas) !important;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
@@ -49,46 +44,36 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
   line-height: 1.3;
   margin-bottom: 16px;
-  color: var(--text-primary);
+  color: var(--text-primary) !important;
 }
 
 h1 { font-size: 32px; letter-spacing: -0.5px; }
-h2 { font-size: 24px; }
-h3 { font-size: 20px; }
-h4 { font-size: 16px; }
 
 // Form Elements
-input,
-textarea,
-select {
+input, textarea, select {
   font-family: inherit;
   font-size: inherit;
-  color: var(--text-primary);
-  background: var(--bg-surface);
+  color: var(--text-primary) !important;
+  background: var(--bg-surface) !important;
 }
 
-input[type='text'],
-input[type='email'],
-input[type='password'],
-input[type='number'],
-textarea,
-select {
+input[type='text'], input[type='email'], input[type='password'], input[type='number'], textarea, select {
   width: 100%;
   padding: 10px 14px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border) !important;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s ease;
 
   &:focus {
     outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-light);
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 3px var(--accent-light) !important;
   }
 
   &:disabled {
-    background: var(--bg-canvas);
-    color: var(--text-muted);
+    background: var(--bg-canvas) !important;
+    color: var(--text-muted) !important;
     cursor: not-allowed;
   }
 }
@@ -97,132 +82,47 @@ select {
 button {
   font-family: inherit;
   cursor: pointer;
-  border: none;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  font-weight: 600;
-
-  &:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
 }
 
 .btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 18px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  text-decoration: none;
-  border: 1px solid transparent;
-  cursor: pointer;
-
   &.btn-primary {
-    background: var(--accent);
-    color: var(--text-on-accent);
-    &:hover:not(:disabled) {
-      filter: brightness(0.95);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
-    }
+    background: var(--accent) !important;
+    color: var(--text-on-accent) !important;
+    border: none !important;
   }
-
   &.btn-secondary {
-    background: var(--bg-surface);
-    color: var(--text-primary);
-    border-color: var(--border);
-    &:hover:not(:disabled) {
-      background: var(--bg-canvas);
-      border-color: var(--accent);
-    }
-  }
-
-  &.btn-success {
-    background: var(--positive);
-    color: #ffffff;
-    &:hover:not(:disabled) { filter: brightness(0.95); }
-  }
-
-  &.btn-danger {
-    background: var(--negative);
-    color: #ffffff;
-    &:hover:not(:disabled) { filter: brightness(0.95); }
+    background: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border) !important;
   }
 }
 
 // Alerts
 .alert {
-  padding: 12px 16px;
   border-radius: 10px;
-  margin-bottom: 16px;
-  font-size: 14px;
   font-weight: 500;
-
-  &.alert-success { background: rgba(16, 185, 129, 0.1); color: var(--positive); border: 1px solid rgba(16, 185, 129, 0.2); }
-  &.alert-danger  { background: rgba(239, 68, 68, 0.1);  color: var(--negative); border: 1px solid rgba(239, 68, 68, 0.2); }
-  &.alert-warning { background: rgba(245, 158, 11, 0.1);  color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.2); }
-  &.alert-info    { background: rgba(59, 130, 246, 0.1);  color: var(--info); border: 1px solid rgba(59, 130, 246, 0.2); }
 }
 
-// Tables
+// Tables - Global Reset
 table {
-  border-collapse: collapse;
-  width: 100%;
-  color: var(--text-primary);
+  color: var(--text-primary) !important;
+  background-color: var(--bg-surface) !important;
+  border-color: var(--border) !important;
 
   th {
-    background: var(--bg-canvas);
-    border: 1px solid var(--border);
-    padding: 12px;
-    text-align: left;
-    font-weight: 700;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    font-size: 12px;
-    letter-spacing: 0.5px;
+    background-color: var(--bg-canvas) !important;
+    color: var(--text-muted) !important;
+    border-color: var(--border) !important;
   }
 
   td {
-    border: 1px solid var(--border);
-    padding: 14px 12px;
+    color: var(--text-primary) !important;
+    border-color: var(--border) !important;
+    background-color: transparent !important;
   }
-}
-
-// Scrollbar
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: var(--bg-canvas); }
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 4px;
-  &:hover { background: var(--text-muted); }
 }
 
 // Utilities
 .text-muted { color: var(--text-muted) !important; }
-.mt-2 { margin-top: 8px; }
-.mt-3 { margin-top: 12px; }
-.mb-2 { margin-bottom: 8px; }
-.mb-4 { margin-bottom: 16px; }
-.me-2 { margin-right: 8px; }
-.d-flex { display: flex; }
-.align-items-center { align-items: center; }
-.justify-content-between { justify-content: space-between; }
-.gap-2 { gap: 8px; }
-.w-100 { width: 100%; }
-
-.visually-hidden {
-  position: absolute;
-  width: 1px; height: 1px; padding: 0; margin: -1px;
-  overflow: hidden; clip: rect(0, 0, 0, 0);
-  white-space: nowrap; border-width: 0;
-}
-
-// Focus visible
-.btn:focus-visible, a:focus-visible, input:focus-visible, button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
+.bg-surface { background-color: var(--bg-surface) !important; }
+.bg-canvas { background-color: var(--bg-canvas) !important; }

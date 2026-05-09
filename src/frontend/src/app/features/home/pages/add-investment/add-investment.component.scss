@@ -420,7 +420,7 @@
   }
 
   .value {
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 800;
     letter-spacing: -0.5px;
   }
@@ -468,6 +468,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    background: var(--bg-canvas);
+    color: var(--accent);
   }
 
   .meta {

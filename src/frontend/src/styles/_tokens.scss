@@ -1,9 +1,6 @@
 // Design tokens — single source of truth for color/elevation across the app.
 // Two scopes: :root (light) and :root[data-theme="dark"]. The ThemeService
 // flips the data-theme attribute on <html>; everything below cascades.
-//
-// Slices E and F consume these tokens via var(--token-name). New tokens
-// should be added here, never hard-coded in per-page SCSS.
 
 :root {
   // Surfaces
@@ -12,18 +9,18 @@
   --bg-elev-1:   #ffffff;
 
   // Text
-  --text-primary: #1f2937; // $text-dark
-  --text-muted:   #6b7280; // $text-light
+  --text-primary: #1f2937;
+  --text-muted:   #6b7280;
   --text-on-accent: #ffffff;
 
   // Lines
-  --border:       #e5e7eb; // $border-color
+  --border:       #e5e7eb;
 
   // Brand + semantic
   --accent:       #6366f1;
   --accent-light: rgba(99, 102, 241, 0.12);
-  --positive:     #10b981; // $success-color
-  --negative:     #ef4444; // $danger-color
+  --positive:     #10b981;
+  --negative:     #ef4444;
   --warning:      #f59e0b;
   --info:         #3b82f6;
 
@@ -37,33 +34,33 @@
 }
 
 :root[data-theme='dark'] {
-  // Surfaces - deeper, less "flat" black
-  --bg-canvas:   #0f172a;
-  --bg-surface:  #1e293b;
-  --bg-elev-1:   #334155;
+  // Surfaces - deeper, less "flat" black for better depth
+  --bg-canvas:   #0f111a;
+  --bg-surface:  #161b26;
+  --bg-elev-1:   #1f2937;
 
-  // Text - softer whites/grays
-  --text-primary: #f1f5f9;
+  // Text - softer whites/grays for reduced eye strain
+  --text-primary: #f8fafc;
   --text-muted:   #94a3b8;
   --text-on-accent: #ffffff;
 
   // Lines
-  --border:       #334155;
+  --border:       #2d3748;
 
-  // Brand + semantic - slightly more vibrant for dark backgrounds
+  // Brand + semantic - more vibrant for dark mode
   --accent:       #818cf8;
-  --accent-light: rgba(129, 140, 248, 0.15);
+  --accent-light: rgba(129, 140, 248, 0.18);
   --positive:     #34d399;
   --negative:     #f87171;
   --warning:      #fbbf24;
   --info:         #60a5fa;
 
-  // Gradients
+  // Gradients - slightly adjusted for dark backgrounds
   --grad-accent: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
   --grad-stat: linear-gradient(135deg, #4338ca 0%, #0369a1 100%);
 
   --shadow-sm:    0 2px 4px rgba(0, 0, 0, 0.3);
-  --shadow-md:    0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-md:    0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
 // Body palette responds to active theme without per-component changes.

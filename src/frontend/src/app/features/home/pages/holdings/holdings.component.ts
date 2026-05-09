@@ -123,12 +123,12 @@ export class HoldingsComponent implements OnInit, OnDestroy {
 
   assetPillClass(assetTypeName: string | undefined | null): string {
     const name = (assetTypeName || '').toLowerCase();
-    if (name.includes('equity') || name.includes('stock')) return 'pill-asset-equity';
-    if (name.includes('mutual') || name.includes('fund'))  return 'pill-asset-mf';
-    if (name.includes('gold'))                              return 'pill-asset-gold';
-    if (name.includes('recurring'))                         return 'pill-asset-rd';
-    if (name.includes('fixed') || name.includes('fd'))      return 'pill-asset-fd';
-    if (name.includes('ppf'))                               return 'pill-asset-ppf';
+    if (name.includes('equity') || name.includes('stock')) return 'pill-info';
+    if (name.includes('mutual') || name.includes('fund'))  return 'pill-primary';
+    if (name.includes('gold'))                              return 'pill-warning';
+    if (name.includes('recurring') || name.includes('rd'))  return 'pill-indigo';
+    if (name.includes('fixed') || name.includes('fd'))      return 'pill-success';
+    if (name.includes('ppf'))                               return 'pill-orange';
     return 'pill-muted';
   }
 
