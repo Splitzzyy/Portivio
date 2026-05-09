@@ -217,7 +217,8 @@ namespace Portivio.Application.Services
                 Price = t.Price,
                 Amount = t.Amount,
                 TransactionDate = t.TransactionDate,
-                Notes = t.Notes
+                Notes = t.Notes,
+                CreatedAtUtc = t.CreatedAtUtc
             };
         }
     }

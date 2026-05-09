@@ -224,6 +224,7 @@ export namespace Transactions {
     amount: number;
     transactionDate: Iso;
     notes: string;
+    createdAtUtc: Iso;
   }
 }
 

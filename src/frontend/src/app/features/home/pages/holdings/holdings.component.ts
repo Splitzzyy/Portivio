@@ -5,8 +5,7 @@ import { ToastrService } from 'ngx-toastr';
 import {
   Holding,
   Instrument,
-  Profile,
-  UpsertHoldingRequest
+  Profile
 } from '../../../../core/models/portfolio.model';
 import { HoldingService } from '../../../../core/services/holding.service';
 import { InstrumentService } from '../../../../core/services/instrument.service';
@@ -25,15 +24,8 @@ export class HoldingsComponent implements OnInit, OnDestroy {
   selectedProfileId: string | null = null;
   activeAssetType = '';
   loading = false;
-  saving = false;
   refreshing = false;
   error: string | null = null;
-
-  showForm = false;
-  editingId: string | null = null;
-  editingInstrument: Instrument | null = null;
-  instrumentQuery = '';
-  form: UpsertHoldingRequest = { instrumentId: '', quantity: 0, avgPrice: 0, currentPrice: 0 };
 
   private destroy$ = new Subject<void>();
 
@@ -89,8 +81,6 @@ export class HoldingsComponent implements OnInit, OnDestroy {
   }
 
   onProfileChange(): void {
-    this.showForm = false;
-    this.editingId = null;
     this.activeAssetType = '';
     this.fetchHoldings();
   }
@@ -107,49 +97,6 @@ export class HoldingsComponent implements OnInit, OnDestroy {
       });
   }
 
-  get filteredInstruments(): Instrument[] {
-    const q = this.instrumentQuery.toLowerCase().trim();
-    if (!q) return this.instruments.slice(0, 100);
-    return this.instruments
-      .filter(i => i.symbol.toLowerCase().includes(q) || i.name.toLowerCase().includes(q))
-      .slice(0, 100);
-  }
-
-  openCreate(): void {
-    this.editingId = null;
-    this.editingInstrument = null;
-    this.instrumentQuery = '';
-    this.form = { instrumentId: this.instruments[0]?.id || '', quantity: 0, avgPrice: 0, currentPrice: 0 };
-    this.showForm = true;
-  }
-
-  openEdit(h: Holding): void {
-    this.editingId = h.id;
-    this.editingInstrument = {
-      id: h.instrumentId,
-      assetTypeId: '',
-      assetTypeName: h.assetTypeName,
-      name: h.instrumentName,
-      symbol: h.instrumentSymbol,
-      currency: h.currency
-    };
-    this.form = {
-      instrumentId: h.instrumentId,
-      quantity: h.quantity,
-      avgPrice: h.avgPrice,
-      currentPrice: h.currentPrice
-    };
-    this.showForm = true;
-  }
-
-  cancelForm(): void {
-    this.showForm = false;
-    this.editingId = null;
-    this.editingInstrument = null;
-    this.instrumentQuery = '';
-  }
-
-  trackInstrumentById(_: number, i: Instrument): string { return i.id; }
   trackHoldingById(_: number, h: Holding): string { return h.id; }
   trackByString(_: number, v: string): string { return v; }
 
@@ -157,30 +104,6 @@ export class HoldingsComponent implements OnInit, OnDestroy {
     const cost = h.avgPrice * h.quantity;
     if (!cost) return 0;
     return (h.unrealizedPnL / cost) * 100;
-  }
-
-  submit(): void {
-    if (!this.selectedProfileId) return;
-    if (!this.form.instrumentId) {
-      this.toastr.error('Select an instrument');
-      return;
-    }
-    this.saving = true;
-    this.holdingService.upsert(this.selectedProfileId, {
-      instrumentId: this.form.instrumentId,
-      quantity: Number(this.form.quantity),
-      avgPrice: Number(this.form.avgPrice),
-      currentPrice: Number(this.form.currentPrice)
-    })
-      .pipe(takeUntil(this.destroy$), finalize(() => (this.saving = false)))
-      .subscribe({
-        next: () => {
-          this.toastr.success(this.editingId ? 'Holding updated' : 'Holding saved');
-          this.cancelForm();
-          this.fetchHoldings();
-        },
-        error: (err) => this.toastr.error(err?.error?.message || 'Save failed')
-      });
   }
 
   delete(h: Holding): void {
@@ -200,12 +123,12 @@ export class HoldingsComponent implements OnInit, OnDestroy {
 
   assetPillClass(assetTypeName: string | undefined | null): string {
     const name = (assetTypeName || '').toLowerCase();
-    if (name.includes('equity') || name.includes('stock')) return 'pill-asset-equity';
-    if (name.includes('mutual') || name.includes('fund'))  return 'pill-asset-mf';
-    if (name.includes('gold'))                              return 'pill-asset-gold';
-    if (name.includes('recurring'))                         return 'pill-asset-rd';
-    if (name.includes('fixed') || name.includes('fd'))      return 'pill-asset-fd';
-    if (name.includes('ppf'))                               return 'pill-asset-ppf';
+    if (name.includes('equity') || name.includes('stock')) return 'pill-info';
+    if (name.includes('mutual') || name.includes('fund'))  return 'pill-primary';
+    if (name.includes('gold'))                              return 'pill-warning';
+    if (name.includes('recurring') || name.includes('rd'))  return 'pill-indigo';
+    if (name.includes('fixed') || name.includes('fd'))      return 'pill-success';
+    if (name.includes('ppf'))                               return 'pill-orange';
     return 'pill-muted';
   }
 

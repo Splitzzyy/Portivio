@@ -7,7 +7,7 @@ Financial portfolio management application. Track stocks, mutual funds, SIP plan
 | | Backend | Frontend |
 |---|:-------:|:--------:|
 | Build | [![Build](https://github.com/Splitzzyy/Portivio/actions/workflows/build-on-main.yml/badge.svg?branch=main)](https://github.com/Splitzzyy/Portivio/actions/workflows/build-on-main.yml) | [![Build](https://github.com/Splitzzyy/Portivio/actions/workflows/build-on-main.yml/badge.svg?branch=main)](https://github.com/Splitzzyy/Portivio/actions/workflows/build-on-main.yml) |
-| Tests | ![Backend tests](https://img.shields.io/badge/tests-120%2F120%20passed-brightgreen) | ![Frontend tests](https://img.shields.io/badge/frontend%20tests-1%2F1%20passed-brightgreen) |
+| Tests | ![Backend tests](https://img.shields.io/badge/tests-147%2F147%20passed-brightgreen) | ![Frontend tests](https://img.shields.io/badge/frontend%20tests-82%2F82%20passed-brightgreen) |
 
 Both backend and frontend builds/tests run through the single `build-on-main.yml` workflow.
 

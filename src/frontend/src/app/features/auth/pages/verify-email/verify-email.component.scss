@@ -10,13 +10,13 @@
   align-items: center;
   gap: 1rem;
   padding: 2rem 0;
-  color: var(--text-secondary);
+  color: var(--text-muted);
 
   .spinner {
     width: 2.5rem;
     height: 2.5rem;
-    border: 3px solid var(--border-color);
-    border-top-color: var(--primary-color);
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
     border-radius: 50%;
     animation: spin 1s linear infinite;
   }
@@ -34,19 +34,19 @@
   flex-direction: column;
   gap: 16px;
   padding: 20px;
-  background: $auth-bg;
-  border-radius: $auth-radius-sm;
-  border: 1px solid $auth-border;
+  background: var(--bg-canvas);
+  border-radius: 12px;
+  border: 1px solid var(--border);
   margin-top: 16px;
 
   .email-display {
     display: flex;
     justify-content: space-between;
     font-size: 14px;
-    color: $auth-text-soft;
+    color: var(--text-muted);
 
     strong {
-      color: $auth-text;
+      color: var(--text-primary);
       word-break: break-all;
       margin-left: 8px;
     }
@@ -56,8 +56,8 @@
 .spinner-inline {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba($auth-white, 0.3);
-  border-top-color: $auth-white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
   border-radius: 50%;
   animation: auth-spin 0.7s linear infinite;
 }

@@ -24,10 +24,10 @@ namespace Portivio.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetTransactions(Guid profileId, [FromQuery] int page = 1, [FromQuery] int pageSize = 50, [FromQuery] bool includeDeleted = false)
+        public async Task<IActionResult> GetTransactions(Guid profileId, [FromQuery] int page = 1, [FromQuery] int pageSize = 50, [FromQuery] bool includeDeleted = false, [FromQuery] string sortBy = "added")
         {
             if (!TryGetCurrentUserId(out var userId)) return UserNotAuthenticated();
-            var result = await _transactionService.GetTransactionsAsync(userId, profileId, page, pageSize, includeDeleted);
+            var result = await _transactionService.GetTransactionsAsync(userId, profileId, page, pageSize, includeDeleted, sortBy);
             return result.Match(
                 onSuccess: () => Ok(result.Data),
                 onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })

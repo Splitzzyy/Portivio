@@ -31,6 +31,15 @@ export class HomeComponent implements OnInit, OnDestroy {
     public themeService: ThemeService
   ) {}
 
+  get isDarkMode(): boolean {
+    return this.themeService.mode() === 'dark';
+  }
+
+  toggleTheme(): void {
+    const next = this.isDarkMode ? 'light' : 'dark';
+    this.themeService.set(next);
+  }
+
   cycleTheme(): void {
     this.themeService.cycle();
   }

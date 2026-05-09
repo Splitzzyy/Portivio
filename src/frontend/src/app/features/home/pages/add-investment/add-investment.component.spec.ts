@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { ToastrService } from 'ngx-toastr';
 import { of, throwError } from 'rxjs';
 import { AddInvestmentComponent } from './add-investment.component';
@@ -49,7 +50,7 @@ describe('AddInvestmentComponent', () => {
     transactionSvc.list.and.returnValue(of({ items: [], page: 1, pageSize: 5, total: 0, hasMore: false }));
 
     await TestBed.configureTestingModule({
-      imports: [RouterTestingModule, FormsModule, CommonModule],
+      imports: [RouterTestingModule, FormsModule, CommonModule, HttpClientTestingModule],
       declarations: [AddInvestmentComponent],
       providers: [
         { provide: ProfileService,    useValue: profileSvc     },
@@ -513,7 +514,7 @@ describe('AddInvestmentComponent', () => {
     it('returns instruments with Equity asset type', () => {
       component.stockQuery = '';
       const results = component.filteredStocks;
-      expect(results.every(i => i.assetTypeName.toLowerCase().includes('equity'))).toBeTrue();
+      expect(results.every(i => (i.assetTypeName || '').toLowerCase().includes('equity'))).toBeTrue();
     });
 
     it('filters by symbol query', () => {
@@ -532,7 +533,7 @@ describe('AddInvestmentComponent', () => {
     it('returns instruments with Mutual Fund asset type', () => {
       component.mfQuery = '';
       const results = component.filteredMfs;
-      expect(results.every(i => i.assetTypeName.toLowerCase().includes('mutual'))).toBeTrue();
+      expect(results.every(i => (i.assetTypeName || '').toLowerCase().includes('mutual'))).toBeTrue();
     });
 
     it('filters by fund name', () => {

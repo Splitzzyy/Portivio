@@ -11,7 +11,7 @@ namespace Portivio.Application.Services
 {
     public interface ITransactionService
     {
-        Task<Result<PagedResult<TransactionResponse>>> GetTransactionsAsync(Guid userId, Guid profileId, int page = 1, int pageSize = 50, bool includeDeleted = false);
+        Task<Result<PagedResult<TransactionResponse>>> GetTransactionsAsync(Guid userId, Guid profileId, int page = 1, int pageSize = 50, bool includeDeleted = false, string sortBy = "added");
         Task<Result<TransactionResponse>> CreateTransactionAsync(Guid userId, Guid profileId, CreateTransactionRequest request);
         Task<Result<TransactionResponse>> UpdateTransactionAsync(Guid userId, Guid profileId, Guid txId, UpdateTransactionRequest request);
         Task<Result> DeleteTransactionAsync(Guid userId, Guid profileId, Guid txId);
@@ -80,7 +80,7 @@ namespace Portivio.Application.Services
             }
         }
 
-        public async Task<Result<PagedResult<TransactionResponse>>> GetTransactionsAsync(Guid userId, Guid profileId, int page = 1, int pageSize = 50, bool includeDeleted = false)
+        public async Task<Result<PagedResult<TransactionResponse>>> GetTransactionsAsync(Guid userId, Guid profileId, int page = 1, int pageSize = 50, bool includeDeleted = false, string sortBy = "added")
         {
             try
             {
@@ -99,10 +99,20 @@ namespace Portivio.Application.Services
                 var total = await baseQuery.CountAsync();
 
                 var skip = (page - 1) * pageSize;
-                var transactions = await baseQuery
-                    .Include(t => t.Instrument)
-                    .OrderByDescending(t => t.TransactionDate)
-                    .ThenByDescending(t => t.CreatedAtUtc)
+
+                var query = baseQuery.Include(t => t.Instrument).AsQueryable();
+
+                if (string.Equals(sortBy, "date", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.OrderByDescending(t => t.TransactionDate).ThenByDescending(t => t.CreatedAtUtc);
+                }
+                else
+                {
+                    // Default: added
+                    query = query.OrderByDescending(t => t.CreatedAtUtc);
+                }
+
+                var transactions = await query
                     .Skip(skip)
                     .Take(pageSize)
                     .Select(t => MapToResponse(t))
@@ -189,7 +199,8 @@ namespace Portivio.Application.Services
                         Price = transaction.Price,
                         Amount = transaction.Amount,
                         TransactionDate = transaction.TransactionDate,
-                        Notes = transaction.Notes
+                        Notes = transaction.Notes,
+                        CreatedAtUtc = transaction.CreatedAtUtc
                     }, "Transaction created successfully", 201);
                 }
                 catch (Exception ex)
@@ -288,7 +299,8 @@ namespace Portivio.Application.Services
             Amount = t.Amount,
             TransactionDate = t.TransactionDate,
             Notes = t.Notes,
-            IsDeleted = t.IsDeleted
+            IsDeleted = t.IsDeleted,
+            CreatedAtUtc = t.CreatedAtUtc
         };
     }
 }

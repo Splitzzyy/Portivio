@@ -39,13 +39,20 @@ namespace Portivio.API.Controllers
                 using var doc = JsonDocument.Parse(json);
                 var root = doc.RootElement;
                 if (root.TryGetProperty("status", out var status) && status.GetString() == "success"
-                    && root.TryGetProperty("data", out var data)
-                    && data.TryGetProperty("last_price", out var priceEl)
-                    && priceEl.TryGetDecimal(out var lastPrice))
+                    && root.TryGetProperty("data", out var data))
                 {
-                    return Ok(new { lastPrice });
+                    var response = new { lastPrice = 0m, companyName = string.Empty };
+
+                    if (data.TryGetProperty("last_price", out var priceEl) && priceEl.TryGetDecimal(out var lastPrice))
+                    {
+                        if (data.TryGetProperty("company_name", out var nameEl))
+                        {
+                            return Ok(new { lastPrice, companyName = nameEl.GetString() });
+                        }
+                        return Ok(new { lastPrice });
+                    }
                 }
-                return NotFound(new { message = $"No price returned for {symbol}" });
+                return NotFound(new { message = $"No data returned for {symbol}" });
             }
             catch (HttpRequestException)
             {

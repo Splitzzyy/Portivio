@@ -108,6 +108,7 @@ export interface Transaction {
   transactionDate: string;
   notes: string;
   isDeleted: boolean;
+  createdAtUtc: string;
 }
 
 export interface CreateTransactionRequest {

@@ -102,8 +102,23 @@
         <div *ngIf="selectedType === 'STOCK'">
           <div class="ai-form-grid">
 
+            <div class="ai-field" [class.invalid]="errors['symbol']">
+              <label>Symbol <span class="req">*</span></label>
+              <input type="text" [(ngModel)]="stockForm.symbol" name="stkSymbol" placeholder="e.g. TCS"
+                     (blur)="onSymbolBlur()" />
+              <div class="err" *ngIf="errors['symbol']"><i class="fas fa-exclamation-circle"></i> {{ errors['symbol'] }}</div>
+            </div>
+
+            <div class="ai-field">
+              <label>Exchange</label>
+              <select [(ngModel)]="stockForm.exchange" name="stkExch" (change)="onExchangeChange()">
+                <option>NSE</option>
+                <option>BSE</option>
+              </select>
+            </div>
+
             <div class="ai-field full" [class.invalid]="errors['name'] || errors['symbol']">
-              <label>Stock <span class="req">*</span></label>
+              <label>Stock Name <span class="req">*</span></label>
               <div class="typeahead" (click)="$event.stopPropagation()">
                 <input type="text"
                        [value]="stockQuery"
@@ -118,24 +133,9 @@
                   </div>
                 </div>
               </div>
-              <div class="selected-name" *ngIf="stockForm.name && !stockDropdownOpen">{{ stockForm.name }}</div>
+              <div class="selected-name" *ngIf="stockForm.name && !stockDropdownOpen && stockForm.name !== stockQuery">{{ stockForm.name }}</div>
               <div class="err" *ngIf="errors['name']"><i class="fas fa-exclamation-circle"></i> {{ errors['name'] }}</div>
-              <div class="hint">Or fill symbol manually below</div>
-            </div>
-
-            <div class="ai-field" [class.invalid]="errors['symbol']">
-              <label>Symbol <span class="req">*</span></label>
-              <input type="text" [(ngModel)]="stockForm.symbol" name="stkSymbol" placeholder="e.g. TCS"
-                     (blur)="onSymbolBlur()" />
-              <div class="err" *ngIf="errors['symbol']"><i class="fas fa-exclamation-circle"></i> {{ errors['symbol'] }}</div>
-            </div>
-
-            <div class="ai-field">
-              <label>Exchange</label>
-              <select [(ngModel)]="stockForm.exchange" name="stkExch" (change)="onExchangeChange()">
-                <option>NSE</option>
-                <option>BSE</option>
-              </select>
+              <div class="hint">Or fill symbol manually above</div>
             </div>
 
             <div class="ai-field" [class.invalid]="errors['quantity']">
@@ -164,6 +164,11 @@
             </div>
 
             <div class="ai-field">
+              <label>Adding Date</label>
+              <input type="date" [value]="addingDate" readonly style="background-color: #f3f4f6; cursor: not-allowed;" />
+            </div>
+
+            <div class="ai-field">
               <label>Brokerage / charges</label>
               <div class="input-affix">
                 <span class="prefix">₹</span>
@@ -184,15 +189,14 @@
               <div class="value">{{ formatINR(stockTotal) }}</div>
             </div>
             <div class="divider"></div>
-            <div class="grow">
-              <div>
-                <div class="label">Quantity</div>
-                <div class="small">{{ stockForm.quantity ? (stockForm.quantity + ' sh') : '—' }}</div>
-              </div>
-              <div>
-                <div class="label">Avg cost</div>
-                <div class="small">{{ stockAvgCost > 0 ? formatINR(stockAvgCost) : '—' }}</div>
-              </div>
+            <div>
+              <div class="label">Quantity</div>
+              <div class="value">{{ stockForm.quantity ? (stockForm.quantity + ' sh') : '—' }}</div>
+            </div>
+            <div class="divider"></div>
+            <div>
+              <div class="label">Avg cost</div>
+              <div class="value">{{ stockAvgCost > 0 ? formatINR(stockAvgCost) : '—' }}</div>
             </div>
           </div>
         </div>
@@ -264,6 +268,11 @@
               <label>{{ mfForm.mode === 'SIP' ? 'SIP date' : 'Purchase date' }} <span class="req">*</span></label>
               <input type="date" [(ngModel)]="mfForm.date" name="mfDate" />
               <div class="err" *ngIf="errors['date']"><i class="fas fa-exclamation-circle"></i> {{ errors['date'] }}</div>
+            </div>
+
+            <div class="ai-field">
+              <label>Adding Date</label>
+              <input type="date" [value]="addingDate" readonly style="background-color: #f3f4f6; cursor: not-allowed;" />
             </div>
 
             <div class="ai-field full">
@@ -338,6 +347,11 @@
               <div class="err" *ngIf="errors['date']"><i class="fas fa-exclamation-circle"></i> {{ errors['date'] }}</div>
             </div>
 
+            <div class="ai-field">
+              <label>Adding Date</label>
+              <input type="date" [value]="addingDate" readonly style="background-color: #f3f4f6; cursor: not-allowed;" />
+            </div>
+
             <div class="ai-field full">
               <label>Source</label>
               <input type="text" [(ngModel)]="goldForm.source" name="goldSrc" placeholder="e.g. MMTC-PAMP, Tanishq, SGB Series II" />
@@ -397,6 +411,11 @@
               <label>Deposit date <span class="req">*</span></label>
               <input type="date" [(ngModel)]="ppfForm.date" name="ppfDate" />
               <div class="err" *ngIf="errors['date']"><i class="fas fa-exclamation-circle"></i> {{ errors['date'] }}</div>
+            </div>
+
+            <div class="ai-field">
+              <label>Adding Date</label>
+              <input type="date" [value]="addingDate" readonly style="background-color: #f3f4f6; cursor: not-allowed;" />
             </div>
 
             <div class="ai-field">
@@ -494,6 +513,11 @@
               <label>Start date <span class="req">*</span></label>
               <input type="date" [(ngModel)]="fdRdForm.startDate" name="fdStart" />
               <div class="err" *ngIf="errors['startDate']"><i class="fas fa-exclamation-circle"></i> {{ errors['startDate'] }}</div>
+            </div>
+
+            <div class="ai-field">
+              <label>Adding Date</label>
+              <input type="date" [value]="addingDate" readonly style="background-color: #f3f4f6; cursor: not-allowed;" />
             </div>
 
             <div class="ai-field" *ngIf="fdRdForm.subtype === 'FD'" [class.invalid]="errors['maturityDate']">

@@ -6,15 +6,15 @@
     </div>
     <div class="page-actions">
       <button class="btn btn-secondary" (click)="refreshPrices()"
-              *ngIf="!showForm && selectedProfileId && holdings.length"
+              *ngIf="selectedProfileId && holdings.length"
               [disabled]="refreshing">
         <i class="fas fa-sync" [class.fa-spin]="refreshing"></i>
         {{ refreshing ? 'Refreshing…' : 'Refresh prices' }}
       </button>
-      <button class="btn btn-primary" (click)="openCreate()"
-              *ngIf="!showForm && selectedProfileId && instruments.length">
+      <a class="btn btn-primary" routerLink="/dashboard/add-investment"
+              *ngIf="selectedProfileId && instruments.length">
         <i class="fas fa-plus"></i> Add / Update Holding
-      </button>
+      </a>
     </div>
   </div>
 
@@ -37,46 +37,6 @@
 
   <div *ngIf="!instruments.length && profiles.length" class="state-message">
     No instruments found. Use <a routerLink="/dashboard/add-investment">Add Investment</a> to log your first position.
-  </div>
-
-  <div *ngIf="showForm" class="form-card">
-    <h2 class="form-title">{{ editingId ? 'Update holding' : 'Add / update holding' }}</h2>
-    <form (ngSubmit)="submit()" #f="ngForm" class="form-grid">
-      <div class="form-field">
-        <label>Instrument</label>
-        <input *ngIf="editingId && editingInstrument" type="text"
-               [value]="editingInstrument.symbol + ' — ' + editingInstrument.name + ' (' + editingInstrument.assetTypeName + ')'"
-               readonly />
-        <ng-container *ngIf="!editingId">
-          <input type="text" placeholder="Search symbol or name…"
-                 [(ngModel)]="instrumentQuery" name="instrumentSearch" autocomplete="off" />
-          <select name="instrumentId" [(ngModel)]="form.instrumentId" required>
-            <option value="">— select —</option>
-            <option *ngFor="let i of filteredInstruments; trackBy: trackInstrumentById" [ngValue]="i.id">
-              {{ i.symbol }} — {{ i.name }} ({{ i.assetTypeName }})
-            </option>
-          </select>
-        </ng-container>
-      </div>
-      <div class="form-field">
-        <label>Quantity</label>
-        <input type="number" step="any" name="quantity" [(ngModel)]="form.quantity" required />
-      </div>
-      <div class="form-field">
-        <label>Avg Price</label>
-        <input type="number" step="any" name="avgPrice" [(ngModel)]="form.avgPrice" required />
-      </div>
-      <div class="form-field">
-        <label>Current Price</label>
-        <input type="number" step="any" name="currentPrice" [(ngModel)]="form.currentPrice" required />
-      </div>
-      <div class="form-actions full">
-        <button type="button" class="btn btn-secondary" (click)="cancelForm()">Cancel</button>
-        <button type="submit" class="btn btn-primary" [disabled]="saving || !f.valid">
-          {{ saving ? 'Saving…' : 'Save' }}
-        </button>
-      </div>
-    </form>
   </div>
 
   <div *ngIf="loading" class="state-message">Loading holdings…</div>
@@ -128,7 +88,7 @@
           </td>
           <td class="num muted col-hide-md">{{ formatRelative(h.lastUpdated) }}</td>
           <td class="actions">
-            <button class="icon-btn" title="Edit" (click)="openEdit(h)"><i class="fas fa-pen"></i></button>
+            <a class="icon-btn" title="Edit" routerLink="/dashboard/add-investment"><i class="fas fa-pen"></i></a>
             <button class="icon-btn danger" title="Delete" (click)="delete(h)"><i class="fas fa-trash"></i></button>
           </td>
         </tr>
