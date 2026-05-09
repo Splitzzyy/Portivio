@@ -86,7 +86,15 @@ public static class ApplicationServicesExtensions
             client.DefaultRequestHeaders.UserAgent.ParseAdd("Portivio/1.0");
         });
 
+        services.AddHttpClient("LivePriceApi", client =>
+        {
+            client.BaseAddress = new Uri("http://65.0.104.9");
+            client.Timeout = TimeSpan.FromSeconds(10);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Portivio/1.0");
+        });
+
         services.AddScoped<IStockPriceProvider, AlphaVantageStockProvider>();
+        services.AddScoped<ILivePriceApiStockProvider, LivePriceApiStockProvider>();
         services.AddScoped<IMutualFundNavProvider, AmfiNavProvider>();
         services.AddScoped<IStandardRateProvider, ConfigStandardRateProvider>();
         services.AddSingleton<IGoldRateProvider, GoldRateProvider>();

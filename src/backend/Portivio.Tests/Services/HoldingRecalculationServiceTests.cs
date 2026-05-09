@@ -156,6 +156,7 @@ namespace Portivio.Tests.Services
             IMarketDataService? marketData = null,
             IRefreshThrottle? throttle = null,
             IGoldRateProvider? goldRate = null,
+            ILivePriceApiStockProvider? livePrice = null,
             params IAssetStrategy[] extraStrategies) =>
             new(
                 context,
@@ -163,6 +164,7 @@ namespace Portivio.Tests.Services
                 new ProfileAccessGuard(context),
                 marketData ?? NoopMarketData(),
                 goldRate ?? NoopGoldRate(),
+                livePrice ?? Mock.Of<ILivePriceApiStockProvider>(),
                 throttle ?? new RecordingThrottle(),
                 CreateMockLogger());
 

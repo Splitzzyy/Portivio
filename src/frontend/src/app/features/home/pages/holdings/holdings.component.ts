@@ -79,6 +79,15 @@ export class HoldingsComponent implements OnInit, OnDestroy {
     return this.holdings.filter(h => h.assetTypeName === this.activeAssetType);
   }
 
+  get lastRefreshedAt(): Date | null {
+    if (!this.holdings.length) return null;
+    const latest = this.holdings
+      .map(h => new Date(h.lastUpdated).getTime())
+      .filter(t => isFinite(t))
+      .reduce((a, b) => Math.max(a, b), 0);
+    return latest ? new Date(latest) : null;
+  }
+
   onProfileChange(): void {
     this.showForm = false;
     this.editingId = null;

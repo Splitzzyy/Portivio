@@ -1,6 +1,8 @@
 import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { Observable, Subject } from 'rxjs';
+import { environment } from '../../../../../environments/environment';
 import { finalize, takeUntil } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
 import {
@@ -76,6 +78,7 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
   instruments: Instrument[] = [];
   recentTransactions: Transaction[] = [];
   saving = false;
+  priceFetching = false;
   errors: Record<string, string> = {};
 
   stockQuery = '';
@@ -97,7 +100,8 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
     private transactionService: TransactionService,
     private assetService: AssetService,
     private toastr: ToastrService,
-    private router: Router
+    private router: Router,
+    private http: HttpClient
   ) {}
 
   ngOnInit(): void {
@@ -181,8 +185,36 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
   selectStock(inst: Instrument): void {
     this.stockForm.name = inst.name;
     this.stockForm.symbol = inst.symbol;
-    this.stockQuery = inst.symbol + ' – ' + inst.name;
+    this.stockQuery = inst.symbol;
     this.stockDropdownOpen = false;
+    this.fetchStockPrice(inst.symbol, this.stockForm.exchange);
+  }
+
+  onSymbolBlur(): void {
+    const sym = this.stockForm.symbol.trim().toUpperCase();
+    if (sym) this.fetchStockPrice(sym, this.stockForm.exchange);
+  }
+
+  onExchangeChange(): void {
+    const sym = this.stockForm.symbol.trim().toUpperCase();
+    if (sym) this.fetchStockPrice(sym, this.stockForm.exchange);
+  }
+
+  private fetchStockPrice(symbol: string, exchange: string): void {
+    const url = `${environment.apiUrl}/market/live-price?symbol=${encodeURIComponent(symbol)}&exchange=${exchange}`;
+    this.priceFetching = true;
+    this.http.get<{ lastPrice: number }>(url).pipe(
+      finalize(() => (this.priceFetching = false)),
+      takeUntil(this.destroy$)
+    ).subscribe({
+      next: (res) => {
+        if (res?.lastPrice != null) {
+          this.stockForm.price = String(res.lastPrice);
+          this.toastr.success(`₹${res.lastPrice}`, 'Price fetched', { timeOut: 2000 });
+        }
+      },
+      error: () => { /* silent — user enters manually */ }
+    });
   }
 
   selectMf(inst: Instrument): void {

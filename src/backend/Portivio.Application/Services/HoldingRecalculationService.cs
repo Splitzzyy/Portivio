@@ -38,6 +38,7 @@ namespace Portivio.Application.Services
         private readonly IProfileAccessGuard _profileAccess;
         private readonly IMarketDataService _marketData;
         private readonly IGoldRateProvider _goldRate;
+        private readonly ILivePriceApiStockProvider _livePrice;
         private readonly IRefreshThrottle _throttle;
         private readonly ILogger<HoldingRecalculationService> _logger;
 
@@ -47,6 +48,7 @@ namespace Portivio.Application.Services
             IProfileAccessGuard profileAccess,
             IMarketDataService marketData,
             IGoldRateProvider goldRate,
+            ILivePriceApiStockProvider livePrice,
             IRefreshThrottle throttle,
             ILogger<HoldingRecalculationService> logger)
         {
@@ -55,6 +57,7 @@ namespace Portivio.Application.Services
             _profileAccess = profileAccess;
             _marketData = marketData;
             _goldRate = goldRate;
+            _livePrice = livePrice;
             _throttle = throttle;
             _logger = logger;
         }
@@ -113,6 +116,18 @@ namespace Portivio.Application.Services
 
                         case PriceSource.AccrualFormula:
                             // No external call — accrual is computed by the per-strategy snapshot below.
+                            break;
+
+                        case PriceSource.LivePriceApi:
+                            var ticker = ResolveTicker(inst);
+                            var liveQuote = await _livePrice.GetQuoteAsync(ticker, ct);
+                            if (liveQuote is not null)
+                            {
+                                await UpsertLivePriceAsync(inst.Id, liveQuote.Price, liveQuote.AsOf, liveQuote.Source, ct);
+                                pricesUpdated++;
+                            }
+                            else
+                                pricesSkipped++;
                             break;
 
                         case PriceSource.Manual when inst.Category == AssetCategory.Gold:
@@ -229,6 +244,32 @@ namespace Portivio.Application.Services
                     }
                 }
 
+                // Fetch live prices for all equity holdings (both LivePriceApi and legacy AlphaVantage).
+                var equityInstruments = holdings
+                    .Where(h => h.Instrument.Category == AssetCategory.Equity)
+                    .Select(h => h.Instrument)
+                    .GroupBy(i => i.Id)
+                    .Select(g => g.First())
+                    .ToList();
+                foreach (var inst in equityInstruments)
+                {
+                    try
+                    {
+                        var ticker = ResolveTicker(inst);
+                        var quote = await _livePrice.GetQuoteAsync(ticker, ct);
+                        if (quote is not null)
+                            await UpsertLivePriceAsync(inst.Id, quote.Price, quote.AsOf, quote.Source, ct);
+                        else
+                            _logger.LogWarning("Live price unavailable during manual refresh. Ticker={Ticker}", ticker);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex,
+                            "Live price fetch failed during manual refresh. InstrumentId={InstrumentId} Symbol={Symbol}",
+                            inst.Id, inst.Symbol);
+                    }
+                }
+
                 var asOf = DateTime.UtcNow;
                 var recomputed = 0;
 
@@ -309,6 +350,46 @@ namespace Portivio.Application.Services
             });
             await _context.SaveChangesAsync(ct);
             return true;
+        }
+
+        private static string ResolveTicker(Instrument inst)
+        {
+            // priceSourceKey is "TCS.NS" for new instruments; bare "TCS" for legacy AlphaVantage ones
+            if (!string.IsNullOrWhiteSpace(inst.PriceSourceKey) && inst.PriceSourceKey.Contains('.'))
+                return inst.PriceSourceKey;
+
+            var sym = inst.PriceSourceKey ?? inst.Symbol;
+            var suffix = "NS";
+            if (inst.Metadata?.RootElement.TryGetProperty("exchange", out var exc) == true
+                && exc.GetString()?.Equals("BSE", StringComparison.OrdinalIgnoreCase) == true)
+                suffix = "BO";
+            return $"{sym}.{suffix}";
+        }
+
+        private async Task UpsertLivePriceAsync(Guid instrumentId, decimal price, DateTime asOf, string source, CancellationToken ct)
+        {
+            var today = DateTime.SpecifyKind(asOf.Date, DateTimeKind.Utc);
+            var existing = await _context.PriceHistories
+                .FirstOrDefaultAsync(ph => ph.InstrumentId == instrumentId && ph.Date.Date == today.Date, ct);
+
+            if (existing is not null)
+            {
+                existing.Price = price;
+                existing.Source = source;
+            }
+            else
+            {
+                _context.PriceHistories.Add(new PriceHistory
+                {
+                    Id = Guid.NewGuid(),
+                    InstrumentId = instrumentId,
+                    Price = price,
+                    Date = today,
+                    Source = source,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            await _context.SaveChangesAsync(ct);
         }
 
         private static HoldingResponse MapToResponse(Holding h) => new()

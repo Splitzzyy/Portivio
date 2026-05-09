@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -17,11 +18,13 @@ namespace Portivio.API.Controllers
     {
         private readonly IAuthService _authService;
         private readonly IAuthHttpContextService _authHttpContextService;
+        private readonly IBackgroundJobClient _jobs;
 
-        public AuthController(IAuthService authService, IAuthHttpContextService authHttpContextService)
+        public AuthController(IAuthService authService, IAuthHttpContextService authHttpContextService, IBackgroundJobClient jobs)
         {
             _authService = authService;
             _authHttpContextService = authHttpContextService;
+            _jobs = jobs;
         }
 
         /// <summary>
@@ -39,6 +42,7 @@ namespace Portivio.API.Controllers
                 onSuccess: () =>
                 {
                     _authHttpContextService.ApplyRefreshTokenCookie(Response, result.Data);
+                    _jobs.Enqueue<IHoldingRecalculationService>(svc => svc.RunDailyRefreshAsync(CancellationToken.None));
                     return Ok(_authHttpContextService.CreateClientAuthResponse(HttpContext, result.Data));
                 },
                 onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
@@ -160,6 +164,7 @@ namespace Portivio.API.Controllers
                 onSuccess: () =>
                 {
                     _authHttpContextService.ApplyRefreshTokenCookie(Response, result.Data);
+                    _jobs.Enqueue<IHoldingRecalculationService>(svc => svc.RunDailyRefreshAsync(CancellationToken.None));
                     return Ok(_authHttpContextService.CreateClientAuthResponse(HttpContext, result.Data));
                 },
                 onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })

@@ -230,19 +230,21 @@ namespace Portivio.Application.Services
 
         public async Task<Result<AssetIngestResponse>> AddPpfAsync(Guid userId, Guid profileId, AddPpfRequest req, CancellationToken ct = default)
         {
-            if (string.IsNullOrWhiteSpace(req.AccountNo))
-                return Result<AssetIngestResponse>.BadRequest("AccountNo is required");
             if (req.InitialContribution <= 0)
                 return Result<AssetIngestResponse>.BadRequest("InitialContribution must be greater than zero");
             if (req.CurrentRatePercent <= 0)
                 return Result<AssetIngestResponse>.BadRequest("CurrentRatePercent must be greater than zero");
 
             var assetType = await GetOrCreateAssetTypeAsync("PPF", ct);
-            var symbol = $"PPF:{req.AccountNo.Trim().ToUpperInvariant()}";
+            var hasAccountNo = !string.IsNullOrWhiteSpace(req.AccountNo);
+            var accountTrimmed = hasAccountNo ? req.AccountNo!.Trim() : null;
+            var symbolSlot = hasAccountNo ? accountTrimmed!.ToUpperInvariant() : GenerateInstrumentSlot();
+            var symbol = $"PPF:{symbolSlot}";
+            var name = hasAccountNo ? $"PPF - {accountTrimmed}" : "PPF Account";
             var lockInEndsOn = req.OpenedOn.AddYears(15);
 
             var instrument = await GetOrCreateInstrumentAsync(
-                name: $"PPF - {req.AccountNo.Trim()}",
+                name: name,
                 symbol: symbol,
                 isin: null,
                 currency: "INR",
@@ -252,7 +254,7 @@ namespace Portivio.Application.Services
                 priceSourceKey: null,
                 metadata: JsonDocument.Parse(JsonSerializer.Serialize(new
                 {
-                    accountNo = req.AccountNo.Trim(),
+                    accountNo = accountTrimmed,
                     openedOn = req.OpenedOn.ToString("yyyy-MM-dd"),
                     lockInEndsOn = lockInEndsOn.ToString("yyyy-MM-dd"),
                     currentRate = req.CurrentRatePercent
@@ -392,6 +394,7 @@ namespace Portivio.Application.Services
             var symbolNorm = req.Symbol.Trim().ToUpperInvariant();
             var symbol = $"{exchangeNorm}:{symbolNorm}";
 
+            var exchangeSuffix = exchangeNorm == "BSE" ? "BO" : "NS";
             var instrument = await GetOrCreateInstrumentAsync(
                 name: req.Name.Trim(),
                 symbol: symbol,
@@ -399,8 +402,8 @@ namespace Portivio.Application.Services
                 currency: "INR",
                 assetTypeId: assetType.Id,
                 category: AssetCategory.Equity,
-                priceSource: PriceSource.AlphaVantage,
-                priceSourceKey: symbolNorm,
+                priceSource: PriceSource.LivePriceApi,
+                priceSourceKey: $"{symbolNorm}.{exchangeSuffix}",
                 metadata: JsonDocument.Parse(JsonSerializer.Serialize(new
                 {
                     exchange = exchangeNorm,

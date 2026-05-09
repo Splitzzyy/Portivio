@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Portivio.Application.DTOs.MarketData;
 using Portivio.Application.Results;
 using Portivio.Application.Services.MarketData;
+using System.Text.Json;
 
 namespace Portivio.API.Controllers
 {
@@ -15,11 +16,41 @@ namespace Portivio.API.Controllers
     {
         private readonly IMarketDataService _marketDataService;
         private readonly IStandardRateService _standardRateService;
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        public MarketDataController(IMarketDataService marketDataService, IStandardRateService standardRateService)
+        public MarketDataController(IMarketDataService marketDataService, IStandardRateService standardRateService, IHttpClientFactory httpClientFactory)
         {
             _marketDataService = marketDataService;
             _standardRateService = standardRateService;
+            _httpClientFactory = httpClientFactory;
+        }
+
+        [HttpGet("live-price")]
+        public async Task<IActionResult> GetLivePrice([FromQuery] string symbol, [FromQuery] string exchange, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(symbol))
+                return BadRequest(new { message = "symbol is required" });
+
+            var suffix = string.Equals(exchange, "BSE", StringComparison.OrdinalIgnoreCase) ? "BO" : "NS";
+            var client = _httpClientFactory.CreateClient("LivePriceApi");
+            try
+            {
+                var json = await client.GetStringAsync($"/stock?symbol={Uri.EscapeDataString(symbol.ToUpperInvariant())}.{suffix}&res=num", ct);
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("status", out var status) && status.GetString() == "success"
+                    && root.TryGetProperty("data", out var data)
+                    && data.TryGetProperty("last_price", out var priceEl)
+                    && priceEl.TryGetDecimal(out var lastPrice))
+                {
+                    return Ok(new { lastPrice });
+                }
+                return NotFound(new { message = $"No price returned for {symbol}" });
+            }
+            catch (HttpRequestException)
+            {
+                return StatusCode(502, new { message = "Market data provider unavailable" });
+            }
         }
 
         [HttpGet("stocks/{symbol}")]

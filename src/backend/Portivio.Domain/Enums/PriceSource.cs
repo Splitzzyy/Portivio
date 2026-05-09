@@ -6,6 +6,7 @@ namespace Portivio.Domain.Enums
         AlphaVantage = 1,
         AmfiNav = 2,
         Manual = 3,
-        AccrualFormula = 4
+        AccrualFormula = 4,
+        LivePriceApi = 5
     }
 }

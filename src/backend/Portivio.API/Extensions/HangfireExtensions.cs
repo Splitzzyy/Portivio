@@ -9,6 +9,12 @@ public static class HangfireExtensions
     public const string DailyHoldingsRefreshJobId = "refresh-holdings-daily";
     public const string DailyHoldingsRefreshCron = "0 6 * * *";          // 06:00 IST (TimeZone applied below)
 
+    // Every 15 min during NSE market hours (Mon–Fri 9:00–15:59 IST).
+    // Starts slightly before open (9:00 vs 9:15) so first tick is close to open.
+    // UpsertLivePriceAsync is idempotent — safe to run multiple times per day.
+    public const string MarketHoursRefreshJobId = "refresh-holdings-market-hours";
+    public const string MarketHoursRefreshCron = "*/15 9-15 * * 1-5";
+
     public static IServiceCollection AddHangfireServices(this IServiceCollection services, IConfiguration configuration)
     {
         var connectionString = configuration
@@ -48,6 +54,22 @@ public static class HangfireExtensions
                 TimeZone = istZone,
                 MisfireHandling = MisfireHandlingMode.Strict
             });
+
+        // Every 15 min during NSE market hours so users see near-live prices without manual refresh.
+        RecurringJob.AddOrUpdate<IHoldingRecalculationService>(
+            recurringJobId: MarketHoursRefreshJobId,
+            methodCall: svc => svc.RunDailyRefreshAsync(CancellationToken.None),
+            cronExpression: MarketHoursRefreshCron,
+            options: new RecurringJobOptions
+            {
+                TimeZone = istZone,
+                MisfireHandling = MisfireHandlingMode.Relaxed
+            });
+
+        // Enqueue one immediate run on every startup so prices are fresh
+        // regardless of when the server last ran.
+        BackgroundJob.Enqueue<IHoldingRecalculationService>(
+            svc => svc.RunDailyRefreshAsync(CancellationToken.None));
 
         return app;
     }

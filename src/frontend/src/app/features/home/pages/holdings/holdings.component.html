@@ -24,6 +24,11 @@
       <option *ngIf="!profiles.length" [ngValue]="null">No profiles yet</option>
       <option *ngFor="let p of profiles" [ngValue]="p.id">{{ p.name }} ({{ p.baseCurrency }})</option>
     </select>
+    <span class="refresh-stamp" *ngIf="lastRefreshedAt">
+      <i class="fas fa-circle-check"></i>
+      Latest data &mdash; refreshed {{ formatRelative(lastRefreshedAt) }}
+      ({{ lastRefreshedAt | date:'d MMM, h:mm a' }})
+    </span>
   </div>
 
   <div *ngIf="!profiles.length" class="state-message">
