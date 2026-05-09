@@ -105,11 +105,11 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  background: var(--bg-surface) !important;
+  background-color: var(--bg-surface) !important;
   color: var(--text-primary) !important;
 
   thead tr {
-    background: var(--bg-canvas) !important;
+    background-color: var(--bg-canvas) !important;
     border-bottom: 2px solid var(--border) !important;
 
     th {
@@ -121,6 +121,7 @@
       text-transform: uppercase;
       letter-spacing: 0.8px;
       border: none !important;
+      background-color: transparent !important;
 
       &.actions { text-align: right; width: 110px; }
       &.num { text-align: right; }
@@ -129,10 +130,10 @@
 
   tbody tr {
     border-bottom: 1px solid var(--border) !important;
-    background: transparent !important;
+    background-color: var(--bg-surface) !important;
 
     &:last-child { border-bottom: none !important; }
-    &:hover { background: var(--bg-canvas) !important; }
+    &:hover { background-color: var(--bg-canvas) !important; }
 
     &.row-positive {
       background: rgba(16, 185, 129, 0.06) !important;
@@ -193,4 +194,88 @@
   color: var(--text-muted);
   i { display: block; font-size: 40px; margin-bottom: 20px; opacity: 0.4; }
   a { color: var(--accent); font-weight: 800; }
+}
+
+.asset-tabs {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+
+  .tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    .tab-count {
+      background: var(--bg-canvas);
+      color: var(--text-muted);
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+    }
+
+    &:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    &.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+
+      .tab-count {
+        background: rgba(255, 255, 255, 0.25);
+        color: #ffffff;
+      }
+    }
+  }
+}
+
+.icon-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 16px;
+
+  i {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    line-height: 1;
+  }
+
+  &:hover {
+    background: var(--bg-canvas);
+    color: var(--accent);
+    border-color: var(--border);
+  }
+
+  &.danger:hover {
+    color: var(--negative);
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.2);
+  }
 }
