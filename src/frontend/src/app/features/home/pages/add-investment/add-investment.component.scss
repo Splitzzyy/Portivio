@@ -11,41 +11,54 @@ $white: #ffffff;
 .profile-pill {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 10px 6px 14px;
+  gap: 8px;
+  padding: 4px 12px;
   border: 1px solid $border;
   border-radius: 999px;
-  background: $white;
-  font-size: 13px;
-  color: $text-dark;
+  background: $bg-light;
+  transition: all 0.2s ease;
+  height: 36px;
   cursor: pointer;
 
-  &:hover { border-color: $primary; }
+  &:hover {
+    border-color: $primary;
+    background: $white;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08);
+  }
 
   .label {
     color: $text-light;
-    font-size: 11px;
+    font-size: 10px;
     text-transform: uppercase;
-    letter-spacing: 0.4px;
-    font-weight: 600;
+    letter-spacing: 0.8px;
+    font-weight: 700;
+    margin-right: 4px;
+    border-right: 1px solid $border;
+    padding-right: 8px;
+    height: 16px;
+    display: flex;
+    align-items: center;
   }
 
   .profile-name-select {
-    border: none;
-    background: transparent;
-    font-weight: 600;
-    font-size: 14px;
+    border: none !important;
+    background: transparent !important;
+    font-weight: 700;
+    font-size: 13px;
     color: $text-dark;
     cursor: pointer;
     appearance: none;
     -webkit-appearance: none;
-    padding: 0 24px 0 0;
-    outline: none;
+    padding: 0 20px 0 0;
+    margin: 0;
+    outline: none !important;
+    box-shadow: none !important;
     font-family: inherit;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right center;
-    background-size: 14px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right center !important;
+    background-size: 12px !important;
+    min-width: auto;
   }
 
   .chev {
