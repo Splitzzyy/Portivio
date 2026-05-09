@@ -35,7 +35,8 @@ describe('TransactionsComponent', () => {
       id, profileId: 'p1', instrumentId: 'i1',
       instrumentName: 'TCS', instrumentSymbol: 'TCS',
       type: 'BUY', quantity: 1, price: 100, amount: 100,
-      transactionDate: '2026-05-01T00:00:00Z', notes: '', isDeleted
+      transactionDate: '2026-05-01T00:00:00Z', notes: '', isDeleted,
+      createdAtUtc: '2026-05-01T00:00:00Z'
     };
   }
 
@@ -66,7 +67,7 @@ describe('TransactionsComponent', () => {
   });
 
   it('fetch populates items and total from PagedResult envelope', () => {
-    expect(transactionSvc.list).toHaveBeenCalledWith('p1', 1, 25, false);
+    expect(transactionSvc.list).toHaveBeenCalledWith('p1', 1, 25, false, 'added');
     expect(component.transactions.length).toBe(2);
     expect(component.total).toBe(2);
     expect(component.rangeStart).toBe(1);
