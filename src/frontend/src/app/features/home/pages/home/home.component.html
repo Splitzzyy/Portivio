@@ -43,7 +43,7 @@
             <span *ngIf="sidebarOpen">Transactions</span>
           </a>
         </li>
-        <li class="nav-item">
+        <li class="nav-item" *ngIf="environment.showSip">
           <a routerLink="/dashboard/sip-plans" routerLinkActive="active" class="nav-link">
             <i class="fas fa-repeat"></i>
             <span *ngIf="sidebarOpen">SIP Plans</span>

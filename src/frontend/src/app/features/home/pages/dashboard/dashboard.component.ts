@@ -4,6 +4,7 @@ import { finalize, takeUntil } from 'rxjs/operators';
 import { User } from '../../../../core/models/auth.model';
 import { AuthService } from '../../../../core/services/auth.service';
 import { HomeService } from '../../../../core/services/home.service';
+import { environment } from '../../../../../environments/environment';
 import {
   HomeProfile,
   HomeResponse,
@@ -23,6 +24,7 @@ interface AllocationRow {
   styleUrls: ['./dashboard.component.scss']
 })
 export class DashboardComponent implements OnInit, OnDestroy {
+  environment = environment;
   user: User | null = null;
   home: HomeResponse | null = null;
   summary: PortfolioSummary | null = null;

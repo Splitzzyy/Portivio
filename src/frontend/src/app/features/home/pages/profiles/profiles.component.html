@@ -2,7 +2,7 @@
   <div class="page-header">
     <div>
       <h1 class="page-heading">Profiles</h1>
-      <p class="page-subtitle">Each profile holds its own holdings, transactions, and SIPs.</p>
+      <p class="page-subtitle">Each profile holds its own holdings {{ environment.showSip ? ', transactions and SIPs' : 'and transactions' }}.</p>
     </div>
     <button class="btn btn-primary" (click)="openCreate()" *ngIf="!showForm">
       <i class="fas fa-plus"></i> New Profile

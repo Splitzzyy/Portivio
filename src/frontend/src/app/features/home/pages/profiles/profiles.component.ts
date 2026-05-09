@@ -2,6 +2,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
+import { environment } from '../../../../../environments/environment';
 import {
   CreateProfileRequest,
   Profile,
@@ -23,6 +24,8 @@ export class ProfilesComponent implements OnInit, OnDestroy {
   showForm = false;
   editingId: string | null = null;
   form: CreateProfileRequest = { name: '', baseCurrency: 'INR', description: '' };
+
+  environment = environment;
 
   private destroy$ = new Subject<void>();
 
@@ -85,7 +88,8 @@ export class ProfilesComponent implements OnInit, OnDestroy {
   }
 
   delete(p: Profile): void {
-    if (!confirm(`Delete profile "${p.name}"? This removes its holdings, transactions and SIPs.`)) return;
+    const msg = `Delete profile "${p.name}"? This removes its holdings ${this.environment.showSip ? ', transactions and SIPs' : 'and transactions'}.`;
+    if (!confirm(msg)) return;
     this.profileService.delete(p.id)
       .pipe(takeUntil(this.destroy$))
       .subscribe({

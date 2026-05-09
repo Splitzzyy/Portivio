@@ -71,6 +71,8 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
     'Bank of Baroda', 'Punjab National Bank', 'IndusInd Bank', 'Yes Bank', 'IDFC First Bank',
   ];
 
+  environment = environment;
+
   step: 1 | 2 = 1;
   selectedType: AssetTypeId | null = null;
   profiles: Profile[] = [];

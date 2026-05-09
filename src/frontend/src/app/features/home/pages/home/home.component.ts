@@ -5,6 +5,7 @@ import { takeUntil } from 'rxjs/operators';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ThemeService } from '../../../../core/services/theme.service';
 import { User } from '../../../../core/models/auth.model';
+import { environment } from '../../../../../environments/environment';
 
 /**
  * Authenticated shell: sidebar + header + <router-outlet/>.
@@ -15,6 +16,7 @@ import { User } from '../../../../core/models/auth.model';
   styleUrls: ['./home.component.scss']
 })
 export class HomeComponent implements OnInit, OnDestroy {
+  environment = environment;
   sidebarOpen = true;
   user: User | null = null;
   dropdownOpen = false;

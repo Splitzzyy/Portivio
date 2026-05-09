@@ -40,6 +40,7 @@ const config: ExpoConfig = {
     apiUrl: isProd ? 'https://TBD/api' : 'http://10.0.2.2:5274/api',
     googleClientId: 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com',
     appEnv: isProd ? 'prod' : 'dev',
+    showSip: process.env.EXPO_PUBLIC_SHOW_SIP !== 'false',
   },
 };
 
