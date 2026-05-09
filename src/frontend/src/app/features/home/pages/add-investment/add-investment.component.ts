@@ -207,14 +207,18 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
   private fetchStockPrice(symbol: string, exchange: string): void {
     const url = `${environment.apiUrl}/market/live-price?symbol=${encodeURIComponent(symbol)}&exchange=${exchange}`;
     this.priceFetching = true;
-    this.http.get<{ lastPrice: number }>(url).pipe(
+    this.http.get<{ lastPrice: number, companyName?: string }>(url).pipe(
       finalize(() => (this.priceFetching = false)),
       takeUntil(this.destroy$)
     ).subscribe({
       next: (res) => {
         if (res?.lastPrice != null) {
           this.stockForm.price = String(res.lastPrice);
-          this.toastr.success(`₹${res.lastPrice}`, 'Price fetched', { timeOut: 2000 });
+          if (res.companyName) {
+            this.stockForm.name = res.companyName;
+            this.stockQuery = res.companyName;
+          }
+          this.toastr.success(`₹${res.lastPrice}`, res.companyName || 'Price fetched', { timeOut: 2000 });
         }
       },
       error: () => { /* silent — user enters manually */ }
