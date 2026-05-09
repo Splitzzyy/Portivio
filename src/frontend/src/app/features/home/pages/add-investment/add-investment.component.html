@@ -103,7 +103,7 @@
           <div class="ai-form-grid">
 
             <div class="ai-field full" [class.invalid]="errors['name'] || errors['symbol']">
-              <label>Stock <span class="req">*</span></label>
+              <label>Stock Name <span class="req">*</span></label>
               <div class="typeahead" (click)="$event.stopPropagation()">
                 <input type="text"
                        [value]="stockQuery"
@@ -118,7 +118,7 @@
                   </div>
                 </div>
               </div>
-              <div class="selected-name" *ngIf="stockForm.name && !stockDropdownOpen">{{ stockForm.name }}</div>
+              <div class="selected-name" *ngIf="stockForm.name && !stockDropdownOpen && stockForm.name !== stockQuery">{{ stockForm.name }}</div>
               <div class="err" *ngIf="errors['name']"><i class="fas fa-exclamation-circle"></i> {{ errors['name'] }}</div>
               <div class="hint">Or fill symbol manually below</div>
             </div>
@@ -189,15 +189,14 @@
               <div class="value">{{ formatINR(stockTotal) }}</div>
             </div>
             <div class="divider"></div>
-            <div class="grow">
-              <div>
-                <div class="label">Quantity</div>
-                <div class="small">{{ stockForm.quantity ? (stockForm.quantity + ' sh') : '—' }}</div>
-              </div>
-              <div>
-                <div class="label">Avg cost</div>
-                <div class="small">{{ stockAvgCost > 0 ? formatINR(stockAvgCost) : '—' }}</div>
-              </div>
+            <div>
+              <div class="label">Quantity</div>
+              <div class="value">{{ stockForm.quantity ? (stockForm.quantity + ' sh') : '—' }}</div>
+            </div>
+            <div class="divider"></div>
+            <div>
+              <div class="label">Avg cost</div>
+              <div class="value">{{ stockAvgCost > 0 ? formatINR(stockAvgCost) : '—' }}</div>
             </div>
           </div>
         </div>
