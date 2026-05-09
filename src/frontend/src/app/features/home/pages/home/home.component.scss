@@ -244,7 +244,58 @@ $desktop: 1024px;
   .header-icons {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 16px;
+
+    .theme-switch {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      padding: 4px;
+
+      .switch-track {
+        width: 48px;
+        height: 24px;
+        background: #e5e7eb; // light gray
+        border-radius: 999px;
+        position: relative;
+        transition: background 0.3s ease;
+        border: 1px solid var(--border);
+
+        &.dark {
+          background: #374151; // dark gray
+          border-color: #4b5563;
+        }
+      }
+
+      .switch-thumb {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 18px;
+        height: 18px;
+        background: #ffffff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+        i {
+          font-size: 10px;
+          color: #f59e0b; // sun orange
+        }
+      }
+
+      .switch-track.dark .switch-thumb {
+        transform: translateX(24px);
+        background: #1f2937;
+
+        i {
+          color: #fbbf24; // moon yellow
+        }
+      }
+    }
 
     .icon-btn {
       background: none;
@@ -265,26 +316,6 @@ $desktop: 1024px;
       &:hover {
         color: var(--accent);
         background: var(--bg-canvas);
-      }
-
-      &.theme-toggle {
-        // Visual hint that this isn't a notification button.
-      }
-
-      .notification-badge {
-        position: absolute;
-        top: 4px;
-        right: 4px;
-        background: var(--negative);
-        color: #ffffff;
-        border-radius: 50%;
-        width: 18px;
-        height: 18px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 10px;
-        font-weight: 700;
       }
     }
 

@@ -49,19 +49,6 @@
             <span *ngIf="sidebarOpen">SIP Plans</span>
           </a>
         </li>
-        <li class="nav-divider" *ngIf="sidebarOpen"></li>
-        <li class="nav-item">
-          <a href="javascript:void(0)" class="nav-link">
-            <i class="fas fa-cog"></i>
-            <span *ngIf="sidebarOpen">Settings</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="javascript:void(0)" class="nav-link">
-            <i class="fas fa-question-circle"></i>
-            <span *ngIf="sidebarOpen">Help</span>
-          </a>
-        </li>
       </ul>
     </nav>
   </aside>
@@ -84,17 +71,16 @@
           <i class="fas fa-search"></i>
         </div>
 
-        <!-- Notifications -->
+        <!-- Theme Toggle & User -->
         <div class="header-icons">
-          <button class="icon-btn theme-toggle" type="button"
-                  (click)="cycleTheme()" [attr.aria-label]="themeLabel()" [title]="themeLabel()">
-            <i class="fas" [ngClass]="themeIcon()"></i>
-          </button>
-
-          <button class="icon-btn" title="Notifications">
-            <i class="fas fa-bell"></i>
-            <span class="notification-badge">3</span>
-          </button>
+          <!-- Theme Switch -->
+          <div class="theme-switch" (click)="toggleTheme()" [title]="themeLabel()">
+            <div class="switch-track" [class.dark]="isDarkMode">
+              <div class="switch-thumb">
+                <i class="fas" [ngClass]="isDarkMode ? 'fa-moon' : 'fa-sun'"></i>
+              </div>
+            </div>
+          </div>
 
           <!-- User Dropdown -->
           <div class="user-dropdown">
