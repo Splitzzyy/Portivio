@@ -93,6 +93,7 @@ export function TransactionsListScreen({
               <Row label="Qty" value={String(item.quantity)} />
               <Row label="Price" valueComp={<MoneyText value={item.price} />} />
               <Row label="Amount" valueComp={<MoneyText value={item.amount} />} />
+              <Row label="Logged on" value={fmtDate(item.createdAtUtc)} />
               {item.notes ? <Text variant="bodySmall" style={styles.notes}>{item.notes}</Text> : null}
             </Card.Content>
           </Card>

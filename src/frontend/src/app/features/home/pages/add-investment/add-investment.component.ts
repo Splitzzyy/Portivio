@@ -73,6 +73,8 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
 
   environment = environment;
 
+  readonly addingDate = new Date().toISOString().slice(0, 10);
+
   step: 1 | 2 = 1;
   selectedType: AssetTypeId | null = null;
   profiles: Profile[] = [];

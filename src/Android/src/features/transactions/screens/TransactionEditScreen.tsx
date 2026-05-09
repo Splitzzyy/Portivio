@@ -23,6 +23,7 @@ const schema = z.object({
   price: z.coerce.number().nonnegative(),
   amount: z.coerce.number().nonnegative(),
   transactionDate: z.string().min(1),
+  addingDate: z.string().optional(),
   notes: z.string().optional().default(''),
 });
 type Form = z.infer<typeof schema>;
@@ -49,6 +50,7 @@ export function TransactionEditScreen({
         price: 0,
         amount: 0,
         transactionDate: todayIso().slice(0, 10),
+        addingDate: 'Today (Auto)',
         notes: '',
       },
     });
@@ -62,6 +64,7 @@ export function TransactionEditScreen({
         price: existing.price,
         amount: existing.amount,
         transactionDate: existing.transactionDate.slice(0, 10),
+        addingDate: existing.createdAtUtc ? new Date(existing.createdAtUtc).toLocaleDateString() : 'Today (Auto)',
         notes: existing.notes,
       });
     }
@@ -169,6 +172,13 @@ export function TransactionEditScreen({
         name="transactionDate"
         control={control}
         label="Date (YYYY-MM-DD)"
+      />
+      <ControlledTextInput
+        name="addingDate"
+        control={control}
+        label="Adding Date"
+        editable={false}
+        style={{ backgroundColor: '#f3f4f6' }}
       />
       <ControlledTextInput name="notes" control={control} label="Notes" multiline numberOfLines={2} />
       <Button

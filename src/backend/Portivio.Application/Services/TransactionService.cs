@@ -189,7 +189,8 @@ namespace Portivio.Application.Services
                         Price = transaction.Price,
                         Amount = transaction.Amount,
                         TransactionDate = transaction.TransactionDate,
-                        Notes = transaction.Notes
+                        Notes = transaction.Notes,
+                        CreatedAtUtc = transaction.CreatedAtUtc
                     }, "Transaction created successfully", 201);
                 }
                 catch (Exception ex)
@@ -288,7 +289,8 @@ namespace Portivio.Application.Services
             Amount = t.Amount,
             TransactionDate = t.TransactionDate,
             Notes = t.Notes,
-            IsDeleted = t.IsDeleted
+            IsDeleted = t.IsDeleted,
+            CreatedAtUtc = t.CreatedAtUtc
         };
     }
 }

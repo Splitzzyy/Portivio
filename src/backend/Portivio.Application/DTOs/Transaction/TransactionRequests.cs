@@ -36,5 +36,6 @@ namespace Portivio.Application.DTOs.Transaction
         public DateTime TransactionDate { get; set; }
         public string Notes { get; set; } = string.Empty;
         public bool IsDeleted { get; set; }
+        public DateTime CreatedAtUtc { get; set; }
     }
 }

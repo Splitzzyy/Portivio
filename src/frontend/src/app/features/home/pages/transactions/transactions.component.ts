@@ -22,6 +22,7 @@ interface TxForm {
   amount: number;
   transactionDate: string;
   notes: string;
+  createdAtUtc?: string;
 }
 
 const TX_TYPES = ['BUY', 'SELL', 'SIP', 'DIVIDEND'];
@@ -162,7 +163,8 @@ export class TransactionsComponent implements OnInit, OnDestroy {
       price: tx.price,
       amount: tx.amount,
       transactionDate: (tx.transactionDate || '').slice(0, 10),
-      notes: tx.notes || ''
+      notes: tx.notes || '',
+      createdAtUtc: tx.createdAtUtc
     };
     this.showForm = true;
   }

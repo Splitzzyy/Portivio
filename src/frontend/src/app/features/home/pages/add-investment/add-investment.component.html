@@ -164,6 +164,11 @@
             </div>
 
             <div class="ai-field">
+              <label>Adding Date</label>
+              <input type="date" [value]="addingDate" readonly style="background-color: #f3f4f6; cursor: not-allowed;" />
+            </div>
+
+            <div class="ai-field">
               <label>Brokerage / charges</label>
               <div class="input-affix">
                 <span class="prefix">₹</span>
@@ -266,6 +271,11 @@
               <div class="err" *ngIf="errors['date']"><i class="fas fa-exclamation-circle"></i> {{ errors['date'] }}</div>
             </div>
 
+            <div class="ai-field">
+              <label>Adding Date</label>
+              <input type="date" [value]="addingDate" readonly style="background-color: #f3f4f6; cursor: not-allowed;" />
+            </div>
+
             <div class="ai-field full">
               <label>Folio number</label>
               <input type="text" [(ngModel)]="mfForm.folio" name="mfFolio" placeholder="e.g. 1234567890 / 12" />
@@ -338,6 +348,11 @@
               <div class="err" *ngIf="errors['date']"><i class="fas fa-exclamation-circle"></i> {{ errors['date'] }}</div>
             </div>
 
+            <div class="ai-field">
+              <label>Adding Date</label>
+              <input type="date" [value]="addingDate" readonly style="background-color: #f3f4f6; cursor: not-allowed;" />
+            </div>
+
             <div class="ai-field full">
               <label>Source</label>
               <input type="text" [(ngModel)]="goldForm.source" name="goldSrc" placeholder="e.g. MMTC-PAMP, Tanishq, SGB Series II" />
@@ -397,6 +412,11 @@
               <label>Deposit date <span class="req">*</span></label>
               <input type="date" [(ngModel)]="ppfForm.date" name="ppfDate" />
               <div class="err" *ngIf="errors['date']"><i class="fas fa-exclamation-circle"></i> {{ errors['date'] }}</div>
+            </div>
+
+            <div class="ai-field">
+              <label>Adding Date</label>
+              <input type="date" [value]="addingDate" readonly style="background-color: #f3f4f6; cursor: not-allowed;" />
             </div>
 
             <div class="ai-field">
@@ -494,6 +514,11 @@
               <label>Start date <span class="req">*</span></label>
               <input type="date" [(ngModel)]="fdRdForm.startDate" name="fdStart" />
               <div class="err" *ngIf="errors['startDate']"><i class="fas fa-exclamation-circle"></i> {{ errors['startDate'] }}</div>
+            </div>
+
+            <div class="ai-field">
+              <label>Adding Date</label>
+              <input type="date" [value]="addingDate" readonly style="background-color: #f3f4f6; cursor: not-allowed;" />
             </div>
 
             <div class="ai-field" *ngIf="fdRdForm.subtype === 'FD'" [class.invalid]="errors['maturityDate']">
