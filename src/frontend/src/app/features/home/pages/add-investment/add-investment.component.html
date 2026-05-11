@@ -76,7 +76,9 @@
           <a routerLink="/dashboard/transactions">View all →</a>
         </div>
         <div class="recent-row" *ngFor="let tx of recentTransactions">
-          <div class="ico icon-stocks"><i class="fas fa-chart-line"></i></div>
+          <div class="ico" [ngClass]="getTxAssetConfig(tx)?.cls || 'icon-stocks'">
+            <i class="fas" [ngClass]="getTxAssetConfig(tx)?.icon || 'fa-chart-line'"></i>
+          </div>
           <div>
             <div class="rname">{{ tx.instrumentSymbol }}</div>
             <div class="sub">{{ tx.type }} · {{ tx.quantity | number:'1.0-4' }} units</div>

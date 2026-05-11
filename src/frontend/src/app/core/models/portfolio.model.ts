@@ -101,6 +101,7 @@ export interface Transaction {
   instrumentId: string;
   instrumentName: string;
   instrumentSymbol: string;
+  assetTypeName: string;
   type: string;
   quantity: number;
   price: number;
@@ -208,6 +209,7 @@ export interface HomeTransaction {
   id: string;
   instrumentId: string;
   instrumentSymbol: string;
+  assetType: string;
   type: string;
   quantity: number;
   price: number;

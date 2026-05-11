@@ -198,6 +198,11 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
     return this.assetTypes.find(t => t.id === this.selectedType);
   }
 
+  getTxAssetConfig(tx: Transaction): AssetTypeConfig | undefined {
+    const typeId = this.mapHoldingAssetType(tx.assetTypeName);
+    return this.assetTypes.find(t => t.id === typeId);
+  }
+
   get isHoldingContext(): boolean {
     return this.modalMode === 'add-to-holding' && !!this.modalData;
   }

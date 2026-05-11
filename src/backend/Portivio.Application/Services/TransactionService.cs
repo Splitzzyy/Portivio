@@ -100,7 +100,9 @@ namespace Portivio.Application.Services
 
                 var skip = (page - 1) * pageSize;
 
-                var query = baseQuery.Include(t => t.Instrument).AsQueryable();
+                var query = baseQuery.Include(t => t.Instrument)
+                    .ThenInclude(i => i.AssetType)
+                    .AsQueryable();
 
                 if (string.Equals(sortBy, "date", StringComparison.OrdinalIgnoreCase))
                 {
@@ -138,7 +140,7 @@ namespace Portivio.Application.Services
 
             var txType = request.Type;
 
-            var instrument = await _context.Instruments.FirstOrDefaultAsync(i => i.Id == request.InstrumentId);
+            var instrument = await _context.Instruments.Include(i => i.AssetType).FirstOrDefaultAsync(i => i.Id == request.InstrumentId);
             if (instrument == null)
                 return Result<TransactionResponse>.BadRequest("Instrument not found");
 
@@ -194,6 +196,7 @@ namespace Portivio.Application.Services
                         InstrumentId = transaction.InstrumentId,
                         InstrumentName = instrument.Name,
                         InstrumentSymbol = instrument.Symbol,
+                        AssetTypeName = instrument.AssetType?.Name ?? string.Empty,
                         Type = transaction.Type,
                         Quantity = transaction.Quantity,
                         Price = transaction.Price,
@@ -293,6 +296,7 @@ namespace Portivio.Application.Services
             InstrumentId = t.InstrumentId,
             InstrumentName = t.Instrument.Name,
             InstrumentSymbol = t.Instrument.Symbol,
+            AssetTypeName = t.Instrument.AssetType?.Name ?? string.Empty,
             Type = t.Type,
             Quantity = t.Quantity,
             Price = t.Price,
