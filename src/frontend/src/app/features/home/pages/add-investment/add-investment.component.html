@@ -8,9 +8,9 @@
   <!-- PAGE HEADER -->
   <div class="page-header" style="align-items: flex-end;">
     <div>
-      <h1 class="page-heading">Add Investment</h1>
+      <h1 class="page-heading">{{ isEditContext ? 'Edit' : 'Add' }} Investment</h1>
       <p class="page-subtitle">
-        Manually log an investment that's not auto-imported.
+        {{ isEditContext ? 'Correct or update your manual investment details.' : 'Manually log an investment that\'s not auto-imported.' }}
         <ng-container *ngIf="isHoldingContext"> Adding a transaction to the selected holding.</ng-container>
       </p>
     </div>
@@ -21,7 +21,7 @@
               (change)="onProfileChange()"
               name="profilePill"
               [ngModelOptions]="{standalone: true}"
-              [disabled]="isHoldingContext">
+              [disabled]="isInstrumentSelectionLocked">
         <option *ngFor="let p of profiles" [value]="p.id">{{ p.name }}</option>
       </select>
       <span class="chev"><i class="fas fa-chevron-down"></i></span>
@@ -102,7 +102,7 @@
             <h2>{{ selectedTypeConfig.name }}</h2>
             <p>{{ selectedTypeConfig.desc }}</p>
           </div>
-          <button class="change-btn" type="button" (click)="changeType()" *ngIf="!isHoldingContext">
+          <button class="change-btn" type="button" (click)="changeType()" *ngIf="!isInstrumentSelectionLocked">
             <i class="fas fa-arrow-left"></i> Change
           </button>
         </div>
@@ -114,13 +114,13 @@
             <div class="ai-field" [class.invalid]="errors['symbol']">
               <label>Symbol <span class="req">*</span></label>
               <input type="text" [(ngModel)]="stockForm.symbol" name="stkSymbol" placeholder="e.g. TCS"
-                     (blur)="onSymbolBlur()" [readOnly]="isHoldingContext" />
+                     (blur)="onSymbolBlur()" [readOnly]="isInstrumentSelectionLocked" />
               <div class="err" *ngIf="errors['symbol']"><i class="fas fa-exclamation-circle"></i> {{ errors['symbol'] }}</div>
             </div>
 
             <div class="ai-field">
               <label>Exchange</label>
-              <select [(ngModel)]="stockForm.exchange" name="stkExch" (change)="onExchangeChange()">
+              <select [(ngModel)]="stockForm.exchange" name="stkExch" (change)="onExchangeChange()" [disabled]="isInstrumentSelectionLocked">
                 <option>NSE</option>
                 <option>BSE</option>
               </select>
@@ -132,10 +132,10 @@
                 <input type="text"
                        [value]="stockQuery"
                        (input)="stockForm.name = $any($event.target).value; stockQuery = $any($event.target).value; stockDropdownOpen = true"
-                       (focus)="stockDropdownOpen = !isHoldingContext"
+                       (focus)="stockDropdownOpen = !isInstrumentSelectionLocked"
                        (keydown.enter)="$event.preventDefault()"
-                       placeholder="Search by symbol or name…" [readOnly]="isHoldingContext" />
-                <div class="results" *ngIf="!isHoldingContext && stockDropdownOpen && filteredStocks.length > 0">
+                       placeholder="Search by symbol or name…" [readOnly]="isInstrumentSelectionLocked" />
+                <div class="results" *ngIf="!isInstrumentSelectionLocked && stockDropdownOpen && filteredStocks.length > 0">
                   <div class="row" *ngFor="let inst of filteredStocks" (mousedown)="selectStock(inst)">
                     <div class="symbol">{{ inst.symbol }}</div>
                     <div class="iname">{{ inst.name }}</div>
@@ -144,7 +144,7 @@
               </div>
               <div class="selected-name" *ngIf="stockForm.name && !stockDropdownOpen && stockForm.name !== stockQuery">{{ stockForm.name }}</div>
               <div class="err" *ngIf="errors['name']"><i class="fas fa-exclamation-circle"></i> {{ errors['name'] }}</div>
-              <div class="hint">Or fill symbol manually above</div>
+              <div class="hint" *ngIf="!isInstrumentSelectionLocked">Or fill symbol manually above</div>
             </div>
 
             <div class="ai-field" [class.invalid]="errors['quantity']">
@@ -220,10 +220,10 @@
                 <input type="text"
                        [value]="mfQuery"
                        (input)="mfForm.schemeName = $any($event.target).value; mfQuery = $any($event.target).value; mfDropdownOpen = true"
-                       (focus)="mfDropdownOpen = !isHoldingContext"
+                       (focus)="mfDropdownOpen = !isInstrumentSelectionLocked"
                        (keydown.enter)="$event.preventDefault()"
-                       placeholder="Search or type scheme name…" [readOnly]="isHoldingContext" />
-                <div class="results" *ngIf="!isHoldingContext && mfDropdownOpen && filteredMfs.length > 0">
+                       placeholder="Search or type scheme name…" [readOnly]="isInstrumentSelectionLocked" />
+                <div class="results" *ngIf="!isInstrumentSelectionLocked && mfDropdownOpen && filteredMfs.length > 0">
                   <div class="row" *ngFor="let inst of filteredMfs" (mousedown)="selectMf(inst)">
                     <div>
                       <div class="symbol">{{ inst.symbol }}</div>
@@ -233,18 +233,18 @@
                 </div>
               </div>
               <div class="err" *ngIf="errors['schemeName']"><i class="fas fa-exclamation-circle"></i> {{ errors['schemeName'] }}</div>
-              <div class="hint">Or fill scheme code manually below</div>
+              <div class="hint" *ngIf="!isInstrumentSelectionLocked">Or fill scheme code manually below</div>
             </div>
 
             <div class="ai-field" [class.invalid]="errors['schemeCode']">
               <label>Scheme code <span class="req">*</span></label>
-              <input type="text" [(ngModel)]="mfForm.schemeCode" name="mfCode" placeholder="e.g. PPFAS-FLEXI" [readOnly]="isHoldingContext" />
+              <input type="text" [(ngModel)]="mfForm.schemeCode" name="mfCode" placeholder="e.g. PPFAS-FLEXI" [readOnly]="isInstrumentSelectionLocked" />
               <div class="err" *ngIf="errors['schemeCode']"><i class="fas fa-exclamation-circle"></i> {{ errors['schemeCode'] }}</div>
             </div>
 
             <div class="ai-field">
               <label>ISIN</label>
-              <input type="text" [(ngModel)]="mfForm.isin" name="mfIsin" placeholder="Optional" />
+              <input type="text" [(ngModel)]="mfForm.isin" name="mfIsin" placeholder="Optional" [readOnly]="isInstrumentSelectionLocked" />
             </div>
 
             <div class="ai-field">
@@ -317,9 +317,9 @@
             <div class="ai-field full">
               <label>Gold type <span class="req">*</span></label>
               <div class="segmented">
-                <button type="button" [class.on]="goldForm.subtype === 'Digital'" (click)="goldForm.subtype = 'Digital'">Digital</button>
-                <button type="button" [class.on]="goldForm.subtype === 'Physical'" (click)="goldForm.subtype = 'Physical'">Physical</button>
-                <button type="button" [class.on]="goldForm.subtype === 'SGB'" (click)="goldForm.subtype = 'SGB'">SGB</button>
+                <button type="button" [class.on]="goldForm.subtype === 'Digital'" (click)="goldForm.subtype = 'Digital'" [disabled]="isInstrumentSelectionLocked">Digital</button>
+                <button type="button" [class.on]="goldForm.subtype === 'Physical'" (click)="goldForm.subtype = 'Physical'" [disabled]="isInstrumentSelectionLocked">Physical</button>
+                <button type="button" [class.on]="goldForm.subtype === 'SGB'" (click)="goldForm.subtype = 'SGB'" [disabled]="isInstrumentSelectionLocked">SGB</button>
               </div>
             </div>
 
@@ -393,7 +393,7 @@
 
             <div class="ai-field" [class.invalid]="errors['openedOn']">
               <label>Account opened on <span class="req">*</span></label>
-              <input type="date" [(ngModel)]="ppfForm.openedOn" name="ppfOpenedOn" />
+              <input type="date" [(ngModel)]="ppfForm.openedOn" name="ppfOpenedOn" [readOnly]="isInstrumentSelectionLocked" />
               <div class="err" *ngIf="errors['openedOn']"><i class="fas fa-exclamation-circle"></i> {{ errors['openedOn'] }}</div>
             </div>
 
@@ -465,8 +465,8 @@
             <div class="ai-field full">
               <label>Type <span class="req">*</span></label>
               <div class="segmented">
-                <button type="button" [class.on]="fdRdForm.subtype === 'FD'" (click)="fdRdForm.subtype = 'FD'">FD</button>
-                <button type="button" [class.on]="fdRdForm.subtype === 'RD'" (click)="fdRdForm.subtype = 'RD'">RD</button>
+                <button type="button" [class.on]="fdRdForm.subtype === 'FD'" (click)="fdRdForm.subtype = 'FD'" [disabled]="isInstrumentSelectionLocked">FD</button>
+                <button type="button" [class.on]="fdRdForm.subtype === 'RD'" (click)="fdRdForm.subtype = 'RD'" [disabled]="isInstrumentSelectionLocked">RD</button>
               </div>
             </div>
 
@@ -481,7 +481,7 @@
 
             <div class="ai-field" [class.invalid]="errors['bank']">
               <label>Bank <span class="req">*</span></label>
-              <select [(ngModel)]="fdRdForm.bank" name="fdBank">
+              <select [(ngModel)]="fdRdForm.bank" name="fdBank" [disabled]="isInstrumentSelectionLocked">
                 <option value="">Select bank</option>
                 <option *ngFor="let b of banks" [value]="b">{{ b }}</option>
                 <option value="Other">Other…</option>
@@ -537,7 +537,7 @@
 
             <div class="ai-field full">
               <label>Account / FD number</label>
-              <input type="text" [(ngModel)]="fdRdForm.accountNo" name="fdAccNo" placeholder="Account number (optional)" />
+              <input type="text" [(ngModel)]="fdRdForm.accountNo" name="fdAccNo" placeholder="Account number (optional)" [readOnly]="isInstrumentSelectionLocked" />
               <div class="hint">Optional — leave blank if you don't want to record it</div>
             </div>
 
@@ -581,13 +581,13 @@
           </div>
           <div class="right">
             <button class="btn btn-secondary" type="button" (click)="closeModal()">Cancel</button>
-            <button class="btn btn-ghost" type="button" (click)="submit(true)" [disabled]="saving">
+            <button class="btn btn-ghost" type="button" (click)="submit(true)" [disabled]="saving" *ngIf="!isEditContext">
               Save &amp; add another
             </button>
             <button class="btn btn-primary" type="button" (click)="submit(false)" [disabled]="saving">
               <i class="fas fa-spinner fa-spin" *ngIf="saving"></i>
               <i class="fas fa-check" *ngIf="!saving"></i>
-              {{ saving ? 'Saving…' : 'Save investment' }}
+              {{ saving ? 'Saving…' : (isEditContext ? 'Update investment' : 'Save investment') }}
             </button>
           </div>
         </div>

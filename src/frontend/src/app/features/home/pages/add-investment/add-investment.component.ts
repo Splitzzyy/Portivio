@@ -181,6 +181,7 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
   }
 
   pickType(type: AssetTypeConfig): void {
+    if (this.isInstrumentSelectionLocked) return;
     this.selectedType = type.id;
     this.resetCurrentForm();
     this.errors = {};
@@ -188,7 +189,7 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
   }
 
   changeType(): void {
-    if (this.isHoldingContext || this.isEditContext) return;
+    if (this.isInstrumentSelectionLocked) return;
     this.selectedType = null;
     this.step = 1;
   }
@@ -697,41 +698,58 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
       case 'PPF': {
         const ppf = this.modalData.asset as Partial<AddPpfRequest> | undefined;
         this.ppfForm.accountNo = ppf?.accountNo || '';
-        this.ppfForm.openedOn = ppf?.openedOn || '';
+        this.ppfForm.openedOn = ppf?.openedOn ? (ppf.openedOn as any).slice(0, 10) : '';
         this.ppfForm.currentRatePercent = ppf?.currentRatePercent != null ? String(ppf.currentRatePercent) : this.ppfForm.currentRatePercent;
-        this.ppfForm.amount = ppf?.initialContribution != null ? String(ppf.initialContribution) : '';
-        this.ppfForm.date = ppf?.contributionDate ? (ppf.contributionDate as any).slice(0, 10) : (tx ? date(tx.transactionDate) : this.today());
-        this.ppfForm.notes = (ppf as any)?.notes || tx?.notes || '';
+        if (tx) {
+          this.ppfForm.amount = String(tx.amount ?? '');
+          this.ppfForm.date = date(tx.transactionDate);
+          this.ppfForm.notes = tx.notes || '';
+        } else if (ppf) {
+          this.ppfForm.amount = ppf.initialContribution != null ? String(ppf.initialContribution) : '';
+          this.ppfForm.date = ppf.contributionDate ? (ppf.contributionDate as any).slice(0, 10) : this.today();
+          this.ppfForm.notes = (ppf as any).notes || '';
+        }
         break;
       }
       case 'FDRD': {
         const maybe = this.modalData.asset as Partial<AddFixedDepositRequest & AddRecurringDepositRequest> | undefined;
-        // Infer subtype either from asset payload or from assetTypeName in the modal.
+        // Infer subtype either from asset payload, assetTypeName, or transaction notes/instrument name.
         this.fdRdForm.subtype =
           (maybe && (maybe as any).monthlyAmount != null) ? 'RD' :
           (maybe && (maybe as any).principal != null) ? 'FD' :
-          this.resolveDepositSubtype(this.modalData.assetTypeName);
+          this.resolveDepositSubtype(this.modalData.assetTypeName || this.modalData.instrument?.assetTypeName);
 
         if (this.fdRdForm.subtype === 'RD') {
           const rd = this.modalData.asset as Partial<AddRecurringDepositRequest> | undefined;
           this.fdRdForm.bank = rd?.bank || '';
           this.fdRdForm.accountNo = rd?.accountNo || '';
-          this.fdRdForm.amount = rd?.monthlyAmount != null ? String(rd.monthlyAmount) : '';
           this.fdRdForm.ratePercent = rd?.ratePercent != null ? String(rd.ratePercent) : '';
-          this.fdRdForm.startDate = rd?.startDate ? (rd.startDate as any).slice(0, 10) : this.today();
-          this.fdRdForm.tenureMonths = rd?.tenureMonths != null ? String(rd.tenureMonths) : '';
-          this.fdRdForm.notes = (rd as any)?.notes || '';
+          if (tx) {
+            this.fdRdForm.amount = String(tx.amount ?? '');
+            this.fdRdForm.startDate = date(tx.transactionDate);
+            this.fdRdForm.notes = tx.notes || '';
+          } else if (rd) {
+            this.fdRdForm.amount = rd.monthlyAmount != null ? String(rd.monthlyAmount) : '';
+            this.fdRdForm.startDate = rd.startDate ? (rd.startDate as any).slice(0, 10) : this.today();
+            this.fdRdForm.tenureMonths = rd.tenureMonths != null ? String(rd.tenureMonths) : '';
+            this.fdRdForm.notes = (rd as any).notes || '';
+          }
         } else {
           const fd = this.modalData.asset as Partial<AddFixedDepositRequest> | undefined;
           this.fdRdForm.bank = fd?.bank || '';
           this.fdRdForm.accountNo = fd?.accountNo || '';
-          this.fdRdForm.amount = fd?.principal != null ? String(fd.principal) : '';
           this.fdRdForm.ratePercent = fd?.ratePercent != null ? String(fd.ratePercent) : '';
           this.fdRdForm.compounding = fd?.compounding || this.fdRdForm.compounding;
-          this.fdRdForm.startDate = fd?.startDate ? (fd.startDate as any).slice(0, 10) : this.today();
-          this.fdRdForm.maturityDate = fd?.maturityDate ? (fd.maturityDate as any).slice(0, 10) : '';
-          this.fdRdForm.tenureMonths = '';
-          this.fdRdForm.notes = (fd as any)?.notes || '';
+          if (tx) {
+            this.fdRdForm.amount = String(tx.amount ?? '');
+            this.fdRdForm.startDate = date(tx.transactionDate);
+            this.fdRdForm.notes = tx.notes || '';
+          } else if (fd) {
+            this.fdRdForm.amount = fd.principal != null ? String(fd.principal) : '';
+            this.fdRdForm.startDate = fd.startDate ? (fd.startDate as any).slice(0, 10) : this.today();
+            this.fdRdForm.maturityDate = fd.maturityDate ? (fd.maturityDate as any).slice(0, 10) : '';
+            this.fdRdForm.notes = (fd as any).notes || '';
+          }
         }
         break;
       }
