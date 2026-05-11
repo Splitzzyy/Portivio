@@ -55,6 +55,7 @@ describe('AddInvestmentComponent', () => {
     transactionSvc  = jasmine.createSpyObj('TransactionService', ['list']);
     assetSvc        = jasmine.createSpyObj('AssetService', [
       'addStock', 'addMutualFund', 'addGold', 'addPpf', 'addFixedDeposit', 'addRecurringDeposit'
+      , 'updateStock', 'updateMutualFund', 'updateGold', 'updatePpf', 'updateFixedDeposit', 'updateRecurringDeposit'
     ]);
     modalState$     = new BehaviorSubject<ModalState>({ isOpen: false, data: null });
     modalSvc        = jasmine.createSpyObj('ModalService', ['open', 'close'], {
@@ -162,15 +163,86 @@ describe('AddInvestmentComponent', () => {
     expect(component.mfForm.schemeCode).toBe('PPFAS-FLEXI');
   });
 
-  it('does not treat transaction payload as a modal edit flow', () => {
+  it('treats edit payload as edit flow and pre-fills STOCK form', () => {
     modalState$.next({
       isOpen: true,
-      data: { source: 'transactions-row-edit', instrumentId: 'i1' } as any
+      data: {
+        source: 'transactions-row-edit',
+        mode: 'edit',
+        profileId: 'p1',
+        instrumentId: 'i1',
+        assetTypeName: 'Equity',
+        instrumentName: 'TCS Ltd',
+        instrumentSymbol: 'TCS',
+        transaction: {
+          id: 't1',
+          profileId: 'p1',
+          instrumentId: 'i1',
+          instrumentName: 'TCS Ltd',
+          instrumentSymbol: 'TCS',
+          type: 'BUY',
+          quantity: 12,
+          price: 3200,
+          amount: 38400,
+          transactionDate: '2025-04-15T00:00:00.000Z',
+          notes: 'edited notes',
+          isDeleted: false,
+          createdAtUtc: '2025-04-15T00:00:00.000Z'
+        }
+      } as any
     });
 
     expect(component.isModalOpen).toBeTrue();
-    expect(component.modalMode).toBe('create');
-    expect(component.step).toBe(1);
+    expect(component.modalMode).toBe('edit');
+    expect(component.step).toBe(2);
+    expect(component.selectedType).toBe('STOCK');
+    expect(component.stockForm.name).toBe('TCS Ltd');
+    expect(component.stockForm.symbol).toBe('TCS');
+    expect(component.stockForm.quantity).toBe('12');
+    expect(component.stockForm.price).toBe('3200');
+    expect(component.stockForm.date).toBe('2025-04-15');
+    expect(component.stockForm.notes).toBe('edited notes');
+  });
+
+  it('submits edit mode via updateStock and closes modal on success', () => {
+    modalState$.next({
+      isOpen: true,
+      data: {
+        source: 'transactions-row-edit',
+        mode: 'edit',
+        profileId: 'p1',
+        instrumentId: 'i1',
+        assetTypeName: 'Equity',
+        instrumentName: 'TCS Ltd',
+        instrumentSymbol: 'TCS',
+        transaction: {
+          id: 't1',
+          profileId: 'p1',
+          instrumentId: 'i1',
+          instrumentName: 'TCS Ltd',
+          instrumentSymbol: 'TCS',
+          type: 'BUY',
+          quantity: 12,
+          price: 3200,
+          amount: 38400,
+          transactionDate: '2025-04-15T00:00:00.000Z',
+          notes: 'edited notes',
+          isDeleted: false,
+          createdAtUtc: '2025-04-15T00:00:00.000Z'
+        }
+      } as any
+    });
+
+    assetSvc.updateStock.and.returnValue(of(mockIngestResponse));
+
+    component.submit(false);
+
+    expect(assetSvc.updateStock).toHaveBeenCalledWith('p1', 'i1', jasmine.objectContaining({
+      name: 'TCS Ltd', symbol: 'TCS', exchange: 'NSE',
+      quantity: 12, price: 3200, date: '2025-04-15'
+    }));
+    expect(modalSvc.close).toHaveBeenCalled();
+    expect(toastr.success).toHaveBeenCalledWith('Stocks updated successfully');
   });
 
   // ---- navigation ----
@@ -195,6 +267,44 @@ describe('AddInvestmentComponent', () => {
       component.changeType();
       expect(component.step).toBe(1);
       expect(component.selectedType).toBeNull();
+    });
+  });
+
+  describe('changeType (edit mode)', () => {
+    beforeEach(() => {
+      modalState$.next({
+        isOpen: true,
+        data: {
+          source: 'transactions-row-edit',
+          mode: 'edit',
+          profileId: 'p1',
+          instrumentId: 'i1',
+          assetTypeName: 'Equity',
+          instrumentName: 'TCS Ltd',
+          instrumentSymbol: 'TCS',
+          transaction: {
+            id: 't1',
+            profileId: 'p1',
+            instrumentId: 'i1',
+            instrumentName: 'TCS Ltd',
+            instrumentSymbol: 'TCS',
+            type: 'BUY',
+            quantity: 12,
+            price: 3200,
+            amount: 38400,
+            transactionDate: '2025-04-15T00:00:00.000Z',
+            notes: 'edited notes',
+            isDeleted: false,
+            createdAtUtc: '2025-04-15T00:00:00.000Z'
+          }
+        } as any
+      });
+    });
+
+    it('does not allow changing type', () => {
+      component.changeType();
+      expect(component.step).toBe(2);
+      expect(component.selectedType).toBe('STOCK');
     });
   });
 
