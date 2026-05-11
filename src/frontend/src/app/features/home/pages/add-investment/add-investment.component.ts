@@ -18,12 +18,16 @@ import { ModalService } from '../../../../core/services/modal.service';
 
 type AssetTypeId = 'STOCK' | 'MF' | 'GOLD' | 'PPF' | 'FDRD';
 
-type AddInvestmentModalMode = 'create' | 'add-to-holding' | 'edit-transaction';
+type AddInvestmentModalMode = 'create' | 'add-to-holding';
 
 interface AddInvestmentModalPayload {
   source: string;
   holdingId?: string;
-  transactionId?: string;
+  profileId?: string;
+  instrumentId?: string;
+  assetTypeName?: string;
+  instrumentName?: string;
+  instrumentSymbol?: string;
 }
 
 interface AssetTypeConfig {
@@ -137,12 +141,10 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
     this.modalService.state$.pipe(takeUntil(this.destroy$)).subscribe((state) => {
       this.isModalOpen = state.isOpen;
       this.modalData = this.parseModalPayload(state.data);
-      this.modalMode =
-        this.modalData?.transactionId ? 'edit-transaction'
-          : this.modalData?.holdingId ? 'add-to-holding'
-            : 'create';
+      this.modalMode = this.modalData?.holdingId ? 'add-to-holding' : 'create';
       if (state.isOpen) {
         this.resetForModalOpen();
+        this.applyModalContext();
       }
     });
   }
@@ -177,12 +179,17 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
   }
 
   changeType(): void {
+    if (this.isHoldingContext) return;
     this.selectedType = null;
     this.step = 1;
   }
 
   get selectedTypeConfig(): AssetTypeConfig | undefined {
     return this.assetTypes.find(t => t.id === this.selectedType);
+  }
+
+  get isHoldingContext(): boolean {
+    return this.modalMode === 'add-to-holding' && !!this.modalData;
   }
 
   get filteredStocks(): Instrument[] {
@@ -369,6 +376,7 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
         if (addAnother) {
           this.resetCurrentForm();
           this.errors = {};
+          this.applyModalContext();
         } else {
           this.closeModal();
         }
@@ -504,7 +512,69 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
     if (typeof maybe.source !== 'string' || maybe.source.trim().length === 0) return null;
     const payload: AddInvestmentModalPayload = { source: maybe.source };
     if (typeof maybe.holdingId === 'string' && maybe.holdingId.trim().length > 0) payload.holdingId = maybe.holdingId;
-    if (typeof maybe.transactionId === 'string' && maybe.transactionId.trim().length > 0) payload.transactionId = maybe.transactionId;
+    if (typeof maybe.profileId === 'string' && maybe.profileId.trim().length > 0) payload.profileId = maybe.profileId;
+    if (typeof maybe.instrumentId === 'string' && maybe.instrumentId.trim().length > 0) payload.instrumentId = maybe.instrumentId;
+    if (typeof maybe.assetTypeName === 'string' && maybe.assetTypeName.trim().length > 0) payload.assetTypeName = maybe.assetTypeName;
+    if (typeof maybe.instrumentName === 'string' && maybe.instrumentName.trim().length > 0) payload.instrumentName = maybe.instrumentName;
+    if (typeof maybe.instrumentSymbol === 'string' && maybe.instrumentSymbol.trim().length > 0) payload.instrumentSymbol = maybe.instrumentSymbol;
     return payload;
+  }
+
+  private applyModalContext(): void {
+    if (!this.isHoldingContext || !this.modalData) return;
+
+    if (this.modalData.profileId) {
+      this.selectedProfileId = this.modalData.profileId;
+      this.loadRecentTransactions();
+    }
+
+    const assetTypeId = this.mapHoldingAssetType(this.modalData.assetTypeName);
+    if (!assetTypeId) return;
+
+    this.selectedType = assetTypeId;
+    this.step = 2;
+    this.resetCurrentForm();
+
+    switch (assetTypeId) {
+      case 'STOCK':
+        this.stockForm.name = this.modalData.instrumentName || '';
+        this.stockForm.symbol = this.modalData.instrumentSymbol || '';
+        this.stockQuery = this.modalData.instrumentName || this.modalData.instrumentSymbol || '';
+        break;
+      case 'MF':
+        this.mfForm.schemeName = this.modalData.instrumentName || '';
+        this.mfForm.schemeCode = this.modalData.instrumentSymbol || '';
+        this.mfQuery = this.modalData.instrumentName || this.modalData.instrumentSymbol || '';
+        break;
+      case 'GOLD':
+        this.goldForm.subtype = this.resolveGoldSubtype(this.modalData.instrumentName);
+        break;
+      case 'FDRD':
+        this.fdRdForm.subtype = this.resolveDepositSubtype(this.modalData.assetTypeName);
+        break;
+    }
+  }
+
+  private mapHoldingAssetType(assetTypeName: string | undefined): AssetTypeId | null {
+    const normalized = (assetTypeName || '').toLowerCase();
+    if (!normalized) return null;
+    if (normalized.includes('equity') || normalized.includes('stock')) return 'STOCK';
+    if (normalized.includes('mutual') || normalized.includes('fund')) return 'MF';
+    if (normalized.includes('gold')) return 'GOLD';
+    if (normalized.includes('ppf')) return 'PPF';
+    if (normalized.includes('fixed') || normalized.includes('fd') || normalized.includes('recurring') || normalized.includes('rd')) return 'FDRD';
+    return null;
+  }
+
+  private resolveGoldSubtype(instrumentName: string | undefined): string {
+    const normalized = (instrumentName || '').toLowerCase();
+    if (normalized.includes('physical')) return 'Physical';
+    if (normalized.includes('sgb')) return 'SGB';
+    return 'Digital';
+  }
+
+  private resolveDepositSubtype(assetTypeName: string | undefined): string {
+    const normalized = (assetTypeName || '').toLowerCase();
+    return normalized.includes('recurring') || normalized.includes('rd') ? 'RD' : 'FD';
   }
 }

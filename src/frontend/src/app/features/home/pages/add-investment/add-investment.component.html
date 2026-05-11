@@ -11,8 +11,7 @@
       <h1 class="page-heading">Add Investment</h1>
       <p class="page-subtitle">
         Manually log an investment that's not auto-imported.
-        <ng-container *ngIf="modalMode === 'add-to-holding'"> Adding to an existing holding.</ng-container>
-        <ng-container *ngIf="modalMode === 'edit-transaction'"> Edit via modal is not available yet.</ng-container>
+        <ng-container *ngIf="isHoldingContext"> Adding a transaction to the selected holding.</ng-container>
       </p>
     </div>
     <div class="profile-pill" (click)="$event.stopPropagation()">
@@ -21,7 +20,8 @@
               [(ngModel)]="selectedProfileId"
               (change)="onProfileChange()"
               name="profilePill"
-              [ngModelOptions]="{standalone: true}">
+              [ngModelOptions]="{standalone: true}"
+              [disabled]="isHoldingContext">
         <option *ngFor="let p of profiles" [value]="p.id">{{ p.name }}</option>
       </select>
       <span class="chev"><i class="fas fa-chevron-down"></i></span>
@@ -102,7 +102,7 @@
             <h2>{{ selectedTypeConfig.name }}</h2>
             <p>{{ selectedTypeConfig.desc }}</p>
           </div>
-          <button class="change-btn" type="button" (click)="changeType()">
+          <button class="change-btn" type="button" (click)="changeType()" *ngIf="!isHoldingContext">
             <i class="fas fa-arrow-left"></i> Change
           </button>
         </div>
@@ -114,7 +114,7 @@
             <div class="ai-field" [class.invalid]="errors['symbol']">
               <label>Symbol <span class="req">*</span></label>
               <input type="text" [(ngModel)]="stockForm.symbol" name="stkSymbol" placeholder="e.g. TCS"
-                     (blur)="onSymbolBlur()" />
+                     (blur)="onSymbolBlur()" [readOnly]="isHoldingContext" />
               <div class="err" *ngIf="errors['symbol']"><i class="fas fa-exclamation-circle"></i> {{ errors['symbol'] }}</div>
             </div>
 
@@ -132,10 +132,10 @@
                 <input type="text"
                        [value]="stockQuery"
                        (input)="stockForm.name = $any($event.target).value; stockQuery = $any($event.target).value; stockDropdownOpen = true"
-                       (focus)="stockDropdownOpen = true"
+                       (focus)="stockDropdownOpen = !isHoldingContext"
                        (keydown.enter)="$event.preventDefault()"
-                       placeholder="Search by symbol or name…" />
-                <div class="results" *ngIf="stockDropdownOpen && filteredStocks.length > 0">
+                       placeholder="Search by symbol or name…" [readOnly]="isHoldingContext" />
+                <div class="results" *ngIf="!isHoldingContext && stockDropdownOpen && filteredStocks.length > 0">
                   <div class="row" *ngFor="let inst of filteredStocks" (mousedown)="selectStock(inst)">
                     <div class="symbol">{{ inst.symbol }}</div>
                     <div class="iname">{{ inst.name }}</div>
@@ -220,10 +220,10 @@
                 <input type="text"
                        [value]="mfQuery"
                        (input)="mfForm.schemeName = $any($event.target).value; mfQuery = $any($event.target).value; mfDropdownOpen = true"
-                       (focus)="mfDropdownOpen = true"
+                       (focus)="mfDropdownOpen = !isHoldingContext"
                        (keydown.enter)="$event.preventDefault()"
-                       placeholder="Search or type scheme name…" />
-                <div class="results" *ngIf="mfDropdownOpen && filteredMfs.length > 0">
+                       placeholder="Search or type scheme name…" [readOnly]="isHoldingContext" />
+                <div class="results" *ngIf="!isHoldingContext && mfDropdownOpen && filteredMfs.length > 0">
                   <div class="row" *ngFor="let inst of filteredMfs" (mousedown)="selectMf(inst)">
                     <div>
                       <div class="symbol">{{ inst.symbol }}</div>
@@ -238,7 +238,7 @@
 
             <div class="ai-field" [class.invalid]="errors['schemeCode']">
               <label>Scheme code <span class="req">*</span></label>
-              <input type="text" [(ngModel)]="mfForm.schemeCode" name="mfCode" placeholder="e.g. PPFAS-FLEXI" />
+              <input type="text" [(ngModel)]="mfForm.schemeCode" name="mfCode" placeholder="e.g. PPFAS-FLEXI" [readOnly]="isHoldingContext" />
               <div class="err" *ngIf="errors['schemeCode']"><i class="fas fa-exclamation-circle"></i> {{ errors['schemeCode'] }}</div>
             </div>
 

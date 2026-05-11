@@ -27,7 +27,11 @@ describe('AddInvestmentComponent', () => {
   type AddInvestmentModalPayload = {
     source: string;
     holdingId?: string;
-    transactionId?: string;
+    profileId?: string;
+    instrumentId?: string;
+    assetTypeName?: string;
+    instrumentName?: string;
+    instrumentSymbol?: string;
   };
 
   const mockProfile: Profile = {
@@ -108,31 +112,65 @@ describe('AddInvestmentComponent', () => {
 
   // ---- modal payload consumption ----
 
-  it('consumes modal payload holdingId into modalMode', () => {
+  it('uses holdings modal payload to prefill and constrain the workflow', () => {
     modalState$.next({
       isOpen: true,
-      data: { source: 'holdings-row-add', holdingId: 'h1' } satisfies AddInvestmentModalPayload
+      data: {
+        source: 'holdings-row-add',
+        holdingId: 'h1',
+        profileId: 'p1',
+        instrumentId: 'i1',
+        assetTypeName: 'Equity',
+        instrumentName: 'TCS Ltd',
+        instrumentSymbol: 'TCS'
+      } satisfies AddInvestmentModalPayload
     });
 
     expect(component.isModalOpen).toBeTrue();
     expect(component.modalMode).toBe('add-to-holding');
+    expect(component.isHoldingContext).toBeTrue();
+    expect(component.selectedProfileId).toBe('p1');
+    expect(component.selectedType).toBe('STOCK');
+    expect(component.step).toBe(2);
+    expect(component.stockForm.name).toBe('TCS Ltd');
+    expect(component.stockForm.symbol).toBe('TCS');
   });
 
-  it('consumes modal payload transactionId into modalMode', () => {
+  it('keeps holding context after save and add another', () => {
     modalState$.next({
       isOpen: true,
-      data: { source: 'transactions-row-edit', transactionId: 't1' } satisfies AddInvestmentModalPayload
+      data: {
+        source: 'holdings-row-add',
+        holdingId: 'h1',
+        profileId: 'p1',
+        assetTypeName: 'Mutual Fund',
+        instrumentName: 'PPFAS Flexi Cap',
+        instrumentSymbol: 'PPFAS-FLEXI'
+      } satisfies AddInvestmentModalPayload
+    });
+
+    component.mfForm.nav = '10';
+    component.mfForm.units = '2';
+    component.mfForm.date = '2025-01-01';
+    assetSvc.addMutualFund.and.returnValue(of(mockIngestResponse));
+
+    component.submit(true);
+
+    expect(component.modalMode).toBe('add-to-holding');
+    expect(component.selectedType).toBe('MF');
+    expect(component.mfForm.schemeName).toBe('PPFAS Flexi Cap');
+    expect(component.mfForm.schemeCode).toBe('PPFAS-FLEXI');
+  });
+
+  it('does not treat transaction payload as a modal edit flow', () => {
+    modalState$.next({
+      isOpen: true,
+      data: { source: 'transactions-row-edit', instrumentId: 'i1' } as any
     });
 
     expect(component.isModalOpen).toBeTrue();
-    expect(component.modalMode).toBe('edit-transaction');
-  });
-
-  it('treats unknown modal data as create', () => {
-    modalState$.next({ isOpen: true, data: 'bad-payload' as any });
-
-    expect(component.isModalOpen).toBeTrue();
     expect(component.modalMode).toBe('create');
+    expect(component.step).toBe(1);
   });
 
   // ---- navigation ----

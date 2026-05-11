@@ -170,7 +170,15 @@ export class HoldingsComponent implements OnInit, OnDestroy {
     return diffDay === 1 ? '1 day ago' : `${diffDay} days ago`;
   }
 
-  openAddInvestmentModal(source: string, holdingId?: string): void {
-    this.modalService.open({ source, holdingId });
+  openAddInvestmentModal(source: string, holding?: Holding): void {
+    this.modalService.open(holding ? {
+      source,
+      holdingId: holding.id,
+      profileId: holding.profileId,
+      instrumentId: holding.instrumentId,
+      assetTypeName: holding.assetTypeName,
+      instrumentName: holding.instrumentName,
+      instrumentSymbol: holding.instrumentSymbol
+    } : { source });
   }
 }

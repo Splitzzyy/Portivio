@@ -113,9 +113,17 @@ describe('HoldingsComponent', () => {
     expect(component.formatRelative(null)).toBe('—');
   });
 
-  it('openAddInvestmentModal forwards source and holdingId', () => {
-    component.openAddInvestmentModal('holdings-row-edit', 'h1');
+  it('openAddInvestmentModal forwards holding context for constrained modal flow', () => {
+    component.openAddInvestmentModal('holdings-row-edit', initialHolding);
 
-    expect(modalSvc.open).toHaveBeenCalledWith({ source: 'holdings-row-edit', holdingId: 'h1' });
+    expect(modalSvc.open).toHaveBeenCalledWith({
+      source: 'holdings-row-edit',
+      holdingId: 'h1',
+      profileId: 'p1',
+      instrumentId: 'i1',
+      assetTypeName: 'Equity',
+      instrumentName: 'TCS Ltd',
+      instrumentSymbol: 'TCS'
+    });
   });
 });

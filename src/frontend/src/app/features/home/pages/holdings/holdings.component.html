@@ -88,7 +88,7 @@
           </td>
           <td class="num muted col-hide-md">{{ formatRelative(h.lastUpdated) }}</td>
           <td class="actions">
-            <button type="button" class="icon-btn" title="Edit" (click)="openAddInvestmentModal('holdings-row-edit', h.id)">
+            <button type="button" class="icon-btn" title="Edit" (click)="openAddInvestmentModal('holdings-row-edit', h)">
               <i class="fas fa-pen"></i>
             </button>
             <button class="icon-btn danger" title="Delete" (click)="delete(h)"><i class="fas fa-trash"></i></button>
