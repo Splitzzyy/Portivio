@@ -98,3 +98,4 @@ $RECYCLE.BIN/
 *.msix
 *.msm
 *.msp
+.run-with-it/

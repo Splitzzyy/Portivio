@@ -13,7 +13,34 @@ namespace Portivio.Application.DTOs.Asset
         public string? Notes { get; set; }
     }
 
+    public class UpdateMutualFundRequest
+    {
+        public string SchemeName { get; set; } = string.Empty;
+        public string SchemeCode { get; set; } = string.Empty;
+        public string? Isin { get; set; }
+        public string? Plan { get; set; }
+        public string? Option { get; set; }
+        public decimal Units { get; set; }
+        public decimal NavPerUnit { get; set; }
+        public DateTime Date { get; set; }
+        public string? Notes { get; set; }
+    }
+
     public class AddFixedDepositRequest
+    {
+        public string Bank { get; set; } = string.Empty;
+        public string? AccountNo { get; set; }
+        public decimal Principal { get; set; }
+        public decimal RatePercent { get; set; }
+        public string Compounding { get; set; } = "Quarterly";
+        public string PayoutFrequency { get; set; } = "OnMaturity";
+        public DateTime StartDate { get; set; }
+        public DateTime MaturityDate { get; set; }
+        public decimal PrematurePenaltyPct { get; set; }
+        public string? Notes { get; set; }
+    }
+
+    public class UpdateFixedDepositRequest
     {
         public string Bank { get; set; } = string.Empty;
         public string? AccountNo { get; set; }
@@ -38,7 +65,28 @@ namespace Portivio.Application.DTOs.Asset
         public string? Notes { get; set; }
     }
 
+    public class UpdateRecurringDepositRequest
+    {
+        public string Bank { get; set; } = string.Empty;
+        public string? AccountNo { get; set; }
+        public decimal MonthlyAmount { get; set; }
+        public decimal RatePercent { get; set; }
+        public DateTime StartDate { get; set; }
+        public int TenureMonths { get; set; }
+        public string? Notes { get; set; }
+    }
+
     public class AddPpfRequest
+    {
+        public string AccountNo { get; set; } = string.Empty;
+        public DateTime OpenedOn { get; set; }
+        public decimal CurrentRatePercent { get; set; }
+        public decimal InitialContribution { get; set; }
+        public DateTime ContributionDate { get; set; }
+        public string? Notes { get; set; }
+    }
+
+    public class UpdatePpfRequest
     {
         public string AccountNo { get; set; } = string.Empty;
         public DateTime OpenedOn { get; set; }
@@ -67,7 +115,30 @@ namespace Portivio.Application.DTOs.Asset
         public string? Notes { get; set; }
     }
 
+    public class UpdateGoldRequest
+    {
+        public string Form { get; set; } = "Coin";
+        public string Purity { get; set; } = "24K";
+        public decimal WeightGrams { get; set; }
+        public decimal RatePerGram { get; set; }
+        public decimal MakingChargesInr { get; set; }
+        public DateTime Date { get; set; }
+        public string? Notes { get; set; }
+    }
+
     public class AddStockRequest
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Symbol { get; set; } = string.Empty;
+        public string Exchange { get; set; } = "NSE";
+        public string? Isin { get; set; }
+        public decimal Quantity { get; set; }
+        public decimal Price { get; set; }
+        public DateTime Date { get; set; }
+        public string? Notes { get; set; }
+    }
+
+    public class UpdateStockRequest
     {
         public string Name { get; set; } = string.Empty;
         public string Symbol { get; set; } = string.Empty;

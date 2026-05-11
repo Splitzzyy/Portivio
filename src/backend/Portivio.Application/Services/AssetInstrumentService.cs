@@ -13,12 +13,18 @@ namespace Portivio.Application.Services
     public interface IAssetInstrumentService
     {
         Task<Result<AssetIngestResponse>> AddMutualFundAsync(Guid userId, Guid profileId, AddMutualFundRequest req, CancellationToken ct = default);
+        Task<Result<AssetIngestResponse>> UpdateMutualFundAsync(Guid userId, Guid profileId, Guid instrumentId, UpdateMutualFundRequest req, CancellationToken ct = default);
         Task<Result<AssetIngestResponse>> AddFixedDepositAsync(Guid userId, Guid profileId, AddFixedDepositRequest req, CancellationToken ct = default);
+        Task<Result<AssetIngestResponse>> UpdateFixedDepositAsync(Guid userId, Guid profileId, Guid instrumentId, UpdateFixedDepositRequest req, CancellationToken ct = default);
         Task<Result<AssetIngestResponse>> AddRecurringDepositAsync(Guid userId, Guid profileId, AddRecurringDepositRequest req, CancellationToken ct = default);
+        Task<Result<AssetIngestResponse>> UpdateRecurringDepositAsync(Guid userId, Guid profileId, Guid instrumentId, UpdateRecurringDepositRequest req, CancellationToken ct = default);
         Task<Result<AssetIngestResponse>> AddPpfAsync(Guid userId, Guid profileId, AddPpfRequest req, CancellationToken ct = default);
+        Task<Result<AssetIngestResponse>> UpdatePpfAsync(Guid userId, Guid profileId, Guid instrumentId, UpdatePpfRequest req, CancellationToken ct = default);
         Task<Result<AssetIngestResponse>> AddPpfContributionAsync(Guid userId, Guid profileId, AddPpfContributionRequest req, CancellationToken ct = default);
         Task<Result<AssetIngestResponse>> AddGoldAsync(Guid userId, Guid profileId, AddGoldRequest req, CancellationToken ct = default);
+        Task<Result<AssetIngestResponse>> UpdateGoldAsync(Guid userId, Guid profileId, Guid instrumentId, UpdateGoldRequest req, CancellationToken ct = default);
         Task<Result<AssetIngestResponse>> AddStockAsync(Guid userId, Guid profileId, AddStockRequest req, CancellationToken ct = default);
+        Task<Result<AssetIngestResponse>> UpdateStockAsync(Guid userId, Guid profileId, Guid instrumentId, UpdateStockRequest req, CancellationToken ct = default);
     }
 
     public class AssetInstrumentService : IAssetInstrumentService
@@ -26,12 +32,18 @@ namespace Portivio.Application.Services
         private readonly PortivioDbContext _context;
         private readonly ITransactionIngestService _ingest;
         private readonly IProfileAccessGuard _profileAccess;
+        private readonly IHoldingRecalculationService _recalculation;
 
-        public AssetInstrumentService(PortivioDbContext context, ITransactionIngestService ingest, IProfileAccessGuard profileAccess)
+        public AssetInstrumentService(
+            PortivioDbContext context,
+            ITransactionIngestService ingest,
+            IProfileAccessGuard profileAccess,
+            IHoldingRecalculationService recalculation)
         {
             _context = context;
             _ingest = ingest;
             _profileAccess = profileAccess;
+            _recalculation = recalculation;
         }
 
         public async Task<Result<AssetIngestResponse>> AddMutualFundAsync(Guid userId, Guid profileId, AddMutualFundRequest req, CancellationToken ct = default)
@@ -433,7 +445,418 @@ namespace Portivio.Application.Services
                 Symbol = instrument.Symbol,
                 TransactionId = txResult.Data!.Id,
                 Message = "Stock purchase recorded"
-            }, "Stock purchase recorded", 201);
+                }, "Stock purchase recorded", 201);
+        }
+
+        public async Task<Result<AssetIngestResponse>> UpdateMutualFundAsync(Guid userId, Guid profileId, Guid instrumentId, UpdateMutualFundRequest req, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(req.SchemeName))
+                return Result<AssetIngestResponse>.BadRequest("SchemeName is required");
+            if (string.IsNullOrWhiteSpace(req.SchemeCode))
+                return Result<AssetIngestResponse>.BadRequest("SchemeCode is required");
+            if (req.Units <= 0)
+                return Result<AssetIngestResponse>.BadRequest("Units must be greater than zero");
+            if (req.NavPerUnit <= 0)
+                return Result<AssetIngestResponse>.BadRequest("NAV per unit must be greater than zero");
+
+            return await UpdateInvestmentAsync(userId, profileId, async innerCt =>
+            {
+                var instrument = await _context.Instruments
+                    .FirstOrDefaultAsync(i => i.Id == instrumentId, innerCt);
+                if (instrument == null)
+                    return Result<AssetIngestResponse>.NotFound("Instrument not found");
+                if (instrument.Category != AssetCategory.MutualFund)
+                    return Result<AssetIngestResponse>.BadRequest("Instrument is not a mutual fund");
+
+                var transaction = await GetPrimaryTransactionAsync(profileId, instrumentId, TransactionType.Buy, innerCt);
+                if (transaction == null)
+                    return Result<AssetIngestResponse>.NotFound("Mutual fund investment not found");
+
+                var schemeCode = req.SchemeCode.Trim();
+                var isin = req.Isin?.Trim().ToUpperInvariant();
+                var symbol = isin ?? schemeCode.ToUpperInvariant();
+
+                instrument.Name = req.SchemeName.Trim();
+                instrument.Symbol = symbol;
+                instrument.Isin = isin;
+                instrument.Currency = "INR";
+                instrument.PriceSource = PriceSource.AmfiNav;
+                instrument.PriceSourceKey = schemeCode;
+                instrument.Metadata = JsonDocument.Parse(JsonSerializer.Serialize(new
+                {
+                    schemeCode,
+                    isin = req.Isin?.Trim(),
+                    plan = req.Plan?.Trim(),
+                    option = req.Option?.Trim()
+                }));
+
+                transaction.Quantity = req.Units;
+                transaction.Price = req.NavPerUnit;
+                transaction.Amount = req.Units * req.NavPerUnit;
+                transaction.TransactionDate = NormalizeUtc(req.Date);
+                transaction.Notes = req.Notes?.Trim() ?? string.Empty;
+                transaction.UpdatedAtUtc = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync(innerCt);
+
+                var recalc = await _recalculation.RefreshProfileAsync(userId, profileId, innerCt);
+                if (recalc.IsFailure)
+                    return Result<AssetIngestResponse>.InternalServerError($"Holding recalculation failed: {recalc.Message}");
+
+                return Result<AssetIngestResponse>.Success(new AssetIngestResponse
+                {
+                    InstrumentId = instrument.Id,
+                    InstrumentName = instrument.Name,
+                    Symbol = instrument.Symbol,
+                    TransactionId = transaction.Id,
+                    Message = "Mutual fund investment updated"
+                }, "Mutual fund investment updated");
+            }, ct);
+        }
+
+        public async Task<Result<AssetIngestResponse>> UpdateFixedDepositAsync(Guid userId, Guid profileId, Guid instrumentId, UpdateFixedDepositRequest req, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(req.Bank))
+                return Result<AssetIngestResponse>.BadRequest("Bank is required");
+            if (req.Principal <= 0)
+                return Result<AssetIngestResponse>.BadRequest("Principal must be greater than zero");
+            if (req.RatePercent <= 0)
+                return Result<AssetIngestResponse>.BadRequest("Rate must be greater than zero");
+            if (req.MaturityDate <= req.StartDate)
+                return Result<AssetIngestResponse>.BadRequest("MaturityDate must be after StartDate");
+
+            return await UpdateInvestmentAsync(userId, profileId, async innerCt =>
+            {
+                var instrument = await _context.Instruments
+                    .FirstOrDefaultAsync(i => i.Id == instrumentId, innerCt);
+                if (instrument == null)
+                    return Result<AssetIngestResponse>.NotFound("Instrument not found");
+                if (instrument.Category != AssetCategory.FixedDeposit)
+                    return Result<AssetIngestResponse>.BadRequest("Instrument is not a fixed deposit");
+
+                var transaction = await GetPrimaryTransactionAsync(profileId, instrumentId, TransactionType.Deposit, innerCt);
+                if (transaction == null)
+                    return Result<AssetIngestResponse>.NotFound("Fixed deposit investment not found");
+
+                var hasAccountNo = !string.IsNullOrWhiteSpace(req.AccountNo);
+                var accountTrimmed = hasAccountNo ? req.AccountNo!.Trim() : null;
+                var symbolSlot = hasAccountNo
+                    ? accountTrimmed!.ToUpperInvariant()
+                    : ResolveFixedDepositSlot(instrument.Symbol);
+                var symbol = $"FD:{req.Bank.Trim().ToUpperInvariant()}:{symbolSlot}";
+                var name = hasAccountNo
+                    ? $"FD - {req.Bank.Trim()} ({accountTrimmed})"
+                    : $"FD - {req.Bank.Trim()}";
+
+                instrument.Name = name;
+                instrument.Symbol = symbol;
+                instrument.Isin = null;
+                instrument.Currency = "INR";
+                instrument.PriceSource = PriceSource.AccrualFormula;
+                instrument.PriceSourceKey = null;
+                instrument.Metadata = JsonDocument.Parse(JsonSerializer.Serialize(new
+                {
+                    bank = req.Bank.Trim(),
+                    accountNo = accountTrimmed,
+                    principal = req.Principal,
+                    rate = req.RatePercent,
+                    compounding = req.Compounding,
+                    payoutFrequency = req.PayoutFrequency,
+                    startDate = req.StartDate.ToString("yyyy-MM-dd"),
+                    maturityDate = req.MaturityDate.ToString("yyyy-MM-dd"),
+                    prematurePenaltyPct = req.PrematurePenaltyPct
+                }));
+
+                transaction.Quantity = 1m;
+                transaction.Price = req.Principal;
+                transaction.Amount = req.Principal;
+                transaction.TransactionDate = NormalizeUtc(req.StartDate);
+                transaction.Notes = req.Notes?.Trim() ?? string.Empty;
+                transaction.UpdatedAtUtc = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync(innerCt);
+
+                var recalc = await _recalculation.RefreshProfileAsync(userId, profileId, innerCt);
+                if (recalc.IsFailure)
+                    return Result<AssetIngestResponse>.InternalServerError($"Holding recalculation failed: {recalc.Message}");
+
+                return Result<AssetIngestResponse>.Success(new AssetIngestResponse
+                {
+                    InstrumentId = instrument.Id,
+                    InstrumentName = instrument.Name,
+                    Symbol = instrument.Symbol,
+                    TransactionId = transaction.Id,
+                    Message = "Fixed deposit investment updated"
+                }, "Fixed deposit investment updated");
+            }, ct);
+        }
+
+        public async Task<Result<AssetIngestResponse>> UpdateRecurringDepositAsync(Guid userId, Guid profileId, Guid instrumentId, UpdateRecurringDepositRequest req, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(req.Bank))
+                return Result<AssetIngestResponse>.BadRequest("Bank is required");
+            if (req.MonthlyAmount <= 0)
+                return Result<AssetIngestResponse>.BadRequest("MonthlyAmount must be greater than zero");
+            if (req.RatePercent <= 0)
+                return Result<AssetIngestResponse>.BadRequest("Rate must be greater than zero");
+            if (req.TenureMonths <= 0)
+                return Result<AssetIngestResponse>.BadRequest("TenureMonths must be greater than zero");
+
+            return await UpdateInvestmentAsync(userId, profileId, async innerCt =>
+            {
+                var instrument = await _context.Instruments
+                    .FirstOrDefaultAsync(i => i.Id == instrumentId, innerCt);
+                if (instrument == null)
+                    return Result<AssetIngestResponse>.NotFound("Instrument not found");
+                if (instrument.Category != AssetCategory.RecurringDeposit)
+                    return Result<AssetIngestResponse>.BadRequest("Instrument is not a recurring deposit");
+
+                var transaction = await GetPrimaryTransactionAsync(profileId, instrumentId, TransactionType.Contribution, innerCt);
+                if (transaction == null)
+                    return Result<AssetIngestResponse>.NotFound("Recurring deposit investment not found");
+
+                var hasAccountNo = !string.IsNullOrWhiteSpace(req.AccountNo);
+                var accountTrimmed = hasAccountNo ? req.AccountNo!.Trim() : null;
+                var symbolSlot = hasAccountNo
+                    ? accountTrimmed!.ToUpperInvariant()
+                    : ResolveRecurringDepositSlot(instrument.Symbol);
+                var symbol = $"RD:{req.Bank.Trim().ToUpperInvariant()}:{symbolSlot}";
+                var name = hasAccountNo
+                    ? $"RD - {req.Bank.Trim()} ({accountTrimmed})"
+                    : $"RD - {req.Bank.Trim()}";
+
+                instrument.Name = name;
+                instrument.Symbol = symbol;
+                instrument.Isin = null;
+                instrument.Currency = "INR";
+                instrument.PriceSource = PriceSource.AccrualFormula;
+                instrument.PriceSourceKey = null;
+                instrument.Metadata = JsonDocument.Parse(JsonSerializer.Serialize(new
+                {
+                    bank = req.Bank.Trim(),
+                    accountNo = accountTrimmed,
+                    monthly = req.MonthlyAmount,
+                    rate = req.RatePercent,
+                    startDate = req.StartDate.ToString("yyyy-MM-dd"),
+                    tenureMonths = req.TenureMonths
+                }));
+
+                transaction.Quantity = 1m;
+                transaction.Price = req.MonthlyAmount;
+                transaction.Amount = req.MonthlyAmount;
+                transaction.TransactionDate = NormalizeUtc(req.StartDate);
+                transaction.Notes = req.Notes?.Trim() ?? string.Empty;
+                transaction.UpdatedAtUtc = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync(innerCt);
+
+                var recalc = await _recalculation.RefreshProfileAsync(userId, profileId, innerCt);
+                if (recalc.IsFailure)
+                    return Result<AssetIngestResponse>.InternalServerError($"Holding recalculation failed: {recalc.Message}");
+
+                return Result<AssetIngestResponse>.Success(new AssetIngestResponse
+                {
+                    InstrumentId = instrument.Id,
+                    InstrumentName = instrument.Name,
+                    Symbol = instrument.Symbol,
+                    TransactionId = transaction.Id,
+                    Message = "Recurring deposit investment updated"
+                }, "Recurring deposit investment updated");
+            }, ct);
+        }
+
+        public async Task<Result<AssetIngestResponse>> UpdatePpfAsync(Guid userId, Guid profileId, Guid instrumentId, UpdatePpfRequest req, CancellationToken ct = default)
+        {
+            if (req.InitialContribution <= 0)
+                return Result<AssetIngestResponse>.BadRequest("InitialContribution must be greater than zero");
+            if (req.CurrentRatePercent <= 0)
+                return Result<AssetIngestResponse>.BadRequest("CurrentRatePercent must be greater than zero");
+
+            return await UpdateInvestmentAsync(userId, profileId, async innerCt =>
+            {
+                var instrument = await _context.Instruments
+                    .FirstOrDefaultAsync(i => i.Id == instrumentId, innerCt);
+                if (instrument == null)
+                    return Result<AssetIngestResponse>.NotFound("Instrument not found");
+                if (instrument.Category != AssetCategory.Ppf)
+                    return Result<AssetIngestResponse>.BadRequest("Instrument is not a PPF account");
+
+                var transaction = await GetPrimaryTransactionAsync(profileId, instrumentId, TransactionType.Contribution, innerCt);
+                if (transaction == null)
+                    return Result<AssetIngestResponse>.NotFound("PPF investment not found");
+
+                var accountTrimmed = req.AccountNo?.Trim();
+                var symbolSlot = string.IsNullOrWhiteSpace(accountTrimmed)
+                    ? ResolvePpfSlot(instrument.Symbol)
+                    : accountTrimmed!.ToUpperInvariant();
+                var symbol = $"PPF:{symbolSlot}";
+                var name = string.IsNullOrWhiteSpace(accountTrimmed)
+                    ? "PPF Account"
+                    : $"PPF - {accountTrimmed}";
+                var lockInEndsOn = req.OpenedOn.AddYears(15);
+
+                instrument.Name = name;
+                instrument.Symbol = symbol;
+                instrument.Isin = null;
+                instrument.Currency = "INR";
+                instrument.PriceSource = PriceSource.AccrualFormula;
+                instrument.PriceSourceKey = null;
+                instrument.Metadata = JsonDocument.Parse(JsonSerializer.Serialize(new
+                {
+                    accountNo = accountTrimmed,
+                    openedOn = req.OpenedOn.ToString("yyyy-MM-dd"),
+                    lockInEndsOn = lockInEndsOn.ToString("yyyy-MM-dd"),
+                    currentRate = req.CurrentRatePercent
+                }));
+
+                transaction.Quantity = 1m;
+                transaction.Price = req.InitialContribution;
+                transaction.Amount = req.InitialContribution;
+                transaction.TransactionDate = NormalizeUtc(req.ContributionDate);
+                transaction.Notes = req.Notes?.Trim() ?? "PPF opening contribution";
+                transaction.UpdatedAtUtc = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync(innerCt);
+
+                var recalc = await _recalculation.RefreshProfileAsync(userId, profileId, innerCt);
+                if (recalc.IsFailure)
+                    return Result<AssetIngestResponse>.InternalServerError($"Holding recalculation failed: {recalc.Message}");
+
+                return Result<AssetIngestResponse>.Success(new AssetIngestResponse
+                {
+                    InstrumentId = instrument.Id,
+                    InstrumentName = instrument.Name,
+                    Symbol = instrument.Symbol,
+                    TransactionId = transaction.Id,
+                    Message = "PPF investment updated"
+                }, "PPF investment updated");
+            }, ct);
+        }
+
+        public async Task<Result<AssetIngestResponse>> UpdateGoldAsync(Guid userId, Guid profileId, Guid instrumentId, UpdateGoldRequest req, CancellationToken ct = default)
+        {
+            if (req.WeightGrams <= 0)
+                return Result<AssetIngestResponse>.BadRequest("WeightGrams must be greater than zero");
+            if (req.RatePerGram <= 0)
+                return Result<AssetIngestResponse>.BadRequest("RatePerGram must be greater than zero");
+
+            return await UpdateInvestmentAsync(userId, profileId, async innerCt =>
+            {
+                var instrument = await _context.Instruments
+                    .FirstOrDefaultAsync(i => i.Id == instrumentId, innerCt);
+                if (instrument == null)
+                    return Result<AssetIngestResponse>.NotFound("Instrument not found");
+                if (instrument.Category != AssetCategory.Gold)
+                    return Result<AssetIngestResponse>.BadRequest("Instrument is not a gold holding");
+
+                var transaction = await GetPrimaryTransactionAsync(profileId, instrumentId, TransactionType.Buy, innerCt);
+                if (transaction == null)
+                    return Result<AssetIngestResponse>.NotFound("Gold investment not found");
+
+                var purityNorm = req.Purity.Trim().ToUpperInvariant();
+                var formNorm = req.Form.Trim().ToUpperInvariant();
+                var totalCost = (req.WeightGrams * req.RatePerGram) + req.MakingChargesInr;
+
+                instrument.Name = $"Gold {req.Purity} {req.Form}";
+                instrument.Symbol = $"GOLD:{purityNorm}:{formNorm}";
+                instrument.Isin = null;
+                instrument.Currency = "INR";
+                instrument.PriceSource = PriceSource.Manual;
+                instrument.PriceSourceKey = null;
+                instrument.Metadata = JsonDocument.Parse(JsonSerializer.Serialize(new
+                {
+                    form = req.Form.Trim(),
+                    purity = purityNorm,
+                    makingChargesInr = req.MakingChargesInr
+                }));
+
+                transaction.Quantity = req.WeightGrams;
+                transaction.Price = totalCost / req.WeightGrams;
+                transaction.Amount = totalCost;
+                transaction.TransactionDate = NormalizeUtc(req.Date);
+                transaction.Notes = req.Notes?.Trim() ?? string.Empty;
+                transaction.UpdatedAtUtc = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync(innerCt);
+
+                var recalc = await _recalculation.RefreshProfileAsync(userId, profileId, innerCt);
+                if (recalc.IsFailure)
+                    return Result<AssetIngestResponse>.InternalServerError($"Holding recalculation failed: {recalc.Message}");
+
+                return Result<AssetIngestResponse>.Success(new AssetIngestResponse
+                {
+                    InstrumentId = instrument.Id,
+                    InstrumentName = instrument.Name,
+                    Symbol = instrument.Symbol,
+                    TransactionId = transaction.Id,
+                    Message = "Gold investment updated"
+                }, "Gold investment updated");
+            }, ct);
+        }
+
+        public async Task<Result<AssetIngestResponse>> UpdateStockAsync(Guid userId, Guid profileId, Guid instrumentId, UpdateStockRequest req, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(req.Name))
+                return Result<AssetIngestResponse>.BadRequest("Name is required");
+            if (string.IsNullOrWhiteSpace(req.Symbol))
+                return Result<AssetIngestResponse>.BadRequest("Symbol is required");
+            if (req.Quantity <= 0)
+                return Result<AssetIngestResponse>.BadRequest("Quantity must be greater than zero");
+            if (req.Price <= 0)
+                return Result<AssetIngestResponse>.BadRequest("Price must be greater than zero");
+
+            return await UpdateInvestmentAsync(userId, profileId, async innerCt =>
+            {
+                var instrument = await _context.Instruments
+                    .FirstOrDefaultAsync(i => i.Id == instrumentId, innerCt);
+                if (instrument == null)
+                    return Result<AssetIngestResponse>.NotFound("Instrument not found");
+                if (instrument.Category != AssetCategory.Equity)
+                    return Result<AssetIngestResponse>.BadRequest("Instrument is not a stock");
+
+                var transaction = await GetPrimaryTransactionAsync(profileId, instrumentId, TransactionType.Buy, innerCt);
+                if (transaction == null)
+                    return Result<AssetIngestResponse>.NotFound("Stock investment not found");
+
+                var exchangeNorm = req.Exchange.Trim().ToUpperInvariant();
+                var symbolNorm = req.Symbol.Trim().ToUpperInvariant();
+                var symbol = $"{exchangeNorm}:{symbolNorm}";
+                var exchangeSuffix = exchangeNorm == "BSE" ? "BO" : "NS";
+
+                instrument.Name = req.Name.Trim();
+                instrument.Symbol = symbol;
+                instrument.Isin = req.Isin?.Trim().ToUpperInvariant();
+                instrument.Currency = "INR";
+                instrument.PriceSource = PriceSource.LivePriceApi;
+                instrument.PriceSourceKey = $"{symbolNorm}.{exchangeSuffix}";
+                instrument.Metadata = JsonDocument.Parse(JsonSerializer.Serialize(new
+                {
+                    exchange = exchangeNorm,
+                    isin = req.Isin?.Trim()
+                }));
+
+                transaction.Quantity = req.Quantity;
+                transaction.Price = req.Price;
+                transaction.Amount = req.Quantity * req.Price;
+                transaction.TransactionDate = NormalizeUtc(req.Date);
+                transaction.Notes = req.Notes?.Trim() ?? string.Empty;
+                transaction.UpdatedAtUtc = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync(innerCt);
+
+                var recalc = await _recalculation.RefreshProfileAsync(userId, profileId, innerCt);
+                if (recalc.IsFailure)
+                    return Result<AssetIngestResponse>.InternalServerError($"Holding recalculation failed: {recalc.Message}");
+
+                return Result<AssetIngestResponse>.Success(new AssetIngestResponse
+                {
+                    InstrumentId = instrument.Id,
+                    InstrumentName = instrument.Name,
+                    Symbol = instrument.Symbol,
+                    TransactionId = transaction.Id,
+                    Message = "Stock investment updated"
+                }, "Stock investment updated");
+            }, ct);
         }
 
         // Internal-only uniqueness slot for FD/RD when AccountNo is blank.
@@ -441,6 +864,54 @@ namespace Portivio.Application.Services
         // unique index `(AssetTypeId, Symbol)` admits multiple anonymous deposits.
         private static string GenerateInstrumentSlot()
             => Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
+
+        private async Task<Result<AssetIngestResponse>> UpdateInvestmentAsync(
+            Guid userId,
+            Guid profileId,
+            Func<CancellationToken, Task<Result<AssetIngestResponse>>> operation,
+            CancellationToken ct)
+        {
+            var access = await _profileAccess.EnsureOwnerAsync(userId, profileId, ct);
+            if (access.IsFailure)
+                return access.ToFailure<AssetIngestResponse>();
+
+            return await InTransactionAsync(operation, ct);
+        }
+
+        private async Task<Transaction?> GetPrimaryTransactionAsync(
+            Guid profileId,
+            Guid instrumentId,
+            TransactionType expectedType,
+            CancellationToken ct)
+        {
+            return await _context.Transactions
+                .Where(t => t.ProfileId == profileId && t.InstrumentId == instrumentId && t.Type == expectedType)
+                .OrderBy(t => t.CreatedAtUtc)
+                .ThenBy(t => t.TransactionDate)
+                .ThenBy(t => t.Id)
+                .FirstOrDefaultAsync(ct);
+        }
+
+        private static DateTime NormalizeUtc(DateTime value)
+            => value.Kind == DateTimeKind.Utc ? value : value.ToUniversalTime();
+
+        private static string ResolveFixedDepositSlot(string symbol)
+        {
+            var parts = symbol.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            return parts.Length >= 3 ? parts[2].ToUpperInvariant() : GenerateInstrumentSlot();
+        }
+
+        private static string ResolveRecurringDepositSlot(string symbol)
+        {
+            var parts = symbol.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            return parts.Length >= 3 ? parts[2].ToUpperInvariant() : GenerateInstrumentSlot();
+        }
+
+        private static string ResolvePpfSlot(string symbol)
+        {
+            var parts = symbol.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            return parts.Length >= 2 ? parts[1].ToUpperInvariant() : GenerateInstrumentSlot();
+        }
 
         private async Task<AssetType> GetOrCreateAssetTypeAsync(string name, CancellationToken ct)
         {

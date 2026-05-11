@@ -1,6 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Moq;
 using Portivio.Application.Services;
+using Portivio.Application.Results;
 using Portivio.Application.Services.Authorization;
+using Portivio.Application.Services.MarketData;
 using Portivio.Application.Services.Strategies;
 using Portivio.Domain.Entities;
 using Portivio.Domain.Enums;
@@ -16,6 +20,11 @@ namespace Portivio.Tests.Services
             new(new DbContextOptionsBuilder<PortivioDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options);
+
+        private sealed class NoopThrottle : IRefreshThrottle
+        {
+            public Task DelayAsync(TimeSpan delay, CancellationToken ct) => Task.CompletedTask;
+        }
 
         private static async Task<(User user, Profile profile, AssetType assetType)> SeedBaseAsync(PortivioDbContext ctx)
         {
@@ -260,7 +269,10 @@ namespace Portivio.Tests.Services
             var gold = new GoldStrategy(ctx);
             var resolver = new AssetStrategyResolver(new IAssetStrategy[] { equity, mf, fd, rd, ppf, gold });
             var ingest = new TransactionIngestService(ctx, guard, resolver);
-            var svc = new AssetInstrumentService(ctx, ingest, guard);
+            var recalc = new Mock<IHoldingRecalculationService>();
+            recalc.Setup(r => r.RefreshProfileAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Result<List<Portivio.Application.DTOs.Holding.HoldingResponse>>.Success(new List<Portivio.Application.DTOs.Holding.HoldingResponse>()));
+            var svc = new AssetInstrumentService(ctx, ingest, guard, recalc.Object);
 
             var req = new Application.DTOs.Asset.AddMutualFundRequest
             {
@@ -291,7 +303,10 @@ namespace Portivio.Tests.Services
             var fd = new FixedDepositStrategy(ctx);
             var resolver = new AssetStrategyResolver(new IAssetStrategy[] { fd });
             var ingest = new TransactionIngestService(ctx, guard, resolver);
-            var svc = new AssetInstrumentService(ctx, ingest, guard);
+            var recalc = new Mock<IHoldingRecalculationService>();
+            recalc.Setup(r => r.RefreshProfileAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Result<List<Portivio.Application.DTOs.Holding.HoldingResponse>>.Success(new List<Portivio.Application.DTOs.Holding.HoldingResponse>()));
+            var svc = new AssetInstrumentService(ctx, ingest, guard, recalc.Object);
 
             var req = new Application.DTOs.Asset.AddFixedDepositRequest
             {
