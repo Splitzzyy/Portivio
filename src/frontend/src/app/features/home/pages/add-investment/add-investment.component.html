@@ -9,7 +9,11 @@
   <div class="page-header" style="align-items: flex-end;">
     <div>
       <h1 class="page-heading">Add Investment</h1>
-      <p class="page-subtitle">Manually log an investment that's not auto-imported.</p>
+      <p class="page-subtitle">
+        Manually log an investment that's not auto-imported.
+        <ng-container *ngIf="modalMode === 'add-to-holding'"> Adding to an existing holding.</ng-container>
+        <ng-container *ngIf="modalMode === 'edit-transaction'"> Edit via modal is not available yet.</ng-container>
+      </p>
     </div>
     <div class="profile-pill" (click)="$event.stopPropagation()">
       <span class="label">Profile</span>

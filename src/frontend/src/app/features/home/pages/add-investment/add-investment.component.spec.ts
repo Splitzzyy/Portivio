@@ -4,13 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { ToastrService } from 'ngx-toastr';
-import { of, throwError } from 'rxjs';
+import { BehaviorSubject, of, throwError } from 'rxjs';
 import { AddInvestmentComponent } from './add-investment.component';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { InstrumentService } from '../../../../core/services/instrument.service';
 import { TransactionService } from '../../../../core/services/transaction.service';
 import { AssetService } from '../../../../core/services/asset.service';
-import { ModalService } from '../../../../core/services/modal.service';
+import { ModalService, ModalState } from '../../../../core/services/modal.service';
 import { AssetIngestResponse, Instrument, Profile } from '../../../../core/models/portfolio.model';
 
 describe('AddInvestmentComponent', () => {
@@ -22,6 +22,13 @@ describe('AddInvestmentComponent', () => {
   let assetSvc: jasmine.SpyObj<AssetService>;
   let modalSvc: jasmine.SpyObj<ModalService>;
   let toastr: jasmine.SpyObj<ToastrService>;
+  let modalState$: BehaviorSubject<ModalState>;
+
+  type AddInvestmentModalPayload = {
+    source: string;
+    holdingId?: string;
+    transactionId?: string;
+  };
 
   const mockProfile: Profile = {
     id: 'p1', userId: 'u1', name: 'Personal',
@@ -45,8 +52,9 @@ describe('AddInvestmentComponent', () => {
     assetSvc        = jasmine.createSpyObj('AssetService', [
       'addStock', 'addMutualFund', 'addGold', 'addPpf', 'addFixedDeposit', 'addRecurringDeposit'
     ]);
+    modalState$     = new BehaviorSubject<ModalState>({ isOpen: false, data: null });
     modalSvc        = jasmine.createSpyObj('ModalService', ['open', 'close'], {
-      state$: of({ isOpen: false, data: null })
+      state$: modalState$.asObservable()
     });
     toastr          = jasmine.createSpyObj('ToastrService', ['success', 'error']);
 
@@ -96,6 +104,35 @@ describe('AddInvestmentComponent', () => {
 
   it('loads recent transactions for selected profile', () => {
     expect(transactionSvc.list).toHaveBeenCalledWith('p1', 1, 5);
+  });
+
+  // ---- modal payload consumption ----
+
+  it('consumes modal payload holdingId into modalMode', () => {
+    modalState$.next({
+      isOpen: true,
+      data: { source: 'holdings-row-add', holdingId: 'h1' } satisfies AddInvestmentModalPayload
+    });
+
+    expect(component.isModalOpen).toBeTrue();
+    expect(component.modalMode).toBe('add-to-holding');
+  });
+
+  it('consumes modal payload transactionId into modalMode', () => {
+    modalState$.next({
+      isOpen: true,
+      data: { source: 'transactions-row-edit', transactionId: 't1' } satisfies AddInvestmentModalPayload
+    });
+
+    expect(component.isModalOpen).toBeTrue();
+    expect(component.modalMode).toBe('edit-transaction');
+  });
+
+  it('treats unknown modal data as create', () => {
+    modalState$.next({ isOpen: true, data: 'bad-payload' as any });
+
+    expect(component.isModalOpen).toBeTrue();
+    expect(component.modalMode).toBe('create');
   });
 
   // ---- navigation ----

@@ -18,6 +18,14 @@ import { ModalService } from '../../../../core/services/modal.service';
 
 type AssetTypeId = 'STOCK' | 'MF' | 'GOLD' | 'PPF' | 'FDRD';
 
+type AddInvestmentModalMode = 'create' | 'add-to-holding' | 'edit-transaction';
+
+interface AddInvestmentModalPayload {
+  source: string;
+  holdingId?: string;
+  transactionId?: string;
+}
+
 interface AssetTypeConfig {
   id: AssetTypeId;
   name: string;
@@ -85,7 +93,8 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
   priceFetching = false;
   errors: Record<string, string> = {};
   isModalOpen = false;
-  modalData: unknown = null;
+  modalMode: AddInvestmentModalMode = 'create';
+  modalData: AddInvestmentModalPayload | null = null;
 
   stockQuery = '';
   stockDropdownOpen = false;
@@ -127,7 +136,11 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
 
     this.modalService.state$.pipe(takeUntil(this.destroy$)).subscribe((state) => {
       this.isModalOpen = state.isOpen;
-      this.modalData = state.data;
+      this.modalData = this.parseModalPayload(state.data);
+      this.modalMode =
+        this.modalData?.transactionId ? 'edit-transaction'
+          : this.modalData?.holdingId ? 'add-to-holding'
+            : 'create';
       if (state.isOpen) {
         this.resetForModalOpen();
       }
@@ -483,5 +496,15 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
     this.errors = {};
     this.stockDropdownOpen = false;
     this.mfDropdownOpen = false;
+  }
+
+  private parseModalPayload(data: unknown): AddInvestmentModalPayload | null {
+    if (!data || typeof data !== 'object') return null;
+    const maybe = data as Partial<AddInvestmentModalPayload>;
+    if (typeof maybe.source !== 'string' || maybe.source.trim().length === 0) return null;
+    const payload: AddInvestmentModalPayload = { source: maybe.source };
+    if (typeof maybe.holdingId === 'string' && maybe.holdingId.trim().length > 0) payload.holdingId = maybe.holdingId;
+    if (typeof maybe.transactionId === 'string' && maybe.transactionId.trim().length > 0) payload.transactionId = maybe.transactionId;
+    return payload;
   }
 }

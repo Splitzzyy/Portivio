@@ -98,9 +98,9 @@ describe('TransactionsComponent', () => {
     expect(component.hasMore).toBeTrue();
   });
 
-  it('openInvestmentModal forwards source and transactionId', () => {
-    component.openInvestmentModal('transactions-row-edit', 't1');
+  it('openInvestmentModal forwards source', () => {
+    component.openInvestmentModal('transactions-add-investment');
 
-    expect(modalSvc.open).toHaveBeenCalledWith({ source: 'transactions-row-edit', transactionId: 't1' });
+    expect(modalSvc.open).toHaveBeenCalledWith({ source: 'transactions-add-investment' });
   });
 });
