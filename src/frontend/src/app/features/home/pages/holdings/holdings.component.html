@@ -11,10 +11,10 @@
         <i class="fas fa-sync" [class.fa-spin]="refreshing"></i>
         {{ refreshing ? 'Refreshing…' : 'Refresh prices' }}
       </button>
-      <a class="btn btn-primary" routerLink="/dashboard/add-investment"
+      <button type="button" class="btn btn-primary" (click)="openAddInvestmentModal('holdings-header-add')"
               *ngIf="selectedProfileId && instruments.length">
         <i class="fas fa-plus"></i> Add / Update Holding
-      </a>
+      </button>
     </div>
   </div>
 
@@ -36,7 +36,7 @@
   </div>
 
   <div *ngIf="!instruments.length && profiles.length" class="state-message">
-    No instruments found. Use <a routerLink="/dashboard/add-investment">Add Investment</a> to log your first position.
+    No instruments found. Use <a href="#" (click)="$event.preventDefault(); openAddInvestmentModal('holdings-empty-link')">Add Investment</a> to log your first position.
   </div>
 
   <div *ngIf="loading" class="state-message">Loading holdings…</div>
@@ -88,7 +88,9 @@
           </td>
           <td class="num muted col-hide-md">{{ formatRelative(h.lastUpdated) }}</td>
           <td class="actions">
-            <a class="icon-btn" title="Edit" routerLink="/dashboard/add-investment"><i class="fas fa-pen"></i></a>
+            <button type="button" class="icon-btn" title="Edit" (click)="openAddInvestmentModal('holdings-row-edit', h.id)">
+              <i class="fas fa-pen"></i>
+            </button>
             <button class="icon-btn danger" title="Delete" (click)="delete(h)"><i class="fas fa-trash"></i></button>
           </td>
         </tr>

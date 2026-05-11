@@ -117,6 +117,13 @@ $desktop: 1024px;
         }
       }
 
+      .nav-item .nav-button-link {
+        width: 100%;
+        border: 0;
+        background: transparent;
+        text-align: left;
+      }
+
       .nav-divider {
         height: 1px;
         background: var(--border);

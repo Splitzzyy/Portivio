@@ -9,9 +9,9 @@
         <i class="fas" [class.fa-eye]="!showDeleted" [class.fa-eye-slash]="showDeleted"></i>
         {{ showDeleted ? 'Hide deleted' : 'Show deleted' }}
       </button>
-      <a class="btn btn-primary" routerLink="/dashboard/add-investment" *ngIf="instruments.length">
+      <button type="button" class="btn btn-primary" (click)="openInvestmentModal('transactions-header-add')" *ngIf="instruments.length">
         <i class="fas fa-plus"></i> New Transaction
-      </a>
+      </button>
     </div>
   </div>
 
@@ -141,7 +141,7 @@
           <td class="muted truncate col-hide-md" [title]="tx.notes || ''">{{ tx.notes || '—' }}</td>
           <td class="actions">
             <ng-container *ngIf="!tx.isDeleted">
-              <button class="icon-btn" title="Edit" (click)="openEdit(tx)"><i class="fas fa-pen"></i></button>
+              <button class="icon-btn" title="Edit" (click)="openInvestmentModal('transactions-row-edit', tx.id)"><i class="fas fa-pen"></i></button>
               <button class="icon-btn danger" title="Delete" (click)="delete(tx)"><i class="fas fa-trash"></i></button>
             </ng-container>
           </td>

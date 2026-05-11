@@ -5,9 +5,9 @@
       <h1 class="welcome-title">Welcome back, {{ getFirstName() }}! 👋</h1>
       <p class="welcome-subtitle">Here's an overview of your investment portfolio</p>
     </div>
-    <a routerLink="/dashboard/add-investment" class="btn btn-primary btn-action">
+    <button type="button" class="btn btn-primary btn-action" (click)="openAddInvestmentModal('dashboard-header')">
       <i class="fas fa-plus"></i> Add Investment
-    </a>
+    </button>
   </div>
 
   <div *ngIf="loading" class="state-message">Loading portfolio…</div>
@@ -144,11 +144,11 @@
 
     <!-- Quick Actions -->
     <div class="quick-actions">
-      <a routerLink="/dashboard/add-investment" class="action-card">
+      <button type="button" class="action-card" (click)="openAddInvestmentModal('dashboard-quick-action')">
         <div class="action-icon"><i class="fas fa-plus-circle"></i></div>
         <h3>Add Investment</h3>
         <p>Log stocks, MF, gold, PPF, FD</p>
-      </a>
+      </button>
       <a routerLink="/dashboard/holdings" class="action-card">
         <div class="action-icon"><i class="fas fa-wallet"></i></div>
         <h3>Holdings</h3>

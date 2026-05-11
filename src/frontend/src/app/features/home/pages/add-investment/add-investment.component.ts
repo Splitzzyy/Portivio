@@ -1,5 +1,4 @@
 import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { Observable, Subject } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
@@ -15,6 +14,7 @@ import { ProfileService } from '../../../../core/services/profile.service';
 import { InstrumentService } from '../../../../core/services/instrument.service';
 import { TransactionService } from '../../../../core/services/transaction.service';
 import { AssetService } from '../../../../core/services/asset.service';
+import { ModalService } from '../../../../core/services/modal.service';
 
 type AssetTypeId = 'STOCK' | 'MF' | 'GOLD' | 'PPF' | 'FDRD';
 
@@ -84,6 +84,8 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
   saving = false;
   priceFetching = false;
   errors: Record<string, string> = {};
+  isModalOpen = false;
+  modalData: unknown = null;
 
   stockQuery = '';
   stockDropdownOpen = false;
@@ -103,8 +105,8 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
     private instrumentService: InstrumentService,
     private transactionService: TransactionService,
     private assetService: AssetService,
+    private modalService: ModalService,
     private toastr: ToastrService,
-    private router: Router,
     private http: HttpClient
   ) {}
 
@@ -121,6 +123,14 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
 
     this.instrumentService.listInstruments().pipe(takeUntil(this.destroy$)).subscribe({
       next: (data) => (this.instruments = data ?? [])
+    });
+
+    this.modalService.state$.pipe(takeUntil(this.destroy$)).subscribe((state) => {
+      this.isModalOpen = state.isOpen;
+      this.modalData = state.data;
+      if (state.isOpen) {
+        this.resetForModalOpen();
+      }
     });
   }
 
@@ -347,11 +357,15 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
           this.resetCurrentForm();
           this.errors = {};
         } else {
-          this.router.navigate(['/dashboard/transactions']);
+          this.closeModal();
         }
       },
       error: (err) => this.toastr.error(err?.error?.message || 'Save failed')
     });
+  }
+
+  closeModal(): void {
+    this.modalService.close();
   }
 
   private buildApiCall(): Observable<AssetIngestResponse> | null {
@@ -461,5 +475,13 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
 
   private defaultFdRd(): FdRdForm {
     return { subtype: 'FD', bank: '', accountNo: '', amount: '', ratePercent: '', compounding: 'Quarterly', startDate: this.today(), maturityDate: '', tenureMonths: '', notes: '' };
+  }
+
+  private resetForModalOpen(): void {
+    this.step = 1;
+    this.selectedType = null;
+    this.errors = {};
+    this.stockDropdownOpen = false;
+    this.mfDropdownOpen = false;
   }
 }

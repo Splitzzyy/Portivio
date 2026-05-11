@@ -10,6 +10,7 @@ import {
 import { HoldingService } from '../../../../core/services/holding.service';
 import { InstrumentService } from '../../../../core/services/instrument.service';
 import { ProfileService } from '../../../../core/services/profile.service';
+import { ModalService } from '../../../../core/services/modal.service';
 
 @Component({
   selector: 'app-holdings',
@@ -33,7 +34,8 @@ export class HoldingsComponent implements OnInit, OnDestroy {
     private profileService: ProfileService,
     private instrumentService: InstrumentService,
     private holdingService: HoldingService,
-    private toastr: ToastrService
+    private toastr: ToastrService,
+    private modalService: ModalService
   ) {}
 
   ngOnInit(): void {
@@ -166,5 +168,9 @@ export class HoldingsComponent implements OnInit, OnDestroy {
     if (diffHr < 24) return `${diffHr}h ago`;
     const diffDay = Math.floor(diffHr / 24);
     return diffDay === 1 ? '1 day ago' : `${diffDay} days ago`;
+  }
+
+  openAddInvestmentModal(source: string, holdingId?: string): void {
+    this.modalService.open({ source, holdingId });
   }
 }

@@ -10,6 +10,7 @@ import { ProfileService } from '../../../../core/services/profile.service';
 import { InstrumentService } from '../../../../core/services/instrument.service';
 import { TransactionService } from '../../../../core/services/transaction.service';
 import { AssetService } from '../../../../core/services/asset.service';
+import { ModalService } from '../../../../core/services/modal.service';
 import { AssetIngestResponse, Instrument, Profile } from '../../../../core/models/portfolio.model';
 
 describe('AddInvestmentComponent', () => {
@@ -19,6 +20,7 @@ describe('AddInvestmentComponent', () => {
   let instrumentSvc: jasmine.SpyObj<InstrumentService>;
   let transactionSvc: jasmine.SpyObj<TransactionService>;
   let assetSvc: jasmine.SpyObj<AssetService>;
+  let modalSvc: jasmine.SpyObj<ModalService>;
   let toastr: jasmine.SpyObj<ToastrService>;
 
   const mockProfile: Profile = {
@@ -43,6 +45,9 @@ describe('AddInvestmentComponent', () => {
     assetSvc        = jasmine.createSpyObj('AssetService', [
       'addStock', 'addMutualFund', 'addGold', 'addPpf', 'addFixedDeposit', 'addRecurringDeposit'
     ]);
+    modalSvc        = jasmine.createSpyObj('ModalService', ['open', 'close'], {
+      state$: of({ isOpen: false, data: null })
+    });
     toastr          = jasmine.createSpyObj('ToastrService', ['success', 'error']);
 
     profileSvc.list.and.returnValue(of([mockProfile]));
@@ -57,6 +62,7 @@ describe('AddInvestmentComponent', () => {
         { provide: InstrumentService, useValue: instrumentSvc  },
         { provide: TransactionService,useValue: transactionSvc },
         { provide: AssetService,      useValue: assetSvc       },
+        { provide: ModalService,      useValue: modalSvc       },
         { provide: ToastrService,     useValue: toastr         }
       ]
     }).compileComponents();

@@ -1,4 +1,9 @@
-<div class="page-container">
+<div class="modal-overlay" *ngIf="isModalOpen" (click)="closeModal()">
+  <div class="modal-shell" (click)="$event.stopPropagation()">
+    <button type="button" class="modal-close" aria-label="Close add investment modal" (click)="closeModal()">
+      <i class="fas fa-times"></i>
+    </button>
+    <div class="page-container">
 
   <!-- PAGE HEADER -->
   <div class="page-header" style="align-items: flex-end;">
@@ -571,7 +576,7 @@
             Saved to your profile only — no broker connection needed.
           </div>
           <div class="right">
-            <button class="btn btn-secondary" type="button" (click)="changeType()">Cancel</button>
+            <button class="btn btn-secondary" type="button" (click)="closeModal()">Cancel</button>
             <button class="btn btn-ghost" type="button" (click)="submit(true)" [disabled]="saving">
               Save &amp; add another
             </button>
@@ -587,4 +592,6 @@
     </form>
   </ng-container>
 
+    </div>
+  </div>
 </div>

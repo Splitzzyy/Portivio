@@ -8,6 +8,7 @@ import { HoldingsComponent } from './holdings.component';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { InstrumentService } from '../../../../core/services/instrument.service';
 import { HoldingService } from '../../../../core/services/holding.service';
+import { ModalService } from '../../../../core/services/modal.service';
 import { Holding, Instrument, Profile } from '../../../../core/models/portfolio.model';
 
 describe('HoldingsComponent', () => {
@@ -16,6 +17,7 @@ describe('HoldingsComponent', () => {
   let profileSvc: jasmine.SpyObj<ProfileService>;
   let instrumentSvc: jasmine.SpyObj<InstrumentService>;
   let holdingSvc: jasmine.SpyObj<HoldingService>;
+  let modalSvc: jasmine.SpyObj<ModalService>;
   let toastr: jasmine.SpyObj<ToastrService>;
 
   const mockProfile: Profile = {
@@ -43,6 +45,7 @@ describe('HoldingsComponent', () => {
     profileSvc    = jasmine.createSpyObj('ProfileService',    ['list']);
     instrumentSvc = jasmine.createSpyObj('InstrumentService', ['listInstruments']);
     holdingSvc    = jasmine.createSpyObj('HoldingService',    ['list', 'upsert', 'delete', 'refresh']);
+    modalSvc      = jasmine.createSpyObj('ModalService',      ['open', 'close']);
     toastr        = jasmine.createSpyObj('ToastrService',     ['success', 'error']);
 
     profileSvc.list.and.returnValue(of([mockProfile]));
@@ -56,6 +59,7 @@ describe('HoldingsComponent', () => {
         { provide: ProfileService,    useValue: profileSvc },
         { provide: InstrumentService, useValue: instrumentSvc },
         { provide: HoldingService,    useValue: holdingSvc },
+        { provide: ModalService,      useValue: modalSvc },
         { provide: ToastrService,     useValue: toastr }
       ]
     }).compileComponents();
@@ -107,5 +111,11 @@ describe('HoldingsComponent', () => {
     expect(component.formatRelative(twoDaysAgo.toISOString())).toBe('2 days ago');
 
     expect(component.formatRelative(null)).toBe('—');
+  });
+
+  it('openAddInvestmentModal forwards source and holdingId', () => {
+    component.openAddInvestmentModal('holdings-row-edit', 'h1');
+
+    expect(modalSvc.open).toHaveBeenCalledWith({ source: 'holdings-row-edit', holdingId: 'h1' });
   });
 });
