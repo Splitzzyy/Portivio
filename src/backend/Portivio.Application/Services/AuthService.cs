@@ -25,6 +25,8 @@ namespace Portivio.Application.Services
         Task<Result<AuthResponse>> ForgotPasswordAsync(ForgotPasswordRequest request);
         Task<Result<AuthResponse>> ResetPasswordAsync(ResetPasswordRequest request);
         Task<Result<AuthResponse>> GoogleLoginAsync(GoogleLoginRequest request);
+        Task<Result<AuthResponse>> UpdateProfileAsync(Guid userId, UpdateUserProfileRequest request);
+        Task<Result<AuthResponse>> ChangePasswordAsync(Guid userId, ChangePasswordRequest request);
         Task<Result> LogoutAsync(Guid userId);
         Task<Result> CleanupExpiredTokensAsync();
     }
@@ -545,6 +547,83 @@ namespace Portivio.Application.Services
                 _logger.LogError(ex, "Unhandled error during Google SSO login. IP={IpAddress} Device={DeviceInfo}",
                     request.IpAddress, request.DeviceInfo);
                 return Result<AuthResponse>.InternalServerError($"Google login failed: {ex.Message}");
+            }
+        }
+
+        public async Task<Result<AuthResponse>> UpdateProfileAsync(Guid userId, UpdateUserProfileRequest request)
+        {
+            try
+            {
+                var validationErrors = new List<string>();
+                if (string.IsNullOrWhiteSpace(request.Name))
+                    validationErrors.Add("Name is required");
+
+                if (validationErrors.Any())
+                    return Result<AuthResponse>.BadRequest(string.Join(", ", validationErrors));
+
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+                if (user == null)
+                    return Result<AuthResponse>.NotFound("User not found");
+
+                user.Name = request.Name;
+                _context.Users.Update(user);
+                await _context.SaveChangesAsync();
+
+                var response = new AuthResponse
+                {
+                    Success = true,
+                    Message = "Profile updated successfully",
+                    User = new UserDto
+                    {
+                        Id = user.Id,
+                        Email = user.Email,
+                        Name = user.Name,
+                        IsVerified = user.IsVerified,
+                        IsActive = user.IsActive
+                    }
+                };
+
+                return Result<AuthResponse>.Success(response, "Profile updated successfully", 200);
+            }
+            catch (Exception ex)
+            {
+                return Result<AuthResponse>.InternalServerError($"Update profile failed: {ex.Message}");
+            }
+        }
+
+        public async Task<Result<AuthResponse>> ChangePasswordAsync(Guid userId, ChangePasswordRequest request)
+        {
+            try
+            {
+                var validationErrors = new List<string>();
+                if (string.IsNullOrWhiteSpace(request.NewPassword))
+                    validationErrors.Add("New password is required");
+
+                if (validationErrors.Any())
+                    return Result<AuthResponse>.BadRequest(string.Join(", ", validationErrors));
+
+                if (request.NewPassword != request.ConfirmPassword)
+                    return Result<AuthResponse>.BadRequest("Passwords do not match");
+
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+                if (user == null)
+                    return Result<AuthResponse>.NotFound("User not found");
+
+                user.PasswordHash = HashPassword(request.NewPassword);
+                _context.Users.Update(user);
+                await _context.SaveChangesAsync();
+
+                var response = new AuthResponse
+                {
+                    Success = true,
+                    Message = "Password changed successfully"
+                };
+
+                return Result<AuthResponse>.Success(response, "Password changed successfully", 200);
+            }
+            catch (Exception ex)
+            {
+                return Result<AuthResponse>.InternalServerError($"Change password failed: {ex.Message}");
             }
         }
 

@@ -35,7 +35,7 @@ describe('TransactionsComponent', () => {
   function buildTx(id: string, isDeleted = false): Transaction {
     return {
       id, profileId: 'p1', instrumentId: 'i1',
-      instrumentName: 'TCS', instrumentSymbol: 'TCS',
+      instrumentName: 'TCS', instrumentSymbol: 'TCS', assetTypeName: 'Stocks',
       type: 'BUY', quantity: 1, price: 100, amount: 100,
       transactionDate: '2026-05-01T00:00:00Z', notes: '', isDeleted,
       createdAtUtc: '2026-05-01T00:00:00Z'

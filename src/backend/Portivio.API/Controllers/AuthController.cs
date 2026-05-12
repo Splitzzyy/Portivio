@@ -172,6 +172,38 @@ namespace Portivio.API.Controllers
         }
 
         /// <summary>
+        /// Update user profile
+        /// </summary>
+        [HttpPut("profile")]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateUserProfileRequest request)
+        {
+            if (!TryGetCurrentUserId(out var userId)) return UserNotAuthenticated();
+
+            var result = await _authService.UpdateProfileAsync(userId, request);
+
+            return result.Match(
+                onSuccess: () => Ok(result.Data),
+                onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
+            );
+        }
+
+        /// <summary>
+        /// Change user password
+        /// </summary>
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+        {
+            if (!TryGetCurrentUserId(out var userId)) return UserNotAuthenticated();
+
+            var result = await _authService.ChangePasswordAsync(userId, request);
+
+            return result.Match(
+                onSuccess: () => Ok(result.Data),
+                onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
+            );
+        }
+
+        /// <summary>
         /// Logout user and revoke all tokens
         /// </summary>
         [HttpPost("logout")]

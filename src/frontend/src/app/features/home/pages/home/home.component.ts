@@ -105,7 +105,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   goToProfile(): void {
     this.dropdownOpen = false;
-    // this.router.navigate(['/profile']);
+    this.router.navigate(['/dashboard/my-profile']);
   }
 
   goToSettings(): void {

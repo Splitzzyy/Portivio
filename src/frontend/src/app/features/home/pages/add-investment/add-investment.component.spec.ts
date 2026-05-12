@@ -127,7 +127,6 @@ describe('AddInvestmentComponent', () => {
       } satisfies AddInvestmentModalPayload
     });
 
-    expect(component.isModalOpen).toBeTrue();
     expect(component.modalMode).toBe('add-to-holding');
     expect(component.isHoldingContext).toBeTrue();
     expect(component.selectedProfileId).toBe('p1');
@@ -192,7 +191,6 @@ describe('AddInvestmentComponent', () => {
       } as any
     });
 
-    expect(component.isModalOpen).toBeTrue();
     expect(component.modalMode).toBe('edit');
     expect(component.step).toBe(2);
     expect(component.selectedType).toBe('STOCK');

@@ -860,4 +860,68 @@ namespace Portivio.Tests.Services
             Assert.Equal("Account is inactive", result.Message);
         }
     }
+
+    public class AuthServiceProfileTests
+    {
+        private PortivioDbContext CreateInMemoryDbContext()
+        {
+            var options = new DbContextOptionsBuilder<PortivioDbContext>()
+                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+                .Options;
+            return new PortivioDbContext(options);
+        }
+
+        private IOptions<AppSettingsOptions> CreateJwtOptions() => Options.Create(new AppSettingsOptions { Key = "super-secret-key-that-is-at-least-32-characters-long", Issuer = "Portivio", Audience = "PortivioUsers" });
+
+        [Fact]
+        public async Task UpdateProfileAsync_WithValidData_UpdatesUser()
+        {
+            var context = CreateInMemoryDbContext();
+            var user = new User { Id = Guid.NewGuid(), Email = "test@ex.com", Name = "Old Name", IsActive = true, IsVerified = true };
+            context.Users.Add(user);
+            await context.SaveChangesAsync();
+
+            var service = new AuthService(context, CreateJwtOptions(), Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var result = await service.UpdateProfileAsync(user.Id, new UpdateUserProfileRequest { Name = "New Name" });
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal("New Name", user.Name);
+            Assert.Equal("New Name", result.Data!.User!.Name);
+        }
+
+        [Fact]
+        public async Task ChangePasswordAsync_WithValidData_UpdatesPassword()
+        {
+            var context = CreateInMemoryDbContext();
+            var oldHash = BCrypt.Net.BCrypt.HashPassword("OldPass123");
+            var user = new User { Id = Guid.NewGuid(), Email = "test@ex.com", Name = "Name", PasswordHash = oldHash, IsActive = true, IsVerified = true };
+            context.Users.Add(user);
+            await context.SaveChangesAsync();
+
+            var service = new AuthService(context, CreateJwtOptions(), Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var req = new ChangePasswordRequest { NewPassword = "NewPassword123", ConfirmPassword = "NewPassword123" };
+            var result = await service.ChangePasswordAsync(user.Id, req);
+
+            Assert.True(result.IsSuccess);
+            Assert.NotEqual(oldHash, user.PasswordHash);
+            Assert.True(BCrypt.Net.BCrypt.Verify("NewPassword123", user.PasswordHash));
+        }
+
+        [Fact]
+        public async Task ChangePasswordAsync_WithMismatchingPasswords_ReturnsBadRequest()
+        {
+            var context = CreateInMemoryDbContext();
+            var user = new User { Id = Guid.NewGuid(), Email = "test@ex.com", Name = "Name", IsActive = true, IsVerified = true };
+            context.Users.Add(user);
+            await context.SaveChangesAsync();
+
+            var service = new AuthService(context, CreateJwtOptions(), Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var req = new ChangePasswordRequest { NewPassword = "NewPassword123", ConfirmPassword = "DifferentPassword" };
+            var result = await service.ChangePasswordAsync(user.Id, req);
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(400, result.StatusCode);
+            Assert.Equal("Passwords do not match", result.Message);
+        }
+    }
 }
