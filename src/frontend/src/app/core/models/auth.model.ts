@@ -49,6 +49,15 @@ export interface GoogleLoginRequest {
   ipAddress?: string;
 }
 
+export interface UpdateUserProfileRequest {
+  name: string;
+}
+
+export interface ChangePasswordRequest {
+  newPassword: string;
+  confirmPassword: string;
+}
+
 export interface AuthResponse {
   success: boolean;
   message?: string;

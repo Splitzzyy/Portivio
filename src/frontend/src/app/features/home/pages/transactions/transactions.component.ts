@@ -1,4 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
@@ -13,6 +14,7 @@ import {
 import { InstrumentService } from '../../../../core/services/instrument.service';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { TransactionService } from '../../../../core/services/transaction.service';
+import { ModalService } from '../../../../core/services/modal.service';
 
 interface TxForm {
   instrumentId: string;
@@ -61,7 +63,9 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     private profileService: ProfileService,
     private instrumentService: InstrumentService,
     private transactionService: TransactionService,
-    private toastr: ToastrService
+    private toastr: ToastrService,
+    private modalService: ModalService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -271,5 +275,9 @@ export class TransactionsComponent implements OnInit, OnDestroy {
 
   formatDate(s: string): string {
     return new Date(s).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  openInvestmentModal(source?: string): void {
+    this.router.navigate(['/dashboard/add-investment']);
   }
 }

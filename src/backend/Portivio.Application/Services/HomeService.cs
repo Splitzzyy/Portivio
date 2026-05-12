@@ -43,7 +43,7 @@ namespace Portivio.Application.Services
                     .AsNoTracking()
                     .Where(p => p.UserId == userId)
                     .Include(p => p.Holdings).ThenInclude(h => h.Instrument).ThenInclude(i => i.AssetType)
-                    .Include(p => p.Transactions).ThenInclude(t => t.Instrument)
+                    .Include(p => p.Transactions).ThenInclude(t => t.Instrument).ThenInclude(i => i.AssetType)
                     .Include(p => p.SIPPlans).ThenInclude(s => s.Instrument)
                     .Include(p => p.PortfolioPerformances)
                     .AsSplitQuery()
@@ -78,6 +78,7 @@ namespace Portivio.Application.Services
                             Id = t.Id,
                             InstrumentId = t.InstrumentId,
                             InstrumentSymbol = t.Instrument.Symbol,
+                            AssetType = t.Instrument.AssetType.Name,
                             Type = t.Type.ToString(),
                             Quantity = t.Quantity,
                             Price = t.Price,

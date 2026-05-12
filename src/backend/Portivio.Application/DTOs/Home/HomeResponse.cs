@@ -63,6 +63,7 @@ namespace Portivio.Application.DTOs.Home
         public Guid Id { get; set; }
         public Guid InstrumentId { get; set; }
         public string InstrumentSymbol { get; set; } = null!;
+        public string AssetType { get; set; } = null!;
         public string Type { get; set; } = null!;
         public decimal Quantity { get; set; }
         public decimal Price { get; set; }

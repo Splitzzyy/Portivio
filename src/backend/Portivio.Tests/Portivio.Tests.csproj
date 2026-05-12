@@ -15,11 +15,13 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Moq" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Portivio.API\Portivio.API.csproj" />
     <ProjectReference Include="..\Portivio.Application\Portivio.Application.csproj" />
     <ProjectReference Include="..\Portivio.Domain\Portivio.Domain.csproj" />
     <ProjectReference Include="..\Portivio.Infrastructure\Portivio.Infrastructure.csproj" />

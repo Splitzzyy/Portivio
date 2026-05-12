@@ -9,9 +9,12 @@
         <i class="fas" [class.fa-eye]="!showDeleted" [class.fa-eye-slash]="showDeleted"></i>
         {{ showDeleted ? 'Hide deleted' : 'Show deleted' }}
       </button>
-      <a class="btn btn-primary" routerLink="/dashboard/add-investment" *ngIf="instruments.length">
+      <button type="button" class="btn btn-secondary" (click)="openInvestmentModal('transactions-add-investment')">
+        <i class="fas fa-plus"></i> Add Investment
+      </button>
+      <button type="button" class="btn btn-primary" (click)="openCreate()" *ngIf="instruments.length">
         <i class="fas fa-plus"></i> New Transaction
-      </a>
+      </button>
     </div>
   </div>
 

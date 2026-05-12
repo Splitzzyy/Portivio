@@ -12,7 +12,9 @@ import {
   ResetPassword,
   VerifyEmailRequest,
   GoogleLoginRequest,
-  SimpleResponse
+  SimpleResponse,
+  UpdateUserProfileRequest,
+  ChangePasswordRequest
 } from '../models/auth.model';
 
 /**
@@ -108,6 +110,21 @@ export class AuthService {
 
   resetPassword(reset: ResetPassword): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.API_URL}/reset-password`, reset);
+  }
+
+  updateProfile(request: UpdateUserProfileRequest): Observable<AuthResponse> {
+    return this.http.put<AuthResponse>(`${this.API_URL}/profile`, request).pipe(
+      tap(response => {
+        if (response && response.success && response.user) {
+          localStorage.setItem(this.USER_KEY, JSON.stringify(response.user));
+          this.userSubject.next(response.user);
+        }
+      })
+    );
+  }
+
+  changePassword(request: ChangePasswordRequest): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.API_URL}/change-password`, request);
   }
 
   verifyEmail(request: VerifyEmailRequest): Observable<AuthResponse> {

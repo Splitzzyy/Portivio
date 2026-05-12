@@ -331,6 +331,81 @@ export namespace PriceHistory {
   }
 }
 
+export namespace Assets {
+  export interface AddStockRequest {
+    name: string;
+    symbol: string;
+    exchange: string;
+    isin?: string;
+    quantity: number;
+    price: number;
+    date: Iso;
+    notes?: string;
+  }
+
+  export interface AddMutualFundRequest {
+    schemeName: string;
+    schemeCode: string;
+    isin?: string;
+    plan?: string;
+    option?: string;
+    units: number;
+    navPerUnit: number;
+    date: Iso;
+    notes?: string;
+  }
+
+  export interface AddGoldRequest {
+    form: string;
+    purity: string;
+    weightGrams: number;
+    ratePerGram: number;
+    makingChargesInr: number;
+    date: Iso;
+    notes?: string;
+  }
+
+  export interface AddPpfRequest {
+    accountNo: string;
+    openedOn: Iso;
+    currentRatePercent: number;
+    initialContribution: number;
+    contributionDate: Iso;
+    notes?: string;
+  }
+
+  export interface AddFixedDepositRequest {
+    bank: string;
+    accountNo: string;
+    principal: number;
+    ratePercent: number;
+    compounding: string;
+    payoutFrequency: string;
+    startDate: Iso;
+    maturityDate: Iso;
+    prematurePenaltyPct: number;
+    notes?: string;
+  }
+
+  export interface AddRecurringDepositRequest {
+    bank: string;
+    accountNo: string;
+    monthlyAmount: number;
+    ratePercent: number;
+    startDate: Iso;
+    tenureMonths: number;
+    notes?: string;
+  }
+
+  export interface AssetIngestResponse {
+    instrumentId: Guid;
+    instrumentName: string;
+    symbol: string;
+    transactionId: Guid;
+    message: string;
+  }
+}
+
 export interface ApiErrorBody {
   message?: string;
   errors?: string[] | Record<string, string[]>;

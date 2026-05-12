@@ -9,6 +9,7 @@ import { HoldingsComponent } from './pages/holdings/holdings.component';
 import { TransactionsComponent } from './pages/transactions/transactions.component';
 import { SipPlansComponent } from './pages/sip-plans/sip-plans.component';
 import { AddInvestmentComponent } from './pages/add-investment/add-investment.component';
+import { MyProfileComponent } from './pages/my-profile/my-profile.component';
 
 @NgModule({
   declarations: [
@@ -18,7 +19,8 @@ import { AddInvestmentComponent } from './pages/add-investment/add-investment.co
     HoldingsComponent,
     TransactionsComponent,
     SipPlansComponent,
-    AddInvestmentComponent
+    AddInvestmentComponent,
+    MyProfileComponent
   ],
   imports: [CommonModule, SharedModule, HomeRoutingModule]
 })

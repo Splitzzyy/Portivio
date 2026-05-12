@@ -1,10 +1,10 @@
 import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { Observable, Subject } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import { finalize, takeUntil } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
+import { Router, ActivatedRoute } from '@angular/router';
 import {
   Profile, Instrument, Transaction,
   AddStockRequest, AddMutualFundRequest, AddGoldRequest,
@@ -15,8 +15,27 @@ import { ProfileService } from '../../../../core/services/profile.service';
 import { InstrumentService } from '../../../../core/services/instrument.service';
 import { TransactionService } from '../../../../core/services/transaction.service';
 import { AssetService } from '../../../../core/services/asset.service';
+import { ModalService } from '../../../../core/services/modal.service';
 
 type AssetTypeId = 'STOCK' | 'MF' | 'GOLD' | 'PPF' | 'FDRD';
+
+type AddInvestmentModalMode = 'create' | 'add-to-holding' | 'edit';
+
+interface AddInvestmentModalPayload {
+  source: string;
+  holdingId?: string;
+  profileId?: string;
+  instrumentId?: string;
+  assetTypeName?: string;
+  instrumentName?: string;
+  instrumentSymbol?: string;
+  quantity?: number;
+  price?: number;
+  mode?: 'edit';
+  instrument?: Instrument;
+  transaction?: Transaction;
+  asset?: unknown;
+}
 
 interface AssetTypeConfig {
   id: AssetTypeId;
@@ -84,6 +103,8 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
   saving = false;
   priceFetching = false;
   errors: Record<string, string> = {};
+  modalMode: AddInvestmentModalMode = 'create';
+  modalData: AddInvestmentModalPayload | null = null;
 
   stockQuery = '';
   stockDropdownOpen = false;
@@ -103,9 +124,11 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
     private instrumentService: InstrumentService,
     private transactionService: TransactionService,
     private assetService: AssetService,
+    private modalService: ModalService,
     private toastr: ToastrService,
+    private http: HttpClient,
     private router: Router,
-    private http: HttpClient
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
@@ -122,6 +145,23 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
     this.instrumentService.listInstruments().pipe(takeUntil(this.destroy$)).subscribe({
       next: (data) => (this.instruments = data ?? [])
     });
+
+    // Handle initial state from Router
+    const navigation = this.router.getCurrentNavigation();
+    const stateData = navigation?.extras.state?.['data'] || history.state?.['data'];
+    
+    if (stateData) {
+      this.modalData = this.parseModalPayload(stateData);
+      this.modalMode =
+        this.modalData?.mode === 'edit' || !!this.modalData?.transaction
+          ? 'edit'
+          : this.modalData?.holdingId
+            ? 'add-to-holding'
+            : 'create';
+      
+      this.resetForModalOpen();
+      this.applyModalContext();
+    }
   }
 
   ngOnDestroy(): void {
@@ -147,6 +187,7 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
   }
 
   pickType(type: AssetTypeConfig): void {
+    if (this.isInstrumentSelectionLocked) return;
     this.selectedType = type.id;
     this.resetCurrentForm();
     this.errors = {};
@@ -154,12 +195,30 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
   }
 
   changeType(): void {
+    if (this.isInstrumentSelectionLocked) return;
     this.selectedType = null;
     this.step = 1;
   }
 
   get selectedTypeConfig(): AssetTypeConfig | undefined {
     return this.assetTypes.find(t => t.id === this.selectedType);
+  }
+
+  getTxAssetConfig(tx: Transaction): AssetTypeConfig | undefined {
+    const typeId = this.mapHoldingAssetType(tx.assetTypeName);
+    return this.assetTypes.find(t => t.id === typeId);
+  }
+
+  get isHoldingContext(): boolean {
+    return this.modalMode === 'add-to-holding' && !!this.modalData;
+  }
+
+  get isEditContext(): boolean {
+    return this.modalMode === 'edit' && !!this.modalData;
+  }
+
+  get isInstrumentSelectionLocked(): boolean {
+    return this.isHoldingContext || this.isEditContext;
   }
 
   get filteredStocks(): Instrument[] {
@@ -187,6 +246,7 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
   }
 
   selectStock(inst: Instrument): void {
+    if (this.isInstrumentSelectionLocked) return;
     this.stockForm.name = inst.name;
     this.stockForm.symbol = inst.symbol;
     this.stockQuery = inst.symbol;
@@ -226,6 +286,7 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
   }
 
   selectMf(inst: Instrument): void {
+    if (this.isInstrumentSelectionLocked) return;
     this.mfForm.schemeName = inst.name;
     this.mfForm.schemeCode = inst.symbol;
     this.mfQuery = inst.name;
@@ -342,23 +403,36 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
     this.saving = true;
     obs.pipe(finalize(() => (this.saving = false)), takeUntil(this.destroy$)).subscribe({
       next: () => {
-        this.toastr.success(`${this.selectedTypeConfig?.name ?? 'Investment'} saved successfully`);
-        if (addAnother) {
+        const verb = this.isEditContext ? 'updated' : 'saved';
+        this.toastr.success(`${this.selectedTypeConfig?.name ?? 'Investment'} ${verb} successfully`);
+        if (!this.isEditContext && addAnother) {
           this.resetCurrentForm();
           this.errors = {};
+          this.applyModalContext();
         } else {
-          this.router.navigate(['/dashboard/transactions']);
+          this.closeModal();
         }
       },
       error: (err) => this.toastr.error(err?.error?.message || 'Save failed')
     });
   }
 
+  closeModal(): void {
+    // Navigate back or to dashboard
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      this.router.navigate(['/dashboard']);
+    }
+  }
+
   private buildApiCall(): Observable<AssetIngestResponse> | null {
     const pid = this.selectedProfileId;
+    const instrumentId = this.modalData?.instrumentId || '';
+    const canUpdate = this.isEditContext && instrumentId;
     switch (this.selectedType) {
       case 'STOCK':
-        return this.assetService.addStock(pid, {
+        return (canUpdate ? this.assetService.updateStock(pid, instrumentId, {
           name: this.stockForm.name,
           symbol: this.stockForm.symbol.toUpperCase(),
           exchange: this.stockForm.exchange || 'NSE',
@@ -367,9 +441,18 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
           price: Number(this.stockForm.price),
           date: this.stockForm.date,
           notes: this.stockForm.notes || undefined
-        } as AddStockRequest);
+        } as AddStockRequest) : this.assetService.addStock(pid, {
+          name: this.stockForm.name,
+          symbol: this.stockForm.symbol.toUpperCase(),
+          exchange: this.stockForm.exchange || 'NSE',
+          isin: this.stockForm.isin || undefined,
+          quantity: Number(this.stockForm.quantity),
+          price: Number(this.stockForm.price),
+          date: this.stockForm.date,
+          notes: this.stockForm.notes || undefined
+        } as AddStockRequest));
       case 'MF':
-        return this.assetService.addMutualFund(pid, {
+        return (canUpdate ? this.assetService.updateMutualFund(pid, instrumentId, {
           schemeName: this.mfForm.schemeName,
           schemeCode: this.mfForm.schemeCode,
           isin: this.mfForm.isin || undefined,
@@ -377,11 +460,19 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
           navPerUnit: Number(this.mfForm.nav),
           date: this.mfForm.date,
           notes: this.mfForm.folio || undefined
-        } as AddMutualFundRequest);
+        } as AddMutualFundRequest) : this.assetService.addMutualFund(pid, {
+          schemeName: this.mfForm.schemeName,
+          schemeCode: this.mfForm.schemeCode,
+          isin: this.mfForm.isin || undefined,
+          units: Number(this.mfForm.units),
+          navPerUnit: Number(this.mfForm.nav),
+          date: this.mfForm.date,
+          notes: this.mfForm.folio || undefined
+        } as AddMutualFundRequest));
       case 'GOLD': {
         const g = Number(this.goldForm.grams) || 0;
         const a = Number(this.goldForm.amount) || 0;
-        return this.assetService.addGold(pid, {
+        const req = {
           form: this.goldForm.subtype,
           purity: this.goldForm.purity,
           weightGrams: g,
@@ -389,20 +480,28 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
           makingChargesInr: 0,
           date: this.goldForm.date,
           notes: this.goldForm.source || undefined
-        } as AddGoldRequest);
+        } as AddGoldRequest;
+        return canUpdate ? this.assetService.updateGold(pid, instrumentId, req) : this.assetService.addGold(pid, req);
       }
       case 'PPF':
-        return this.assetService.addPpf(pid, {
+        return (canUpdate ? this.assetService.updatePpf(pid, instrumentId, {
+          accountNo: this.ppfForm.accountNo || '',
+          openedOn: this.ppfForm.openedOn,
+          currentRatePercent: Number(this.ppfForm.currentRatePercent),
+          initialContribution: Number(this.ppfForm.amount),
+          contributionDate: this.ppfForm.date,
+          notes: this.ppfForm.notes || undefined
+        } as AddPpfRequest) : this.assetService.addPpf(pid, {
           accountNo: '',
           openedOn: this.ppfForm.openedOn,
           currentRatePercent: Number(this.ppfForm.currentRatePercent),
           initialContribution: Number(this.ppfForm.amount),
           contributionDate: this.ppfForm.date,
           notes: this.ppfForm.notes || undefined
-        } as AddPpfRequest);
+        } as AddPpfRequest));
       case 'FDRD':
         if (this.fdRdForm.subtype === 'RD') {
-          return this.assetService.addRecurringDeposit(pid, {
+          const req = {
             bank: this.fdRdForm.bank,
             accountNo: this.fdRdForm.accountNo || '',
             monthlyAmount: Number(this.fdRdForm.amount),
@@ -410,9 +509,10 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
             startDate: this.fdRdForm.startDate,
             tenureMonths: Number(this.fdRdForm.tenureMonths),
             notes: this.fdRdForm.notes || undefined
-          } as AddRecurringDepositRequest);
+          } as AddRecurringDepositRequest;
+          return canUpdate ? this.assetService.updateRecurringDeposit(pid, instrumentId, req) : this.assetService.addRecurringDeposit(pid, req);
         }
-        return this.assetService.addFixedDeposit(pid, {
+        const req = {
           bank: this.fdRdForm.bank,
           accountNo: this.fdRdForm.accountNo || '',
           principal: Number(this.fdRdForm.amount),
@@ -423,7 +523,8 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
           maturityDate: this.fdRdForm.maturityDate,
           prematurePenaltyPct: 0,
           notes: this.fdRdForm.notes || undefined
-        } as AddFixedDepositRequest);
+        } as AddFixedDepositRequest;
+        return canUpdate ? this.assetService.updateFixedDeposit(pid, instrumentId, req) : this.assetService.addFixedDeposit(pid, req);
       default:
         return null;
     }
@@ -461,5 +562,263 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
 
   private defaultFdRd(): FdRdForm {
     return { subtype: 'FD', bank: '', accountNo: '', amount: '', ratePercent: '', compounding: 'Quarterly', startDate: this.today(), maturityDate: '', tenureMonths: '', notes: '' };
+  }
+
+  private resetForModalOpen(): void {
+    this.step = 1;
+    this.selectedType = null;
+    this.errors = {};
+    this.stockDropdownOpen = false;
+    this.mfDropdownOpen = false;
+  }
+
+  private parseModalPayload(data: unknown): AddInvestmentModalPayload | null {
+    if (!data || typeof data !== 'object') return null;
+    const maybe = data as Partial<AddInvestmentModalPayload>;
+    if (typeof maybe.source !== 'string' || maybe.source.trim().length === 0) return null;
+    const payload: AddInvestmentModalPayload = { source: maybe.source };
+    if (typeof maybe.holdingId === 'string' && maybe.holdingId.trim().length > 0) payload.holdingId = maybe.holdingId;
+    if (typeof maybe.profileId === 'string' && maybe.profileId.trim().length > 0) payload.profileId = maybe.profileId;
+    if (typeof maybe.instrumentId === 'string' && maybe.instrumentId.trim().length > 0) payload.instrumentId = maybe.instrumentId;
+    if (typeof maybe.assetTypeName === 'string' && maybe.assetTypeName.trim().length > 0) payload.assetTypeName = maybe.assetTypeName;
+    if (typeof maybe.instrumentName === 'string' && maybe.instrumentName.trim().length > 0) payload.instrumentName = maybe.instrumentName;
+    if (typeof maybe.instrumentSymbol === 'string' && maybe.instrumentSymbol.trim().length > 0) payload.instrumentSymbol = maybe.instrumentSymbol;
+    if (typeof maybe.quantity === 'number') payload.quantity = maybe.quantity;
+    if (typeof maybe.price === 'number') payload.price = maybe.price;
+    if ((maybe as any).mode === 'edit') payload.mode = 'edit';
+    if ((maybe as any).instrument && typeof (maybe as any).instrument === 'object') payload.instrument = (maybe as any).instrument as Instrument;
+    if ((maybe as any).transaction && typeof (maybe as any).transaction === 'object') payload.transaction = (maybe as any).transaction as Transaction;
+    if ((maybe as any).asset) payload.asset = (maybe as any).asset;
+    return payload;
+  }
+
+  private applyModalContext(): void {
+    if (!this.modalData) return;
+    if (this.isEditContext) {
+      this.applyEditModalContext();
+      return;
+    }
+    if (!this.isHoldingContext) return;
+    this.applyHoldingModalContext();
+  }
+
+  private applyHoldingModalContext(): void {
+    if (!this.modalData) return;
+    if (this.modalData.profileId) {
+      this.selectedProfileId = this.modalData.profileId;
+      this.loadRecentTransactions();
+    }
+
+    const assetTypeId = this.mapHoldingAssetType(this.modalData.assetTypeName);
+    if (!assetTypeId) return;
+
+    this.selectedType = assetTypeId;
+    this.step = 2;
+    this.resetCurrentForm();
+
+    const q = this.modalData.quantity != null ? String(this.modalData.quantity) : '';
+    const p = this.modalData.price != null ? String(this.modalData.price) : '';
+
+    switch (assetTypeId) {
+      case 'STOCK':
+        this.stockForm.name = this.modalData.instrumentName || '';
+        this.stockForm.symbol = this.modalData.instrumentSymbol || '';
+        this.stockForm.quantity = q;
+        this.stockForm.price = p;
+        this.stockQuery = this.modalData.instrumentName || this.modalData.instrumentSymbol || '';
+        break;
+      case 'MF':
+        this.mfForm.schemeName = this.modalData.instrumentName || '';
+        this.mfForm.schemeCode = this.modalData.instrumentSymbol || '';
+        this.mfForm.units = q;
+        this.mfForm.nav = p;
+        this.mfQuery = this.modalData.instrumentName || this.modalData.instrumentSymbol || '';
+        break;
+      case 'GOLD':
+        this.goldForm.subtype = this.resolveGoldSubtype(this.modalData.instrumentName);
+        this.goldForm.grams = q;
+        this.goldForm.amount = String((this.modalData.quantity || 0) * (this.modalData.price || 0));
+        break;
+      case 'FDRD':
+        this.fdRdForm.subtype = this.resolveDepositSubtype(this.modalData.assetTypeName);
+        this.fdRdForm.amount = String((this.modalData.quantity || 0) * (this.modalData.price || 0));
+        break;
+    }
+  }
+
+  private applyEditModalContext(): void {
+    if (!this.modalData) return;
+
+    if (this.modalData.profileId) {
+      this.selectedProfileId = this.modalData.profileId;
+      this.loadRecentTransactions();
+    }
+
+    const assetTypeId = this.mapHoldingAssetType(this.modalData.assetTypeName || this.modalData.instrument?.assetTypeName);
+    if (!assetTypeId) return;
+
+    this.selectedType = assetTypeId;
+    this.step = 2;
+    this.resetCurrentForm();
+
+    const tx = this.modalData.transaction;
+    const inst = this.modalData.instrument;
+    const date = (s: string | undefined) => (s || '').slice(0, 10);
+
+    switch (assetTypeId) {
+      case 'STOCK': {
+        const stock = this.modalData.asset as Partial<AddStockRequest> | undefined;
+        this.stockForm.name = stock?.name || this.modalData.instrumentName || inst?.name || '';
+        this.stockForm.symbol = stock?.symbol || this.modalData.instrumentSymbol || inst?.symbol || '';
+        this.stockForm.exchange = stock?.exchange || 'NSE';
+        this.stockForm.isin = stock?.isin || '';
+        if (tx) {
+          this.stockForm.quantity = String(tx.quantity ?? '');
+          this.stockForm.price = String(tx.price ?? '');
+          this.stockForm.date = date(tx.transactionDate);
+          this.stockForm.notes = tx.notes || '';
+        } else if (stock) {
+          this.stockForm.quantity = stock.quantity != null ? String(stock.quantity) : '';
+          this.stockForm.price = stock.price != null ? String(stock.price) : '';
+          this.stockForm.date = (stock.date || this.today()).slice(0, 10);
+          this.stockForm.notes = (stock as any).notes || '';
+        } else if (this.modalData.quantity != null || this.modalData.price != null) {
+          this.stockForm.quantity = this.modalData.quantity != null ? String(this.modalData.quantity) : '';
+          this.stockForm.price = this.modalData.price != null ? String(this.modalData.price) : '';
+        }
+        this.stockQuery = this.stockForm.name || this.stockForm.symbol;
+        break;
+      }
+      case 'MF': {
+        const mf = this.modalData.asset as Partial<AddMutualFundRequest> | undefined;
+        this.mfForm.schemeName = mf?.schemeName || this.modalData.instrumentName || inst?.name || '';
+        this.mfForm.schemeCode = mf?.schemeCode || this.modalData.instrumentSymbol || inst?.symbol || '';
+        this.mfForm.isin = mf?.isin || '';
+        if (tx) {
+          this.mfForm.units = String(tx.quantity ?? '');
+          this.mfForm.nav = String(tx.price ?? '');
+          this.mfForm.date = date(tx.transactionDate);
+          this.mfForm.folio = tx.notes || '';
+        } else if (mf) {
+          this.mfForm.units = mf.units != null ? String(mf.units) : '';
+          this.mfForm.nav = mf.navPerUnit != null ? String(mf.navPerUnit) : '';
+          this.mfForm.date = (mf.date || this.today()).slice(0, 10);
+          this.mfForm.folio = (mf as any).notes || '';
+        } else if (this.modalData.quantity != null || this.modalData.price != null) {
+          this.mfForm.units = this.modalData.quantity != null ? String(this.modalData.quantity) : '';
+          this.mfForm.nav = this.modalData.price != null ? String(this.modalData.price) : '';
+        }
+        this.mfQuery = this.mfForm.schemeName || this.mfForm.schemeCode;
+        break;
+      }
+      case 'GOLD': {
+        const gold = this.modalData.asset as Partial<AddGoldRequest> | undefined;
+        this.goldForm.subtype = gold?.form || this.resolveGoldSubtype(this.modalData.instrumentName || inst?.name);
+        this.goldForm.purity = gold?.purity || '24K';
+        if (tx) {
+          this.goldForm.grams = String(tx.quantity ?? '');
+          this.goldForm.amount = String(tx.amount ?? '');
+          this.goldForm.date = date(tx.transactionDate);
+          this.goldForm.source = tx.notes || '';
+        } else if (gold) {
+          const total = (gold.weightGrams || 0) * (gold.ratePerGram || 0) + (gold.makingChargesInr || 0);
+          this.goldForm.grams = gold.weightGrams != null ? String(gold.weightGrams) : '';
+          this.goldForm.amount = total ? String(total) : '';
+          this.goldForm.date = (gold.date || this.today()).slice(0, 10);
+          this.goldForm.source = (gold as any).notes || '';
+        } else if (this.modalData.quantity != null || this.modalData.price != null) {
+          this.goldForm.grams = this.modalData.quantity != null ? String(this.modalData.quantity) : '';
+          this.goldForm.amount = String((this.modalData.quantity || 0) * (this.modalData.price || 0));
+        }
+        break;
+      }
+      case 'PPF': {
+        const ppf = this.modalData.asset as Partial<AddPpfRequest> | undefined;
+        this.ppfForm.accountNo = ppf?.accountNo || '';
+        this.ppfForm.openedOn = ppf?.openedOn ? (ppf.openedOn as any).slice(0, 10) : '';
+        this.ppfForm.currentRatePercent = ppf?.currentRatePercent != null ? String(ppf.currentRatePercent) : this.ppfForm.currentRatePercent;
+        if (tx) {
+          this.ppfForm.amount = String(tx.amount ?? '');
+          this.ppfForm.date = date(tx.transactionDate);
+          this.ppfForm.notes = tx.notes || '';
+        } else if (ppf) {
+          this.ppfForm.amount = ppf.initialContribution != null ? String(ppf.initialContribution) : '';
+          this.ppfForm.date = ppf.contributionDate ? (ppf.contributionDate as any).slice(0, 10) : this.today();
+          this.ppfForm.notes = (ppf as any).notes || '';
+        } else if (this.modalData.quantity != null || this.modalData.price != null) {
+          this.ppfForm.amount = String((this.modalData.quantity || 0) * (this.modalData.price || 0));
+        }
+        break;
+      }
+      case 'FDRD': {
+        const maybe = this.modalData.asset as Partial<AddFixedDepositRequest & AddRecurringDepositRequest> | undefined;
+        // Infer subtype either from asset payload, assetTypeName, or transaction notes/instrument name.
+        this.fdRdForm.subtype =
+          (maybe && (maybe as any).monthlyAmount != null) ? 'RD' :
+          (maybe && (maybe as any).principal != null) ? 'FD' :
+          this.resolveDepositSubtype(this.modalData.assetTypeName || this.modalData.instrument?.assetTypeName);
+
+        if (this.fdRdForm.subtype === 'RD') {
+          const rd = this.modalData.asset as Partial<AddRecurringDepositRequest> | undefined;
+          this.fdRdForm.bank = rd?.bank || '';
+          this.fdRdForm.accountNo = rd?.accountNo || '';
+          this.fdRdForm.ratePercent = rd?.ratePercent != null ? String(rd.ratePercent) : '';
+          if (tx) {
+            this.fdRdForm.amount = String(tx.amount ?? '');
+            this.fdRdForm.startDate = date(tx.transactionDate);
+            this.fdRdForm.notes = tx.notes || '';
+          } else if (rd) {
+            this.fdRdForm.amount = rd.monthlyAmount != null ? String(rd.monthlyAmount) : '';
+            this.fdRdForm.startDate = rd.startDate ? (rd.startDate as any).slice(0, 10) : this.today();
+            this.fdRdForm.tenureMonths = rd.tenureMonths != null ? String(rd.tenureMonths) : '';
+            this.fdRdForm.notes = (rd as any).notes || '';
+          } else if (this.modalData.quantity != null || this.modalData.price != null) {
+            this.fdRdForm.amount = String((this.modalData.quantity || 0) * (this.modalData.price || 0));
+          }
+        } else {
+          const fd = this.modalData.asset as Partial<AddFixedDepositRequest> | undefined;
+          this.fdRdForm.bank = fd?.bank || '';
+          this.fdRdForm.accountNo = fd?.accountNo || '';
+          this.fdRdForm.ratePercent = fd?.ratePercent != null ? String(fd.ratePercent) : '';
+          this.fdRdForm.compounding = fd?.compounding || this.fdRdForm.compounding;
+          if (tx) {
+            this.fdRdForm.amount = String(tx.amount ?? '');
+            this.fdRdForm.startDate = date(tx.transactionDate);
+            this.fdRdForm.notes = tx.notes || '';
+          } else if (fd) {
+            this.fdRdForm.amount = fd.principal != null ? String(fd.principal) : '';
+            this.fdRdForm.startDate = fd.startDate ? (fd.startDate as any).slice(0, 10) : this.today();
+            this.fdRdForm.maturityDate = fd.maturityDate ? (fd.maturityDate as any).slice(0, 10) : '';
+            this.fdRdForm.notes = (fd as any).notes || '';
+          } else if (this.modalData.quantity != null || this.modalData.price != null) {
+            this.fdRdForm.amount = String((this.modalData.quantity || 0) * (this.modalData.price || 0));
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  private mapHoldingAssetType(assetTypeName: string | undefined): AssetTypeId | null {
+    const normalized = (assetTypeName || '').toLowerCase();
+    if (!normalized) return null;
+    if (normalized.includes('equity') || normalized.includes('stock')) return 'STOCK';
+    if (normalized.includes('mutual') || normalized.includes('fund')) return 'MF';
+    if (normalized.includes('gold')) return 'GOLD';
+    if (normalized.includes('ppf')) return 'PPF';
+    if (normalized.includes('fixed') || normalized.includes('fd') || normalized.includes('recurring') || normalized.includes('rd')) return 'FDRD';
+    return null;
+  }
+
+  private resolveGoldSubtype(instrumentName: string | undefined): string {
+    const normalized = (instrumentName || '').toLowerCase();
+    if (normalized.includes('physical')) return 'Physical';
+    if (normalized.includes('sgb')) return 'SGB';
+    return 'Digital';
+  }
+
+  private resolveDepositSubtype(assetTypeName: string | undefined): string {
+    const normalized = (assetTypeName || '').toLowerCase();
+    return normalized.includes('recurring') || normalized.includes('rd') ? 'RD' : 'FD';
   }
 }

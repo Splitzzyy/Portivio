@@ -4,12 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { ToastrService } from 'ngx-toastr';
-import { of, throwError } from 'rxjs';
+import { BehaviorSubject, of, throwError } from 'rxjs';
 import { AddInvestmentComponent } from './add-investment.component';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { InstrumentService } from '../../../../core/services/instrument.service';
 import { TransactionService } from '../../../../core/services/transaction.service';
 import { AssetService } from '../../../../core/services/asset.service';
+import { ModalService, ModalState } from '../../../../core/services/modal.service';
 import { AssetIngestResponse, Instrument, Profile } from '../../../../core/models/portfolio.model';
 
 describe('AddInvestmentComponent', () => {
@@ -19,7 +20,19 @@ describe('AddInvestmentComponent', () => {
   let instrumentSvc: jasmine.SpyObj<InstrumentService>;
   let transactionSvc: jasmine.SpyObj<TransactionService>;
   let assetSvc: jasmine.SpyObj<AssetService>;
+  let modalSvc: jasmine.SpyObj<ModalService>;
   let toastr: jasmine.SpyObj<ToastrService>;
+  let modalState$: BehaviorSubject<ModalState>;
+
+  type AddInvestmentModalPayload = {
+    source: string;
+    holdingId?: string;
+    profileId?: string;
+    instrumentId?: string;
+    assetTypeName?: string;
+    instrumentName?: string;
+    instrumentSymbol?: string;
+  };
 
   const mockProfile: Profile = {
     id: 'p1', userId: 'u1', name: 'Personal',
@@ -42,7 +55,12 @@ describe('AddInvestmentComponent', () => {
     transactionSvc  = jasmine.createSpyObj('TransactionService', ['list']);
     assetSvc        = jasmine.createSpyObj('AssetService', [
       'addStock', 'addMutualFund', 'addGold', 'addPpf', 'addFixedDeposit', 'addRecurringDeposit'
+      , 'updateStock', 'updateMutualFund', 'updateGold', 'updatePpf', 'updateFixedDeposit', 'updateRecurringDeposit'
     ]);
+    modalState$     = new BehaviorSubject<ModalState>({ isOpen: false, data: null });
+    modalSvc        = jasmine.createSpyObj('ModalService', ['open', 'close'], {
+      state$: modalState$.asObservable()
+    });
     toastr          = jasmine.createSpyObj('ToastrService', ['success', 'error']);
 
     profileSvc.list.and.returnValue(of([mockProfile]));
@@ -57,6 +75,7 @@ describe('AddInvestmentComponent', () => {
         { provide: InstrumentService, useValue: instrumentSvc  },
         { provide: TransactionService,useValue: transactionSvc },
         { provide: AssetService,      useValue: assetSvc       },
+        { provide: ModalService,      useValue: modalSvc       },
         { provide: ToastrService,     useValue: toastr         }
       ]
     }).compileComponents();
@@ -92,6 +111,390 @@ describe('AddInvestmentComponent', () => {
     expect(transactionSvc.list).toHaveBeenCalledWith('p1', 1, 5);
   });
 
+  // ---- modal payload consumption ----
+
+  it('uses holdings modal payload to prefill and constrain the workflow', () => {
+    modalState$.next({
+      isOpen: true,
+      data: {
+        source: 'holdings-row-add',
+        holdingId: 'h1',
+        profileId: 'p1',
+        instrumentId: 'i1',
+        assetTypeName: 'Equity',
+        instrumentName: 'TCS Ltd',
+        instrumentSymbol: 'TCS'
+      } satisfies AddInvestmentModalPayload
+    });
+
+    expect(component.modalMode).toBe('add-to-holding');
+    expect(component.isHoldingContext).toBeTrue();
+    expect(component.selectedProfileId).toBe('p1');
+    expect(component.selectedType).toBe('STOCK');
+    expect(component.step).toBe(2);
+    expect(component.stockForm.name).toBe('TCS Ltd');
+    expect(component.stockForm.symbol).toBe('TCS');
+  });
+
+  it('keeps holding context after save and add another', () => {
+    modalState$.next({
+      isOpen: true,
+      data: {
+        source: 'holdings-row-add',
+        holdingId: 'h1',
+        profileId: 'p1',
+        assetTypeName: 'Mutual Fund',
+        instrumentName: 'PPFAS Flexi Cap',
+        instrumentSymbol: 'PPFAS-FLEXI'
+      } satisfies AddInvestmentModalPayload
+    });
+
+    component.mfForm.nav = '10';
+    component.mfForm.units = '2';
+    component.mfForm.date = '2025-01-01';
+    assetSvc.addMutualFund.and.returnValue(of(mockIngestResponse));
+
+    component.submit(true);
+
+    expect(component.modalMode).toBe('add-to-holding');
+    expect(component.selectedType).toBe('MF');
+    expect(component.mfForm.schemeName).toBe('PPFAS Flexi Cap');
+    expect(component.mfForm.schemeCode).toBe('PPFAS-FLEXI');
+  });
+
+  it('treats edit payload as edit flow and pre-fills STOCK form', () => {
+    modalState$.next({
+      isOpen: true,
+      data: {
+        source: 'transactions-row-edit',
+        mode: 'edit',
+        profileId: 'p1',
+        instrumentId: 'i1',
+        assetTypeName: 'Equity',
+        instrumentName: 'TCS Ltd',
+        instrumentSymbol: 'TCS',
+        transaction: {
+          id: 't1',
+          profileId: 'p1',
+          instrumentId: 'i1',
+          instrumentName: 'TCS Ltd',
+          instrumentSymbol: 'TCS',
+          type: 'BUY',
+          quantity: 12,
+          price: 3200,
+          amount: 38400,
+          transactionDate: '2025-04-15T00:00:00.000Z',
+          notes: 'edited notes',
+          isDeleted: false,
+          createdAtUtc: '2025-04-15T00:00:00.000Z'
+        }
+      } as any
+    });
+
+    expect(component.modalMode).toBe('edit');
+    expect(component.step).toBe(2);
+    expect(component.selectedType).toBe('STOCK');
+    expect(component.stockForm.name).toBe('TCS Ltd');
+    expect(component.stockForm.symbol).toBe('TCS');
+    expect(component.stockForm.quantity).toBe('12');
+    expect(component.stockForm.price).toBe('3200');
+    expect(component.stockForm.date).toBe('2025-04-15');
+    expect(component.stockForm.notes).toBe('edited notes');
+  });
+
+  it('submits edit mode via updateStock and closes modal on success', () => {
+    modalState$.next({
+      isOpen: true,
+      data: {
+        source: 'transactions-row-edit',
+        mode: 'edit',
+        profileId: 'p1',
+        instrumentId: 'i1',
+        assetTypeName: 'Equity',
+        instrumentName: 'TCS Ltd',
+        instrumentSymbol: 'TCS',
+        transaction: {
+          id: 't1',
+          profileId: 'p1',
+          instrumentId: 'i1',
+          instrumentName: 'TCS Ltd',
+          instrumentSymbol: 'TCS',
+          type: 'BUY',
+          quantity: 12,
+          price: 3200,
+          amount: 38400,
+          transactionDate: '2025-04-15T00:00:00.000Z',
+          notes: 'edited notes',
+          isDeleted: false,
+          createdAtUtc: '2025-04-15T00:00:00.000Z'
+        }
+      } as any
+    });
+
+    assetSvc.updateStock.and.returnValue(of(mockIngestResponse));
+
+    component.submit(false);
+
+    expect(assetSvc.updateStock).toHaveBeenCalledWith('p1', 'i1', jasmine.objectContaining({
+      name: 'TCS Ltd', symbol: 'TCS', exchange: 'NSE',
+      quantity: 12, price: 3200, date: '2025-04-15'
+    }));
+    expect(modalSvc.close).toHaveBeenCalled();
+    expect(toastr.success).toHaveBeenCalledWith('Stocks updated successfully');
+  });
+
+  it('submits MF edit mode via updateMutualFund', () => {
+    modalState$.next({
+      isOpen: true,
+      data: {
+        source: 'transactions-row-edit',
+        mode: 'edit',
+        profileId: 'p1',
+        instrumentId: 'i2',
+        assetTypeName: 'Mutual Fund',
+        instrumentName: 'PPFAS Flexi Cap',
+        instrumentSymbol: 'PPFAS-FLEXI',
+        transaction: {
+          id: 't2',
+          profileId: 'p1',
+          instrumentId: 'i2',
+          instrumentName: 'PPFAS Flexi Cap',
+          instrumentSymbol: 'PPFAS-FLEXI',
+          type: 'BUY',
+          quantity: 10,
+          price: 100,
+          amount: 1000,
+          transactionDate: '2025-04-16T00:00:00.000Z'
+        }
+      } as any
+    });
+
+    assetSvc.updateMutualFund.and.returnValue(of(mockIngestResponse));
+    component.submit(false);
+
+    expect(assetSvc.updateMutualFund).toHaveBeenCalledWith('p1', 'i2', jasmine.objectContaining({
+      schemeCode: 'PPFAS-FLEXI', units: 10, navPerUnit: 100
+    }));
+  });
+
+  it('submits GOLD edit mode via updateGold', () => {
+    modalState$.next({
+      isOpen: true,
+      data: {
+        source: 'transactions-row-edit',
+        mode: 'edit',
+        profileId: 'p1',
+        instrumentId: 'i-gold',
+        assetTypeName: 'Gold',
+        instrumentName: 'Gold Digital',
+        transaction: {
+          id: 't-gold',
+          profileId: 'p1',
+          instrumentId: 'i-gold',
+          type: 'BUY',
+          quantity: 8,
+          price: 7500,
+          amount: 60000,
+          transactionDate: '2025-01-01T00:00:00.000Z'
+        }
+      } as any
+    });
+
+    assetSvc.updateGold.and.returnValue(of(mockIngestResponse));
+    component.submit(false);
+
+    expect(assetSvc.updateGold).toHaveBeenCalledWith('p1', 'i-gold', jasmine.objectContaining({
+      weightGrams: 8, ratePerGram: 7500
+    }));
+  });
+
+  it('pre-fills MF form in edit mode (transaction-only)', () => {
+    modalState$.next({
+      isOpen: true,
+      data: {
+        source: 'transactions-row-edit',
+        mode: 'edit',
+        profileId: 'p1',
+        instrumentId: 'i2',
+        assetTypeName: 'Mutual Fund',
+        instrumentName: 'PPFAS Flexi Cap',
+        instrumentSymbol: 'PPFAS-FLEXI',
+        transaction: {
+          id: 't2',
+          profileId: 'p1',
+          instrumentId: 'i2',
+          instrumentName: 'PPFAS Flexi Cap',
+          instrumentSymbol: 'PPFAS-FLEXI',
+          type: 'BUY',
+          quantity: 5,
+          price: 100,
+          amount: 500,
+          transactionDate: '2025-04-16T00:00:00.000Z',
+          notes: 'folio-123',
+          isDeleted: false,
+          createdAtUtc: '2025-04-16T00:00:00.000Z'
+        }
+      } as any
+    });
+
+    expect(component.modalMode).toBe('edit');
+    expect(component.selectedType).toBe('MF');
+    expect(component.step).toBe(2);
+    expect(component.mfForm.schemeName).toBe('PPFAS Flexi Cap');
+    expect(component.mfForm.schemeCode).toBe('PPFAS-FLEXI');
+    expect(component.mfForm.units).toBe('5');
+    expect(component.mfForm.nav).toBe('100');
+    expect(component.mfForm.date).toBe('2025-04-16');
+    expect(component.mfForm.folio).toBe('folio-123');
+  });
+
+  it('pre-fills PPF form in edit mode (transaction-only)', () => {
+    modalState$.next({
+      isOpen: true,
+      data: {
+        source: 'transactions-row-edit',
+        mode: 'edit',
+        profileId: 'p1',
+        instrumentId: 'i-ppf',
+        assetTypeName: 'PPF',
+        instrumentName: 'PPF Account',
+        instrumentSymbol: 'PPF',
+        transaction: {
+          id: 't3',
+          profileId: 'p1',
+          instrumentId: 'i-ppf',
+          instrumentName: 'PPF Account',
+          instrumentSymbol: 'PPF',
+          type: 'BUY',
+          quantity: 0,
+          price: 0,
+          amount: 25000,
+          transactionDate: '2025-04-01T00:00:00.000Z',
+          notes: 'annual',
+          isDeleted: false,
+          createdAtUtc: '2025-04-01T00:00:00.000Z'
+        }
+      } as any
+    });
+
+    expect(component.modalMode).toBe('edit');
+    expect(component.selectedType).toBe('PPF');
+    expect(component.step).toBe(2);
+    expect(component.ppfForm.amount).toBe('25000');
+    expect(component.ppfForm.date).toBe('2025-04-01');
+    expect(component.ppfForm.notes).toBe('annual');
+  });
+
+  it('pre-fills FD form in edit mode (transaction-only)', () => {
+    modalState$.next({
+      isOpen: true,
+      data: {
+        source: 'transactions-row-edit',
+        mode: 'edit',
+        profileId: 'p1',
+        instrumentId: 'i-fd',
+        assetTypeName: 'Fixed Deposit',
+        instrumentName: 'FD HDFC',
+        instrumentSymbol: 'FD-HDFC',
+        transaction: {
+          id: 't4',
+          profileId: 'p1',
+          instrumentId: 'i-fd',
+          instrumentName: 'FD HDFC',
+          instrumentSymbol: 'FD-HDFC',
+          type: 'BUY',
+          quantity: 0,
+          price: 0,
+          amount: 200000,
+          transactionDate: '2025-01-01T00:00:00.000Z',
+          notes: 'fd-notes',
+          isDeleted: false,
+          createdAtUtc: '2025-01-01T00:00:00.000Z'
+        }
+      } as any
+    });
+
+    expect(component.modalMode).toBe('edit');
+    expect(component.selectedType).toBe('FDRD');
+    expect(component.fdRdForm.subtype).toBe('FD');
+    expect(component.fdRdForm.amount).toBe('200000');
+    expect(component.fdRdForm.startDate).toBe('2025-01-01');
+    expect(component.fdRdForm.notes).toBe('fd-notes');
+  });
+
+  it('pre-fills RD form in edit mode (transaction-only)', () => {
+    modalState$.next({
+      isOpen: true,
+      data: {
+        source: 'transactions-row-edit',
+        mode: 'edit',
+        profileId: 'p1',
+        instrumentId: 'i-rd',
+        assetTypeName: 'Recurring Deposit',
+        instrumentName: 'RD ICICI',
+        instrumentSymbol: 'RD-ICICI',
+        transaction: {
+          id: 't5',
+          profileId: 'p1',
+          instrumentId: 'i-rd',
+          instrumentName: 'RD ICICI',
+          instrumentSymbol: 'RD-ICICI',
+          type: 'BUY',
+          quantity: 0,
+          price: 0,
+          amount: 5000,
+          transactionDate: '2025-01-01T00:00:00.000Z',
+          notes: 'rd-notes',
+          isDeleted: false,
+          createdAtUtc: '2025-01-01T00:00:00.000Z'
+        }
+      } as any
+    });
+
+    expect(component.modalMode).toBe('edit');
+    expect(component.selectedType).toBe('FDRD');
+    expect(component.fdRdForm.subtype).toBe('RD');
+    expect(component.fdRdForm.amount).toBe('5000');
+    expect(component.fdRdForm.startDate).toBe('2025-01-01');
+    expect(component.fdRdForm.notes).toBe('rd-notes');
+  });
+
+  it('locks instrument selection during edit', () => {
+    modalState$.next({
+      isOpen: true,
+      data: {
+        source: 'transactions-row-edit',
+        mode: 'edit',
+        profileId: 'p1',
+        instrumentId: 'i1',
+        assetTypeName: 'Equity',
+        instrumentName: 'TCS Ltd',
+        instrumentSymbol: 'TCS',
+        transaction: {
+          id: 't6',
+          profileId: 'p1',
+          instrumentId: 'i1',
+          instrumentName: 'TCS Ltd',
+          instrumentSymbol: 'TCS',
+          type: 'BUY',
+          quantity: 1,
+          price: 1,
+          amount: 1,
+          transactionDate: '2025-01-01T00:00:00.000Z',
+          notes: '',
+          isDeleted: false,
+          createdAtUtc: '2025-01-01T00:00:00.000Z'
+        }
+      } as any
+    });
+
+    expect(component.isInstrumentSelectionLocked).toBeTrue();
+    component.stockDropdownOpen = true;
+    component.selectStock({ ...mockInstruments[0], id: 'i-x', name: 'Other', symbol: 'OTH', assetTypeName: 'Equity', assetTypeId: 'at1', currency: 'INR' });
+    expect(component.stockForm.symbol).toBe('TCS');
+    expect(component.stockDropdownOpen).toBeTrue();
+  });
+
   // ---- navigation ----
 
   describe('pickType', () => {
@@ -114,6 +517,44 @@ describe('AddInvestmentComponent', () => {
       component.changeType();
       expect(component.step).toBe(1);
       expect(component.selectedType).toBeNull();
+    });
+  });
+
+  describe('changeType (edit mode)', () => {
+    beforeEach(() => {
+      modalState$.next({
+        isOpen: true,
+        data: {
+          source: 'transactions-row-edit',
+          mode: 'edit',
+          profileId: 'p1',
+          instrumentId: 'i1',
+          assetTypeName: 'Equity',
+          instrumentName: 'TCS Ltd',
+          instrumentSymbol: 'TCS',
+          transaction: {
+            id: 't1',
+            profileId: 'p1',
+            instrumentId: 'i1',
+            instrumentName: 'TCS Ltd',
+            instrumentSymbol: 'TCS',
+            type: 'BUY',
+            quantity: 12,
+            price: 3200,
+            amount: 38400,
+            transactionDate: '2025-04-15T00:00:00.000Z',
+            notes: 'edited notes',
+            isDeleted: false,
+            createdAtUtc: '2025-04-15T00:00:00.000Z'
+          }
+        } as any
+      });
+    });
+
+    it('does not allow changing type', () => {
+      component.changeType();
+      expect(component.step).toBe(2);
+      expect(component.selectedType).toBe('STOCK');
     });
   });
 

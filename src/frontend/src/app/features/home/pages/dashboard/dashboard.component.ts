@@ -1,4 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil } from 'rxjs/operators';
 import { User } from '../../../../core/models/auth.model';
@@ -11,6 +12,7 @@ import {
   HomeTransaction,
   PortfolioSummary
 } from '../../../../core/models/portfolio.model';
+import { ModalService } from '../../../../core/services/modal.service';
 
 interface AllocationRow {
   name: string;
@@ -38,7 +40,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private readonly allocationColors = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
-  constructor(private authService: AuthService, private homeService: HomeService) {}
+  constructor(
+    private authService: AuthService,
+    private homeService: HomeService,
+    private modalService: ModalService,
+    private router: Router
+  ) {}
 
   ngOnInit(): void {
     this.user = this.authService.getCurrentUser();
@@ -134,6 +141,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return new Date(date).toLocaleDateString('en-IN', {
       year: 'numeric', month: 'short', day: 'numeric'
     });
+  }
+
+  openAddInvestmentModal(source?: string): void {
+    this.router.navigate(['/dashboard/add-investment']);
   }
 
   get totalInvestment(): number { return this.summary?.totalInvestment ?? 0; }

@@ -8,6 +8,7 @@ import { TransactionsComponent } from './transactions.component';
 import { ProfileService } from '../../../../core/services/profile.service';
 import { InstrumentService } from '../../../../core/services/instrument.service';
 import { TransactionService } from '../../../../core/services/transaction.service';
+import { ModalService } from '../../../../core/services/modal.service';
 import { Instrument, PagedResult, Profile, Transaction } from '../../../../core/models/portfolio.model';
 
 describe('TransactionsComponent', () => {
@@ -16,6 +17,7 @@ describe('TransactionsComponent', () => {
   let profileSvc: jasmine.SpyObj<ProfileService>;
   let instrumentSvc: jasmine.SpyObj<InstrumentService>;
   let transactionSvc: jasmine.SpyObj<TransactionService>;
+  let modalSvc: jasmine.SpyObj<ModalService>;
   let toastr: jasmine.SpyObj<ToastrService>;
 
   const mockProfile: Profile = {
@@ -33,7 +35,7 @@ describe('TransactionsComponent', () => {
   function buildTx(id: string, isDeleted = false): Transaction {
     return {
       id, profileId: 'p1', instrumentId: 'i1',
-      instrumentName: 'TCS', instrumentSymbol: 'TCS',
+      instrumentName: 'TCS', instrumentSymbol: 'TCS', assetTypeName: 'Stocks',
       type: 'BUY', quantity: 1, price: 100, amount: 100,
       transactionDate: '2026-05-01T00:00:00Z', notes: '', isDeleted,
       createdAtUtc: '2026-05-01T00:00:00Z'
@@ -44,6 +46,7 @@ describe('TransactionsComponent', () => {
     profileSvc     = jasmine.createSpyObj('ProfileService',     ['list']);
     instrumentSvc  = jasmine.createSpyObj('InstrumentService',  ['listInstruments']);
     transactionSvc = jasmine.createSpyObj('TransactionService', ['list', 'create', 'update', 'delete']);
+    modalSvc       = jasmine.createSpyObj('ModalService', ['open', 'close']);
     toastr         = jasmine.createSpyObj('ToastrService',      ['success', 'error']);
 
     profileSvc.list.and.returnValue(of([mockProfile]));
@@ -57,6 +60,7 @@ describe('TransactionsComponent', () => {
         { provide: ProfileService,     useValue: profileSvc },
         { provide: InstrumentService,  useValue: instrumentSvc },
         { provide: TransactionService, useValue: transactionSvc },
+        { provide: ModalService,       useValue: modalSvc },
         { provide: ToastrService,      useValue: toastr }
       ]
     }).compileComponents();
@@ -92,5 +96,11 @@ describe('TransactionsComponent', () => {
     expect(component.rangeEnd).toBe(50);
     expect(component.total).toBe(87);
     expect(component.hasMore).toBeTrue();
+  });
+
+  it('openInvestmentModal forwards source', () => {
+    component.openInvestmentModal('transactions-add-investment');
+
+    expect(modalSvc.open).toHaveBeenCalledWith({ source: 'transactions-add-investment' });
   });
 });

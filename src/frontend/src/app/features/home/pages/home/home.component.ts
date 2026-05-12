@@ -4,6 +4,7 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ThemeService } from '../../../../core/services/theme.service';
+import { ModalService } from '../../../../core/services/modal.service';
 import { User } from '../../../../core/models/auth.model';
 import { environment } from '../../../../../environments/environment';
 
@@ -28,7 +29,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private router: Router,
     private elementRef: ElementRef,
-    public themeService: ThemeService
+    public themeService: ThemeService,
+    private modalService: ModalService
   ) {}
 
   get isDarkMode(): boolean {
@@ -103,7 +105,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   goToProfile(): void {
     this.dropdownOpen = false;
-    // this.router.navigate(['/profile']);
+    this.router.navigate(['/dashboard/my-profile']);
   }
 
   goToSettings(): void {
@@ -119,6 +121,10 @@ export class HomeComponent implements OnInit, OnDestroy {
         next: () => this.router.navigate(['/']),
         error: () => this.router.navigate(['/'])
       });
+  }
+
+  openAddInvestmentModal(): void {
+    this.router.navigate(['/dashboard/add-investment']);
   }
 
   /** Derive initials from the single `name` field. Falls back to email. */

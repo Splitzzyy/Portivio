@@ -1,4 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
@@ -10,6 +11,7 @@ import {
 import { HoldingService } from '../../../../core/services/holding.service';
 import { InstrumentService } from '../../../../core/services/instrument.service';
 import { ProfileService } from '../../../../core/services/profile.service';
+import { ModalService } from '../../../../core/services/modal.service';
 
 @Component({
   selector: 'app-holdings',
@@ -33,7 +35,9 @@ export class HoldingsComponent implements OnInit, OnDestroy {
     private profileService: ProfileService,
     private instrumentService: InstrumentService,
     private holdingService: HoldingService,
-    private toastr: ToastrService
+    private toastr: ToastrService,
+    private modalService: ModalService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -166,5 +170,22 @@ export class HoldingsComponent implements OnInit, OnDestroy {
     if (diffHr < 24) return `${diffHr}h ago`;
     const diffDay = Math.floor(diffHr / 24);
     return diffDay === 1 ? '1 day ago' : `${diffDay} days ago`;
+  }
+
+  openAddInvestmentModal(source: string, holding?: Holding): void {
+    const data = holding ? {
+      source,
+      mode: 'edit',
+      holdingId: holding.id,
+      profileId: holding.profileId,
+      instrumentId: holding.instrumentId,
+      assetTypeName: holding.assetTypeName,
+      instrumentName: holding.instrumentName,
+      instrumentSymbol: holding.instrumentSymbol,
+      quantity: holding.quantity,
+      price: holding.avgPrice
+    } : { source };
+
+    this.router.navigate(['/dashboard/add-investment'], { state: { data } });
   }
 }
