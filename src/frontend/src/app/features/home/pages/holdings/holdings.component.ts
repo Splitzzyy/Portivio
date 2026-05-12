@@ -175,7 +175,7 @@ export class HoldingsComponent implements OnInit, OnDestroy {
   openAddInvestmentModal(source: string, holding?: Holding): void {
     const data = holding ? {
       source,
-      mode: 'edit',
+      mode: 'edit' as const,
       holdingId: holding.id,
       profileId: holding.profileId,
       instrumentId: holding.instrumentId,
@@ -183,9 +183,11 @@ export class HoldingsComponent implements OnInit, OnDestroy {
       instrumentName: holding.instrumentName,
       instrumentSymbol: holding.instrumentSymbol,
       quantity: holding.quantity,
-      price: holding.avgPrice
+      price: holding.avgPrice,
+      amount: holding.marketValue
     } : { source };
 
+    this.modalService.open(data);
     this.router.navigate(['/dashboard/add-investment'], { state: { data } });
   }
 }

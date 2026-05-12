@@ -202,6 +202,55 @@ describe('AddInvestmentComponent', () => {
     expect(component.stockForm.notes).toBe('edited notes');
   });
 
+  it('pre-fills STOCK form from holding edit payload', () => {
+    modalState$.next({
+      isOpen: true,
+      data: {
+        source: 'holdings-row-edit',
+        mode: 'edit',
+        holdingId: 'h1',
+        profileId: 'p1',
+        instrumentId: 'i1',
+        assetTypeName: 'Equity',
+        instrumentName: 'TCS Ltd',
+        instrumentSymbol: 'TCS',
+        quantity: 10,
+        price: 100
+      } as any
+    });
+
+    expect(component.modalMode).toBe('edit');
+    expect(component.step).toBe(2);
+    expect(component.selectedType).toBe('STOCK');
+    expect(component.stockForm.name).toBe('TCS Ltd');
+    expect(component.stockForm.symbol).toBe('TCS');
+    expect(component.stockForm.quantity).toBe('10');
+    expect(component.stockForm.price).toBe('100');
+  });
+
+  it('pre-fills PPF deposit amount from holding edit payload amount', () => {
+    modalState$.next({
+      isOpen: true,
+      data: {
+        source: 'holdings-row-edit',
+        mode: 'edit',
+        holdingId: 'h-ppf',
+        profileId: 'p1',
+        instrumentId: 'i-ppf',
+        assetTypeName: 'PPF',
+        instrumentName: 'PPF Account',
+        instrumentSymbol: 'PPF',
+        quantity: 0,
+        price: 0,
+        amount: 25000
+      } as any
+    });
+
+    expect(component.modalMode).toBe('edit');
+    expect(component.selectedType).toBe('PPF');
+    expect(component.ppfForm.amount).toBe('25000');
+  });
+
   it('submits edit mode via updateStock and closes modal on success', () => {
     modalState$.next({
       isOpen: true,

@@ -278,6 +278,8 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   }
 
   openInvestmentModal(source?: string): void {
-    this.router.navigate(['/dashboard/add-investment']);
+    const data = { source: source || 'transactions' };
+    this.modalService.open(data);
+    this.router.navigate(['/dashboard/add-investment'], { state: { data } });
   }
 }

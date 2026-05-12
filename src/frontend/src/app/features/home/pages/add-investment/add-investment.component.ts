@@ -31,6 +31,7 @@ interface AddInvestmentModalPayload {
   instrumentSymbol?: string;
   quantity?: number;
   price?: number;
+  amount?: number;
   mode?: 'edit';
   instrument?: Instrument;
   transaction?: Transaction;
@@ -152,16 +153,16 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
     
     if (stateData) {
       this.modalData = this.parseModalPayload(stateData);
-      this.modalMode =
-        this.modalData?.mode === 'edit' || !!this.modalData?.transaction
-          ? 'edit'
-          : this.modalData?.holdingId
-            ? 'add-to-holding'
-            : 'create';
-      
-      this.resetForModalOpen();
-      this.applyModalContext();
+      this.applyModalPayload();
     }
+
+    this.modalService.state$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((state) => {
+        if (!state.isOpen) return;
+        this.modalData = this.parseModalPayload(state.data);
+        this.applyModalPayload();
+      });
   }
 
   ngOnDestroy(): void {
@@ -418,6 +419,8 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
   }
 
   closeModal(): void {
+    this.modalService.close();
+
     // Navigate back or to dashboard
     if (window.history.length > 1) {
       window.history.back();
@@ -585,6 +588,7 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
     if (typeof maybe.instrumentSymbol === 'string' && maybe.instrumentSymbol.trim().length > 0) payload.instrumentSymbol = maybe.instrumentSymbol;
     if (typeof maybe.quantity === 'number') payload.quantity = maybe.quantity;
     if (typeof maybe.price === 'number') payload.price = maybe.price;
+    if (typeof maybe.amount === 'number') payload.amount = maybe.amount;
     if ((maybe as any).mode === 'edit') payload.mode = 'edit';
     if ((maybe as any).instrument && typeof (maybe as any).instrument === 'object') payload.instrument = (maybe as any).instrument as Instrument;
     if ((maybe as any).transaction && typeof (maybe as any).transaction === 'object') payload.transaction = (maybe as any).transaction as Transaction;
@@ -600,6 +604,18 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
     }
     if (!this.isHoldingContext) return;
     this.applyHoldingModalContext();
+  }
+
+  private applyModalPayload(): void {
+    this.modalMode =
+      this.modalData?.mode === 'edit' || !!this.modalData?.transaction
+        ? 'edit'
+        : this.modalData?.holdingId
+          ? 'add-to-holding'
+          : 'create';
+
+    this.resetForModalOpen();
+    this.applyModalContext();
   }
 
   private applyHoldingModalContext(): void {
@@ -745,6 +761,8 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
           this.ppfForm.amount = ppf.initialContribution != null ? String(ppf.initialContribution) : '';
           this.ppfForm.date = ppf.contributionDate ? (ppf.contributionDate as any).slice(0, 10) : this.today();
           this.ppfForm.notes = (ppf as any).notes || '';
+        } else if (this.modalData.amount != null) {
+          this.ppfForm.amount = String(this.modalData.amount);
         } else if (this.modalData.quantity != null || this.modalData.price != null) {
           this.ppfForm.amount = String((this.modalData.quantity || 0) * (this.modalData.price || 0));
         }

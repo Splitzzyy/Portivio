@@ -124,7 +124,9 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   openAddInvestmentModal(): void {
-    this.router.navigate(['/dashboard/add-investment']);
+    const data = { source: 'home-nav' };
+    this.modalService.open(data);
+    this.router.navigate(['/dashboard/add-investment'], { state: { data } });
   }
 
   /** Derive initials from the single `name` field. Falls back to email. */

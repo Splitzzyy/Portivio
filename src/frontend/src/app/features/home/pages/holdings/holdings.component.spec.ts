@@ -118,12 +118,16 @@ describe('HoldingsComponent', () => {
 
     expect(modalSvc.open).toHaveBeenCalledWith({
       source: 'holdings-row-edit',
+      mode: 'edit',
       holdingId: 'h1',
       profileId: 'p1',
       instrumentId: 'i1',
       assetTypeName: 'Equity',
       instrumentName: 'TCS Ltd',
-      instrumentSymbol: 'TCS'
+      instrumentSymbol: 'TCS',
+      quantity: 10,
+      price: 100,
+      amount: 1000
     });
   });
 });
