@@ -4,6 +4,7 @@ import { Observable, Subject } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import { finalize, takeUntil } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
+import { Router, ActivatedRoute } from '@angular/router';
 import {
   Profile, Instrument, Transaction,
   AddStockRequest, AddMutualFundRequest, AddGoldRequest,
@@ -28,6 +29,8 @@ interface AddInvestmentModalPayload {
   assetTypeName?: string;
   instrumentName?: string;
   instrumentSymbol?: string;
+  quantity?: number;
+  price?: number;
   mode?: 'edit';
   instrument?: Instrument;
   transaction?: Transaction;
@@ -100,7 +103,6 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
   saving = false;
   priceFetching = false;
   errors: Record<string, string> = {};
-  isModalOpen = false;
   modalMode: AddInvestmentModalMode = 'create';
   modalData: AddInvestmentModalPayload | null = null;
 
@@ -124,7 +126,9 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
     private assetService: AssetService,
     private modalService: ModalService,
     private toastr: ToastrService,
-    private http: HttpClient
+    private http: HttpClient,
+    private router: Router,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
@@ -142,20 +146,22 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
       next: (data) => (this.instruments = data ?? [])
     });
 
-    this.modalService.state$.pipe(takeUntil(this.destroy$)).subscribe((state) => {
-      this.isModalOpen = state.isOpen;
-      this.modalData = this.parseModalPayload(state.data);
+    // Handle initial state from Router
+    const navigation = this.router.getCurrentNavigation();
+    const stateData = navigation?.extras.state?.['data'] || history.state?.['data'];
+    
+    if (stateData) {
+      this.modalData = this.parseModalPayload(stateData);
       this.modalMode =
         this.modalData?.mode === 'edit' || !!this.modalData?.transaction
           ? 'edit'
           : this.modalData?.holdingId
             ? 'add-to-holding'
             : 'create';
-      if (state.isOpen) {
-        this.resetForModalOpen();
-        this.applyModalContext();
-      }
-    });
+      
+      this.resetForModalOpen();
+      this.applyModalContext();
+    }
   }
 
   ngOnDestroy(): void {
@@ -412,7 +418,12 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
   }
 
   closeModal(): void {
-    this.modalService.close();
+    // Navigate back or to dashboard
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      this.router.navigate(['/dashboard']);
+    }
   }
 
   private buildApiCall(): Observable<AssetIngestResponse> | null {
@@ -572,6 +583,8 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
     if (typeof maybe.assetTypeName === 'string' && maybe.assetTypeName.trim().length > 0) payload.assetTypeName = maybe.assetTypeName;
     if (typeof maybe.instrumentName === 'string' && maybe.instrumentName.trim().length > 0) payload.instrumentName = maybe.instrumentName;
     if (typeof maybe.instrumentSymbol === 'string' && maybe.instrumentSymbol.trim().length > 0) payload.instrumentSymbol = maybe.instrumentSymbol;
+    if (typeof maybe.quantity === 'number') payload.quantity = maybe.quantity;
+    if (typeof maybe.price === 'number') payload.price = maybe.price;
     if ((maybe as any).mode === 'edit') payload.mode = 'edit';
     if ((maybe as any).instrument && typeof (maybe as any).instrument === 'object') payload.instrument = (maybe as any).instrument as Instrument;
     if ((maybe as any).transaction && typeof (maybe as any).transaction === 'object') payload.transaction = (maybe as any).transaction as Transaction;
@@ -603,22 +616,32 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
     this.step = 2;
     this.resetCurrentForm();
 
+    const q = this.modalData.quantity != null ? String(this.modalData.quantity) : '';
+    const p = this.modalData.price != null ? String(this.modalData.price) : '';
+
     switch (assetTypeId) {
       case 'STOCK':
         this.stockForm.name = this.modalData.instrumentName || '';
         this.stockForm.symbol = this.modalData.instrumentSymbol || '';
+        this.stockForm.quantity = q;
+        this.stockForm.price = p;
         this.stockQuery = this.modalData.instrumentName || this.modalData.instrumentSymbol || '';
         break;
       case 'MF':
         this.mfForm.schemeName = this.modalData.instrumentName || '';
         this.mfForm.schemeCode = this.modalData.instrumentSymbol || '';
+        this.mfForm.units = q;
+        this.mfForm.nav = p;
         this.mfQuery = this.modalData.instrumentName || this.modalData.instrumentSymbol || '';
         break;
       case 'GOLD':
         this.goldForm.subtype = this.resolveGoldSubtype(this.modalData.instrumentName);
+        this.goldForm.grams = q;
+        this.goldForm.amount = String((this.modalData.quantity || 0) * (this.modalData.price || 0));
         break;
       case 'FDRD':
         this.fdRdForm.subtype = this.resolveDepositSubtype(this.modalData.assetTypeName);
+        this.fdRdForm.amount = String((this.modalData.quantity || 0) * (this.modalData.price || 0));
         break;
     }
   }
@@ -659,6 +682,9 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
           this.stockForm.price = stock.price != null ? String(stock.price) : '';
           this.stockForm.date = (stock.date || this.today()).slice(0, 10);
           this.stockForm.notes = (stock as any).notes || '';
+        } else if (this.modalData.quantity != null || this.modalData.price != null) {
+          this.stockForm.quantity = this.modalData.quantity != null ? String(this.modalData.quantity) : '';
+          this.stockForm.price = this.modalData.price != null ? String(this.modalData.price) : '';
         }
         this.stockQuery = this.stockForm.name || this.stockForm.symbol;
         break;
@@ -678,6 +704,9 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
           this.mfForm.nav = mf.navPerUnit != null ? String(mf.navPerUnit) : '';
           this.mfForm.date = (mf.date || this.today()).slice(0, 10);
           this.mfForm.folio = (mf as any).notes || '';
+        } else if (this.modalData.quantity != null || this.modalData.price != null) {
+          this.mfForm.units = this.modalData.quantity != null ? String(this.modalData.quantity) : '';
+          this.mfForm.nav = this.modalData.price != null ? String(this.modalData.price) : '';
         }
         this.mfQuery = this.mfForm.schemeName || this.mfForm.schemeCode;
         break;
@@ -697,6 +726,9 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
           this.goldForm.amount = total ? String(total) : '';
           this.goldForm.date = (gold.date || this.today()).slice(0, 10);
           this.goldForm.source = (gold as any).notes || '';
+        } else if (this.modalData.quantity != null || this.modalData.price != null) {
+          this.goldForm.grams = this.modalData.quantity != null ? String(this.modalData.quantity) : '';
+          this.goldForm.amount = String((this.modalData.quantity || 0) * (this.modalData.price || 0));
         }
         break;
       }
@@ -713,6 +745,8 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
           this.ppfForm.amount = ppf.initialContribution != null ? String(ppf.initialContribution) : '';
           this.ppfForm.date = ppf.contributionDate ? (ppf.contributionDate as any).slice(0, 10) : this.today();
           this.ppfForm.notes = (ppf as any).notes || '';
+        } else if (this.modalData.quantity != null || this.modalData.price != null) {
+          this.ppfForm.amount = String((this.modalData.quantity || 0) * (this.modalData.price || 0));
         }
         break;
       }
@@ -738,6 +772,8 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
             this.fdRdForm.startDate = rd.startDate ? (rd.startDate as any).slice(0, 10) : this.today();
             this.fdRdForm.tenureMonths = rd.tenureMonths != null ? String(rd.tenureMonths) : '';
             this.fdRdForm.notes = (rd as any).notes || '';
+          } else if (this.modalData.quantity != null || this.modalData.price != null) {
+            this.fdRdForm.amount = String((this.modalData.quantity || 0) * (this.modalData.price || 0));
           }
         } else {
           const fd = this.modalData.asset as Partial<AddFixedDepositRequest> | undefined;
@@ -754,6 +790,8 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
             this.fdRdForm.startDate = fd.startDate ? (fd.startDate as any).slice(0, 10) : this.today();
             this.fdRdForm.maturityDate = fd.maturityDate ? (fd.maturityDate as any).slice(0, 10) : '';
             this.fdRdForm.notes = (fd as any).notes || '';
+          } else if (this.modalData.quantity != null || this.modalData.price != null) {
+            this.fdRdForm.amount = String((this.modalData.quantity || 0) * (this.modalData.price || 0));
           }
         }
         break;

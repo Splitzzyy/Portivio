@@ -1,4 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
@@ -63,7 +64,8 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     private instrumentService: InstrumentService,
     private transactionService: TransactionService,
     private toastr: ToastrService,
-    private modalService: ModalService
+    private modalService: ModalService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -275,7 +277,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     return new Date(s).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
   }
 
-  openInvestmentModal(source: string): void {
-    this.modalService.open({ source });
+  openInvestmentModal(): void {
+    this.router.navigate(['/dashboard/add-investment']);
   }
 }

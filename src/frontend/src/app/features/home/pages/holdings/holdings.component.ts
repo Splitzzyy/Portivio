@@ -1,4 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
@@ -35,7 +36,8 @@ export class HoldingsComponent implements OnInit, OnDestroy {
     private instrumentService: InstrumentService,
     private holdingService: HoldingService,
     private toastr: ToastrService,
-    private modalService: ModalService
+    private modalService: ModalService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -171,14 +173,19 @@ export class HoldingsComponent implements OnInit, OnDestroy {
   }
 
   openAddInvestmentModal(source: string, holding?: Holding): void {
-    this.modalService.open(holding ? {
+    const data = holding ? {
       source,
+      mode: 'edit',
       holdingId: holding.id,
       profileId: holding.profileId,
       instrumentId: holding.instrumentId,
       assetTypeName: holding.assetTypeName,
       instrumentName: holding.instrumentName,
-      instrumentSymbol: holding.instrumentSymbol
-    } : { source });
+      instrumentSymbol: holding.instrumentSymbol,
+      quantity: holding.quantity,
+      price: holding.avgPrice
+    } : { source };
+
+    this.router.navigate(['/dashboard/add-investment'], { state: { data } });
   }
 }

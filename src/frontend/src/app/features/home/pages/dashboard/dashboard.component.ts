@@ -1,4 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil } from 'rxjs/operators';
 import { User } from '../../../../core/models/auth.model';
@@ -42,7 +43,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   constructor(
     private authService: AuthService,
     private homeService: HomeService,
-    private modalService: ModalService
+    private modalService: ModalService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -141,8 +143,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  openAddInvestmentModal(source: string): void {
-    this.modalService.open({ source });
+  openAddInvestmentModal(): void {
+    this.router.navigate(['/dashboard/add-investment']);
   }
 
   get totalInvestment(): number { return this.summary?.totalInvestment ?? 0; }
