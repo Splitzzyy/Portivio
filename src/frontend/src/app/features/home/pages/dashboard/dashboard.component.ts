@@ -143,7 +143,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  openAddInvestmentModal(): void {
+  openAddInvestmentModal(source?: string): void {
     this.router.navigate(['/dashboard/add-investment']);
   }
 

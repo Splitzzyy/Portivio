@@ -277,7 +277,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     return new Date(s).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
   }
 
-  openInvestmentModal(): void {
+  openInvestmentModal(source?: string): void {
     this.router.navigate(['/dashboard/add-investment']);
   }
 }
