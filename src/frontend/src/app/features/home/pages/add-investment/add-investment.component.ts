@@ -99,6 +99,7 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
   selectedType: AssetTypeId | null = null;
   profiles: Profile[] = [];
   selectedProfileId = '';
+  profileDropdownOpen = false;
   instruments: Instrument[] = [];
   recentTransactions: Transaction[] = [];
   saving = false;
@@ -172,6 +173,7 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
 
   @HostListener('document:click')
   closeDropdowns(): void {
+    this.profileDropdownOpen = false;
     this.stockDropdownOpen = false;
     this.mfDropdownOpen = false;
   }
@@ -185,6 +187,21 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
 
   onProfileChange(): void {
     this.loadRecentTransactions();
+  }
+
+  toggleProfileDropdown(event: Event): void {
+    event.stopPropagation();
+    if (this.isInstrumentSelectionLocked) return;
+    this.profileDropdownOpen = !this.profileDropdownOpen;
+  }
+
+  selectProfile(profileId: string): void {
+    if (this.isInstrumentSelectionLocked) return;
+    if (profileId !== this.selectedProfileId) {
+      this.selectedProfileId = profileId;
+      this.onProfileChange();
+    }
+    this.profileDropdownOpen = false;
   }
 
   pickType(type: AssetTypeConfig): void {
@@ -201,8 +218,16 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
     this.step = 1;
   }
 
+  goToAssetSelection(): void {
+    this.changeType();
+  }
+
   get selectedTypeConfig(): AssetTypeConfig | undefined {
     return this.assetTypes.find(t => t.id === this.selectedType);
+  }
+
+  get selectedProfileName(): string {
+    return this.profiles.find(p => p.id === this.selectedProfileId)?.name || 'Select profile';
   }
 
   getTxAssetConfig(tx: Transaction): AssetTypeConfig | undefined {

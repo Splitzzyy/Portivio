@@ -108,11 +108,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.router.navigate(['/dashboard/my-profile']);
   }
 
-  goToSettings(): void {
-    this.dropdownOpen = false;
-    // this.router.navigate(['/settings']);
-  }
-
   logout(): void {
     this.dropdownOpen = false;
     this.authService.logout()

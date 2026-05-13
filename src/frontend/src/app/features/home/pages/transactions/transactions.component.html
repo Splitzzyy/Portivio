@@ -116,7 +116,7 @@
         <tr>
           <th>Date</th>
           <th>Type</th>
-          <th>Symbol</th>
+          <th>Name</th>
           <th class="num col-hide-sm">Qty</th>
           <th class="num col-hide-sm">Price</th>
           <th class="num">Amount</th>
@@ -128,16 +128,13 @@
         <tr *ngFor="let tx of transactions; trackBy: trackTxById"
             [class.row-deleted]="tx.isDeleted">
           <td>
-            <div class="muted">{{ formatDate(tx.transactionDate) }}</div>
-            <div class="small-muted" style="font-size: 0.75rem; opacity: 0.7;" *ngIf="tx.createdAtUtc">
-              Logged: {{ tx.createdAtUtc | date:'short' }}
-            </div>
+            <div class="muted">{{ tx.createdAtUtc ? formatDate(tx.createdAtUtc) : '—' }}</div>
           </td>
           <td>
             <span class="pill" [class]="typeClass(tx.type)">{{ tx.type }}</span>
             <span *ngIf="tx.isDeleted" class="pill pill-deleted">DELETED</span>
           </td>
-          <td class="strong" [class.text-deleted]="tx.isDeleted">{{ tx.instrumentSymbol }}</td>
+          <td class="strong" [class.text-deleted]="tx.isDeleted">{{ tx.instrumentName || tx.instrumentSymbol }}</td>
           <td class="num col-hide-sm">{{ formatNumber(tx.quantity, 4) }}</td>
           <td class="num col-hide-sm">{{ formatCurrency(tx.price) }}</td>
           <td class="num strong">{{ formatCurrency(tx.amount) }}</td>
