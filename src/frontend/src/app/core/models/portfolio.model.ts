@@ -208,6 +208,7 @@ export interface HomeHolding {
 export interface HomeTransaction {
   id: string;
   instrumentId: string;
+  instrumentName: string;
   instrumentSymbol: string;
   assetType: string;
   type: string;

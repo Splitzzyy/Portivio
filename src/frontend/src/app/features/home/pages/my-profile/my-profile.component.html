@@ -4,7 +4,7 @@
     <p class="page-subtitle">Manage your personal information and security settings.</p>
   </div>
 
-  <div class="cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; max-width: 900px;">
+  <div class="profile-grid">
     
     <!-- Profile Info Card -->
     <div class="card">
@@ -14,24 +14,23 @@
       <div class="card-body">
         <form [formGroup]="profileForm" (ngSubmit)="onUpdateProfile()">
           
-          <div *ngIf="profileError" class="alert alert-danger" style="color: var(--danger-color); background: rgba(239, 68, 68, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+          <div *ngIf="profileError" class="alert alert-danger">
             {{ profileError }}
           </div>
-          <div *ngIf="profileSuccess" class="alert alert-success" style="color: var(--success-color); background: rgba(34, 197, 94, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+          <div *ngIf="profileSuccess" class="alert alert-success">
             Profile updated successfully.
           </div>
 
-          <div class="form-group" style="margin-bottom: 16px;">
-            <label class="form-label" style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: var(--text-muted);">Name</label>
+          <div class="form-group">
+            <label class="form-label">Name</label>
             <input type="text" class="form-control" formControlName="name" placeholder="Your name"
-                   style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-card); color: var(--text-primary); font-size: 14px;">
-            <div *ngIf="profileForm.get('name')?.invalid && profileForm.get('name')?.touched" class="text-danger" style="color: var(--danger-color); font-size: 12px; margin-top: 4px;">
+                   autocomplete="name">
+            <div *ngIf="profileForm.get('name')?.invalid && profileForm.get('name')?.touched" class="text-danger">
               Valid name is required.
             </div>
           </div>
 
-          <button type="submit" class="btn btn-primary" [disabled]="profileForm.invalid || profileUpdating"
-                  style="width: 100%; padding: 12px; border-radius: 8px; font-weight: 600;">
+          <button type="submit" class="btn btn-primary" [disabled]="profileForm.invalid || profileUpdating">
             <span *ngIf="profileUpdating">Updating...</span>
             <span *ngIf="!profileUpdating">Update Profile</span>
           </button>
@@ -47,33 +46,32 @@
       <div class="card-body">
         <form [formGroup]="passwordForm" (ngSubmit)="onChangePassword()">
           
-          <div *ngIf="passwordError" class="alert alert-danger" style="color: var(--danger-color); background: rgba(239, 68, 68, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+          <div *ngIf="passwordError" class="alert alert-danger">
             {{ passwordError }}
           </div>
-          <div *ngIf="passwordSuccess" class="alert alert-success" style="color: var(--success-color); background: rgba(34, 197, 94, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+          <div *ngIf="passwordSuccess" class="alert alert-success">
             Password changed successfully.
           </div>
 
-          <div class="form-group" style="margin-bottom: 16px;">
-            <label class="form-label" style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: var(--text-muted);">New Password</label>
+          <div class="form-group">
+            <label class="form-label">New Password</label>
             <input type="password" class="form-control" formControlName="newPassword" placeholder="Enter new password"
-                   style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-card); color: var(--text-primary); font-size: 14px;">
-            <div *ngIf="passwordForm.get('newPassword')?.hasError('minlength') && passwordForm.get('newPassword')?.touched" class="text-danger" style="color: var(--danger-color); font-size: 12px; margin-top: 4px;">
+                   autocomplete="new-password">
+            <div *ngIf="passwordForm.get('newPassword')?.hasError('minlength') && passwordForm.get('newPassword')?.touched" class="text-danger">
               Password must be at least 6 characters.
             </div>
           </div>
 
-          <div class="form-group" style="margin-bottom: 24px;">
-            <label class="form-label" style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: var(--text-muted);">Confirm New Password</label>
+          <div class="form-group form-group-last">
+            <label class="form-label">Confirm New Password</label>
             <input type="password" class="form-control" formControlName="confirmPassword" placeholder="Confirm new password"
-                   style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-card); color: var(--text-primary); font-size: 14px;">
-            <div *ngIf="passwordForm.hasError('mismatch') && passwordForm.get('confirmPassword')?.touched" class="text-danger" style="color: var(--danger-color); font-size: 12px; margin-top: 4px;">
+                   autocomplete="new-password">
+            <div *ngIf="passwordForm.hasError('mismatch') && passwordForm.get('confirmPassword')?.touched" class="text-danger">
               Passwords do not match.
             </div>
           </div>
 
-          <button type="submit" class="btn btn-primary" [disabled]="passwordForm.invalid || passwordUpdating"
-                  style="width: 100%; padding: 12px; border-radius: 8px; font-weight: 600;">
+          <button type="submit" class="btn btn-primary" [disabled]="passwordForm.invalid || passwordUpdating">
             <span *ngIf="passwordUpdating">Changing...</span>
             <span *ngIf="!passwordUpdating">Change Password</span>
           </button>

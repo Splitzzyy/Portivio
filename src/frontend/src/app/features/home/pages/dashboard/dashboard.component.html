@@ -129,7 +129,7 @@
                   {{ transaction.type }}
                 </span>
               </td>
-              <td class="security-name">{{ transaction.instrumentSymbol }}</td>
+              <td class="security-name">{{ transaction.instrumentName || transaction.instrumentSymbol }}</td>
               <td class="date">{{ transaction.profileName }}</td>
               <td class="amount">{{ formatCurrency(transaction.amount) }}</td>
               <td class="date">{{ formatDate(transaction.transactionDate) }}</td>

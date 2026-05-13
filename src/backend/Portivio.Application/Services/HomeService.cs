@@ -77,6 +77,7 @@ namespace Portivio.Application.Services
                         {
                             Id = t.Id,
                             InstrumentId = t.InstrumentId,
+                            InstrumentName = t.Instrument.Name,
                             InstrumentSymbol = t.Instrument.Symbol,
                             AssetType = t.Instrument.AssetType.Name,
                             Type = t.Type.ToString(),

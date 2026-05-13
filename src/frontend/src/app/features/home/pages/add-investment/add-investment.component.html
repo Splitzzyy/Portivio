@@ -2,7 +2,10 @@
   <!-- PAGE HEADER -->
   <div class="page-header" style="align-items: flex-end;">
     <div>
-      <a href="javascript:void(0)" (click)="closeModal()" style="display: inline-flex; align-items: center; gap: 8px; color: var(--text-muted); text-decoration: none; margin-bottom: 12px; font-size: 14px; font-weight: 600;">
+      <a *ngIf="step > 1 && !isInstrumentSelectionLocked"
+         href="javascript:void(0)"
+         (click)="goToAssetSelection()"
+         style="display: inline-flex; align-items: center; gap: 8px; color: var(--text-muted); text-decoration: none; margin-bottom: 12px; font-size: 14px; font-weight: 600;">
         <i class="fas fa-arrow-left"></i>
         <span>Back</span>
       </a>
@@ -12,17 +15,33 @@
         <ng-container *ngIf="isHoldingContext"> Adding a transaction to the selected holding.</ng-container>
       </p>
     </div>
-    <div class="profile-pill" (click)="$event.stopPropagation()">
+    <div class="profile-pill" [class.open]="profileDropdownOpen" [class.disabled]="isInstrumentSelectionLocked" (click)="$event.stopPropagation()">
       <span class="label">Profile</span>
-      <select class="profile-name-select"
-              [(ngModel)]="selectedProfileId"
-              (change)="onProfileChange()"
-              name="profilePill"
-              [ngModelOptions]="{standalone: true}"
-              [disabled]="isInstrumentSelectionLocked">
-        <option *ngFor="let p of profiles" [value]="p.id">{{ p.name }}</option>
-      </select>
-      <span class="chev"><i class="fas fa-chevron-down"></i></span>
+      <button
+        class="profile-name-trigger"
+        type="button"
+        (click)="toggleProfileDropdown($event)"
+        [disabled]="isInstrumentSelectionLocked"
+        [attr.aria-expanded]="profileDropdownOpen"
+        aria-haspopup="listbox"
+      >
+        <span>{{ selectedProfileName }}</span>
+        <i class="fas fa-chevron-down"></i>
+      </button>
+
+      <div class="profile-menu" *ngIf="profileDropdownOpen" role="listbox">
+        <button
+          type="button"
+          class="profile-option"
+          *ngFor="let p of profiles"
+          [class.selected]="p.id === selectedProfileId"
+          (click)="selectProfile(p.id)"
+          role="option"
+          [attr.aria-selected]="p.id === selectedProfileId"
+        >
+          {{ p.name }}
+        </button>
+      </div>
     </div>
   </div>
 
@@ -77,8 +96,8 @@
           <div class="ico" [ngClass]="getTxAssetConfig(tx)?.cls || 'icon-stocks'">
             <i class="fas" [ngClass]="getTxAssetConfig(tx)?.icon || 'fa-chart-line'"></i>
           </div>
-          <div>
-            <div class="rname">{{ tx.instrumentSymbol }}</div>
+          <div class="meta">
+            <div class="rname">{{ tx.instrumentName || tx.instrumentSymbol }}</div>
             <div class="sub">{{ tx.type }} · {{ tx.quantity | number:'1.0-4' }} units</div>
           </div>
           <div class="amt">₹{{ tx.amount | number:'1.2-2' }}</div>

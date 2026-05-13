@@ -12,7 +12,7 @@
         {{ refreshing ? 'Refreshing…' : 'Refresh prices' }}
       </button>
       <button type="button" class="btn btn-primary" (click)="openAddInvestmentModal('holdings-header-add')"
-              *ngIf="selectedProfileId && instruments.length">
+              *ngIf="selectedProfileId">
         <i class="fas fa-plus"></i> Add / Update Holding
       </button>
     </div>
@@ -33,10 +33,6 @@
 
   <div *ngIf="!profiles.length" class="state-message">
     Create a profile first on the <a routerLink="/dashboard/profiles">Profiles page</a>.
-  </div>
-
-  <div *ngIf="!instruments.length && profiles.length" class="state-message">
-    No instruments found. Use <a href="#" (click)="$event.preventDefault(); openAddInvestmentModal('holdings-empty-link')">Add Investment</a> to log your first position.
   </div>
 
   <div *ngIf="loading" class="state-message">Loading holdings…</div>

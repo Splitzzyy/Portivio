@@ -85,6 +85,26 @@
       font-size: 13px;
       color: var(--text-muted);
       margin: 0;
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.2;
+      }
+
+      .badge-success {
+        background: rgba(16, 185, 129, 0.15) !important;
+        color: var(--positive) !important;
+      }
+
+      .badge-danger {
+        background: rgba(239, 68, 68, 0.15) !important;
+        color: var(--negative) !important;
+      }
     }
 
     &.highlight {
