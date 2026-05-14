@@ -18,5 +18,6 @@
         public ICollection<AuthProvider> AuthProviders { get; set; } = new List<AuthProvider>();
         public ICollection<AuthToken> AuthTokens { get; set; } = new List<AuthToken>();
         public ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();
+        public EmailSummaryPreference? EmailSummaryPreference { get; set; }
     }
 }

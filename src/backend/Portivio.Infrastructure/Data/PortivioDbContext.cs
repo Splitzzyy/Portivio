@@ -20,6 +20,7 @@ namespace Portivio.Infrastructure.Data
         public DbSet<Holding> Holdings { get; set; }
         public DbSet<PriceHistory> PriceHistories { get; set; }
         public DbSet<SIPPlan> SIPPlans { get; set; }
+        public DbSet<EmailSummaryPreference> EmailSummaryPreferences { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
