@@ -301,15 +301,7 @@ namespace Portivio.Application.Services
                 var nowUtc = DateTime.UtcNow;
                 var batchSize = Math.Max(1, _options.BatchSize);
                 var lockUntilUtc = nowUtc.AddMinutes(Math.Max(1, _options.ScheduleLockMinutes));
-
-                var duePreferences = await _context.EmailSummaryPreferences
-                    .Where(p => p.IsEnabled
-                        && p.NextRunAtUtc.HasValue
-                        && p.NextRunAtUtc <= nowUtc
-                        && (!p.LockedUntilUtc.HasValue || p.LockedUntilUtc <= nowUtc))
-                    .OrderBy(p => p.NextRunAtUtc)
-                    .Take(batchSize)
-                    .ToListAsync(cancellationToken);
+                var duePreferences = await ClaimDuePreferencesAsync(nowUtc, lockUntilUtc, batchSize, cancellationToken);
 
                 foreach (var pref in duePreferences)
                 {
@@ -358,6 +350,82 @@ namespace Portivio.Application.Services
                 return Result.InternalServerError($"Error dispatching due summaries: {ex.Message}");
             }
         }
+
+        private async Task<List<EmailSummaryPreference>> ClaimDuePreferencesAsync(
+            DateTime nowUtc,
+            DateTime lockUntilUtc,
+            int batchSize,
+            CancellationToken cancellationToken)
+        {
+            if (UsesNpgsql())
+            {
+                await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
+                var duePreferences = await _context.EmailSummaryPreferences
+                    .FromSqlInterpolated($@"
+                        SELECT *
+                        FROM ""EmailSummaryPreferences""
+                        WHERE ""IsEnabled"" = TRUE
+                          AND ""NextRunAtUtc"" IS NOT NULL
+                          AND ""NextRunAtUtc"" <= {nowUtc}
+                          AND (""LockedUntilUtc"" IS NULL OR ""LockedUntilUtc"" <= {nowUtc})
+                        ORDER BY ""NextRunAtUtc""
+                        LIMIT {batchSize}
+                        FOR UPDATE SKIP LOCKED")
+                    .ToListAsync(cancellationToken);
+
+                PrepareClaimedPreferences(duePreferences, nowUtc, lockUntilUtc);
+                await _context.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+
+                return duePreferences;
+            }
+
+            var fallbackPreferences = await _context.EmailSummaryPreferences
+                .Where(p => p.IsEnabled
+                    && p.NextRunAtUtc.HasValue
+                    && p.NextRunAtUtc <= nowUtc
+                    && (!p.LockedUntilUtc.HasValue || p.LockedUntilUtc <= nowUtc))
+                .OrderBy(p => p.NextRunAtUtc)
+                .Take(batchSize)
+                .ToListAsync(cancellationToken);
+
+            PrepareClaimedPreferences(fallbackPreferences, nowUtc, lockUntilUtc);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return fallbackPreferences;
+        }
+
+        private void PrepareClaimedPreferences(
+            IEnumerable<EmailSummaryPreference> preferences,
+            DateTime nowUtc,
+            DateTime lockUntilUtc)
+        {
+            foreach (var pref in preferences)
+            {
+                if (!TryGetTimeZone(pref.TimeZoneId, out var timeZone))
+                {
+                    pref.LastSendStatus = EmailSummarySendStatus.Skipped;
+                    pref.LastSendAttemptAtUtc = nowUtc;
+                    pref.LastSendError = "Invalid TimeZoneId";
+                    pref.LockedUntilUtc = null;
+                    pref.UpdatedAtUtc = nowUtc;
+                    continue;
+                }
+
+                pref.LockedUntilUtc = lockUntilUtc;
+                pref.LastSendStatus = EmailSummarySendStatus.Queued;
+                pref.LastSendError = null;
+                pref.NextRunAtUtc = CalculateNextRunAtUtc(pref, nowUtc, timeZone);
+                pref.UpdatedAtUtc = nowUtc;
+            }
+        }
+
+        private bool UsesNpgsql()
+            => string.Equals(
+                _context.Database.ProviderName,
+                "Npgsql.EntityFrameworkCore.PostgreSQL",
+                StringComparison.Ordinal);
 
         private static EmailSummaryPreferenceResponse ToResponse(EmailSummaryPreference pref)
         {
