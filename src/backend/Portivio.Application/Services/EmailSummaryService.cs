@@ -20,7 +20,7 @@ namespace Portivio.Application.Services
         Task<Result<EmailSummaryPreferenceResponse>> QueueManualSummaryAsync(Guid userId, CancellationToken cancellationToken = default);
         Task SendQueuedSummaryAsync(Guid preferenceId, bool isManual, CancellationToken cancellationToken = default);
 
-        // Placeholder for future dispatcher integration
+        Task<Result> DispatchDueSchedulesAsync(CancellationToken cancellationToken = default);
         Task<Result> LockAndQueueDueSendsAsync(CancellationToken cancellationToken = default);
     }
 
@@ -178,7 +178,7 @@ namespace Portivio.Application.Services
 
                 if (pref.LastManualQueuedAtUtc.HasValue)
                 {
-                    var nextAllowedAt = pref.LastManualQueuedAtUtc.Value.AddMinutes(_options.ManualQueueCooldownMinutes);
+                    var nextAllowedAt = pref.LastManualQueuedAtUtc.Value.AddMinutes(_options.ManualCooldownMinutes);
                     if (nowUtc < nextAllowedAt)
                         return Result<EmailSummaryPreferenceResponse>.Conflict($"Manual send cooldown active. Try again after {nextAllowedAt:u}");
                 }
@@ -239,18 +239,31 @@ namespace Portivio.Application.Services
                     pref.LastSendStatus = EmailSummarySendStatus.Skipped;
                     pref.LastSendAttemptAtUtc = nowUtc;
                     pref.LastSendError = "User inactive or unverified";
+                    pref.LockedUntilUtc = null;
                     pref.UpdatedAtUtc = nowUtc;
                     await _context.SaveChangesAsync(cancellationToken);
                     return;
                 }
 
                 var summary = await ExtractInvestmentSummaryAsync(pref.UserId, pref.User, cancellationToken);
+                if (!isManual && summary.IsEmptyAccount)
+                {
+                    pref.LastSendStatus = EmailSummarySendStatus.Skipped;
+                    pref.LastSendAttemptAtUtc = nowUtc;
+                    pref.LastSendError = "No scheduled summary content available";
+                    pref.LockedUntilUtc = null;
+                    pref.UpdatedAtUtc = nowUtc;
+                    await _context.SaveChangesAsync(cancellationToken);
+                    return;
+                }
+
                 await _emailService.SendInvestmentSummaryAsync(summary, cancellationToken);
 
                 pref.LastSendStatus = EmailSummarySendStatus.Succeeded;
                 pref.LastSendAttemptAtUtc = nowUtc;
                 pref.LastSendSucceededAtUtc = nowUtc;
                 pref.LastSendError = null;
+                pref.LockedUntilUtc = null;
                 pref.UpdatedAtUtc = nowUtc;
                 await _context.SaveChangesAsync(cancellationToken);
             }
@@ -263,6 +276,7 @@ namespace Portivio.Application.Services
                         pref.LastSendStatus = EmailSummarySendStatus.Failed;
                         pref.LastSendAttemptAtUtc = nowUtc;
                         pref.LastSendError = ex.Message;
+                        pref.LockedUntilUtc = null;
                         pref.UpdatedAtUtc = nowUtc;
                         await _context.SaveChangesAsync(cancellationToken);
                     }
@@ -278,7 +292,72 @@ namespace Portivio.Application.Services
         }
 
         public Task<Result> LockAndQueueDueSendsAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult(Result.InternalServerError("Not implemented"));
+            => DispatchDueSchedulesAsync(cancellationToken);
+
+        public async Task<Result> DispatchDueSchedulesAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var nowUtc = DateTime.UtcNow;
+                var batchSize = Math.Max(1, _options.BatchSize);
+                var lockUntilUtc = nowUtc.AddMinutes(Math.Max(1, _options.ScheduleLockMinutes));
+
+                var duePreferences = await _context.EmailSummaryPreferences
+                    .Where(p => p.IsEnabled
+                        && p.NextRunAtUtc.HasValue
+                        && p.NextRunAtUtc <= nowUtc
+                        && (!p.LockedUntilUtc.HasValue || p.LockedUntilUtc <= nowUtc))
+                    .OrderBy(p => p.NextRunAtUtc)
+                    .Take(batchSize)
+                    .ToListAsync(cancellationToken);
+
+                foreach (var pref in duePreferences)
+                {
+                    if (!TryGetTimeZone(pref.TimeZoneId, out var timeZone))
+                    {
+                        pref.LastSendStatus = EmailSummarySendStatus.Skipped;
+                        pref.LastSendAttemptAtUtc = nowUtc;
+                        pref.LastSendError = "Invalid TimeZoneId";
+                        pref.LockedUntilUtc = null;
+                        pref.UpdatedAtUtc = nowUtc;
+                        continue;
+                    }
+
+                    pref.LockedUntilUtc = lockUntilUtc;
+                    pref.LastSendStatus = EmailSummarySendStatus.Queued;
+                    pref.LastSendError = null;
+                    pref.NextRunAtUtc = CalculateNextRunAtUtc(pref, nowUtc, timeZone);
+                    pref.UpdatedAtUtc = nowUtc;
+                }
+
+                await _context.SaveChangesAsync(cancellationToken);
+
+                foreach (var pref in duePreferences.Where(p => p.LockedUntilUtc == lockUntilUtc))
+                {
+                    try
+                    {
+                        _backgroundJobClient.Enqueue<IEmailSummaryService>(
+                            svc => svc.SendQueuedSummaryAsync(pref.Id, false, CancellationToken.None));
+                    }
+                    catch (Exception ex)
+                    {
+                        pref.LastSendStatus = EmailSummarySendStatus.Failed;
+                        pref.LastSendAttemptAtUtc = nowUtc;
+                        pref.LastSendError = ex.Message;
+                        pref.LockedUntilUtc = null;
+                        pref.UpdatedAtUtc = DateTime.UtcNow;
+                    }
+                }
+
+                await _context.SaveChangesAsync(cancellationToken);
+                return Result.Success();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error dispatching due email summaries");
+                return Result.InternalServerError($"Error dispatching due summaries: {ex.Message}");
+            }
+        }
 
         private static EmailSummaryPreferenceResponse ToResponse(EmailSummaryPreference pref)
         {
@@ -441,7 +520,7 @@ namespace Portivio.Application.Services
                 : null;
         }
 
-        private static DateTime CalculateNextRunAtUtc(EmailSummaryPreference pref, DateTime nowUtc, TimeZoneInfo timeZone)
+        internal static DateTime CalculateNextRunAtUtc(EmailSummaryPreference pref, DateTime nowUtc, TimeZoneInfo timeZone)
         {
             var nowLocal = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, timeZone);
             var candidateLocal = new DateTime(nowLocal.Year, nowLocal.Month, nowLocal.Day, 0, 0, 0, DateTimeKind.Unspecified)
