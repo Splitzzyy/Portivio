@@ -83,13 +83,6 @@ namespace Portivio.Application.Services
                 if (!userExists)
                     return Result<EmailSummaryPreferenceResponse>.NotFound("User not found");
 
-                var timeZoneId = (request.TimeZoneId ?? string.Empty).Trim();
-                if (string.IsNullOrWhiteSpace(timeZoneId))
-                    return Result<EmailSummaryPreferenceResponse>.BadRequest("TimeZoneId is required");
-
-                if (!TryGetTimeZone(timeZoneId, out var timeZone))
-                    return Result<EmailSummaryPreferenceResponse>.BadRequest("Invalid TimeZoneId");
-
                 var timeOfDay = ParseTimeOfDay(request.TimeOfDay);
                 if (request.TimeOfDay != null && timeOfDay == null)
                     return Result<EmailSummaryPreferenceResponse>.BadRequest("TimeOfDay must be in HH:mm format");
@@ -108,7 +101,20 @@ namespace Portivio.Application.Services
                 }
 
                 pref.IsEnabled = request.IsEnabled;
-                pref.TimeZoneId = timeZoneId;
+
+                var requestedTimeZoneId = (request.TimeZoneId ?? string.Empty).Trim();
+                var hasRequestedTimeZoneId = !string.IsNullOrWhiteSpace(requestedTimeZoneId);
+                var effectiveTimeZoneId = hasRequestedTimeZoneId
+                    ? requestedTimeZoneId
+                    : !string.IsNullOrWhiteSpace(pref.TimeZoneId) ? pref.TimeZoneId : DefaultTimeZoneId;
+
+                if ((pref.IsEnabled || hasRequestedTimeZoneId) && string.IsNullOrWhiteSpace(effectiveTimeZoneId))
+                    return Result<EmailSummaryPreferenceResponse>.BadRequest("TimeZoneId is required");
+
+                if (!TryGetTimeZone(effectiveTimeZoneId, out var timeZone))
+                    return Result<EmailSummaryPreferenceResponse>.BadRequest("Invalid TimeZoneId");
+
+                pref.TimeZoneId = effectiveTimeZoneId;
 
                 if (request.Frequency.HasValue) pref.Frequency = request.Frequency;
                 if (timeOfDay.HasValue) pref.TimeOfDay = timeOfDay;
@@ -302,4 +308,3 @@ namespace Portivio.Application.Services
         }
     }
 }
-

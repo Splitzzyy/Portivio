@@ -169,8 +169,7 @@ namespace Portivio.Tests.Services
 
             var disabled = await service.UpdatePreferenceAsync(user.Id, new UpdateEmailSummaryPreferenceRequest
             {
-                IsEnabled = false,
-                TimeZoneId = "UTC"
+                IsEnabled = false
             });
 
             Assert.True(disabled.IsSuccess);
@@ -179,6 +178,7 @@ namespace Portivio.Tests.Services
             Assert.Null(disabled.Data.NextRunAtUtc);
             Assert.Equal(EmailSummaryFrequency.Daily, disabled.Data.Frequency);
             Assert.Equal("09:00", disabled.Data.TimeOfDay);
+            Assert.Equal("UTC", disabled.Data.TimeZoneId);
         }
 
         [Fact]
