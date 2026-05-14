@@ -79,5 +79,113 @@
       </div>
     </div>
 
+    <!-- Email Summary Card -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Investment Summary Emails</h2>
+      </div>
+      <div class="card-body">
+        <div *ngIf="emailSummaryLoading" class="muted-text">
+          Loading preference...
+        </div>
+
+        <form *ngIf="!emailSummaryLoading" [formGroup]="emailSummaryForm" (ngSubmit)="onSaveEmailSummaryPreference()">
+          <div *ngIf="emailSummaryError" class="alert alert-danger">
+            {{ emailSummaryError }}
+          </div>
+          <div *ngIf="emailSummarySuccess" class="alert alert-success">
+            Email summary preference saved.
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Recipient Email</label>
+            <div class="muted-text">{{ recipientEmail || '—' }}</div>
+          </div>
+
+          <div class="form-group">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch" id="emailSummaryEnabled" formControlName="isEnabled">
+              <label class="form-check-label" for="emailSummaryEnabled">Enable investment summary emails</label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Frequency</label>
+            <select class="form-control" formControlName="frequency" [disabled]="!emailSummaryForm.get('isEnabled')?.value">
+              <option *ngFor="let f of frequencies" [value]="f">{{ f }}</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Time (HH:mm)</label>
+            <input type="time" class="form-control" formControlName="timeOfDay" [disabled]="!emailSummaryForm.get('isEnabled')?.value">
+            <div *ngIf="emailSummaryForm.hasError('timeOfDayRequired') && emailSummaryForm.get('isEnabled')?.value" class="text-danger">
+              Time is required.
+            </div>
+          </div>
+
+          <div *ngIf="emailSummaryForm.get('isEnabled')?.value && emailSummaryForm.get('frequency')?.value === 'Weekly'" class="form-group">
+            <label class="form-label">Day of Week</label>
+            <select class="form-control" formControlName="dayOfWeek">
+              <option [ngValue]="null">Select a day</option>
+              <option *ngFor="let d of weekDays" [value]="d">{{ d }}</option>
+            </select>
+            <div *ngIf="emailSummaryForm.hasError('weeklyDayRequired')" class="text-danger">
+              Day of week is required.
+            </div>
+          </div>
+
+          <div *ngIf="emailSummaryForm.get('isEnabled')?.value && emailSummaryForm.get('frequency')?.value === 'Monthly'" class="form-group">
+            <label class="form-label">Monthly Mode</label>
+            <select class="form-control" formControlName="monthlyDayMode">
+              <option *ngFor="let m of monthlyDayModes" [value]="m">{{ m === 'DayOfMonth' ? 'Day of month' : 'Last day' }}</option>
+            </select>
+            <div *ngIf="emailSummaryForm.hasError('monthlyDayModeRequired')" class="text-danger">
+              Monthly mode is required.
+            </div>
+          </div>
+
+          <div *ngIf="emailSummaryForm.get('isEnabled')?.value && emailSummaryForm.get('frequency')?.value === 'Monthly' && emailSummaryForm.get('monthlyDayMode')?.value === 'DayOfMonth'" class="form-group">
+            <label class="form-label">Day of Month (1–28)</label>
+            <input type="number" class="form-control" formControlName="dayOfMonth" min="1" max="28">
+            <div *ngIf="emailSummaryForm.hasError('monthlyDayOfMonthRequired') || emailSummaryForm.hasError('monthlyDayOfMonthRange')" class="text-danger">
+              Day of month must be between 1 and 28.
+            </div>
+          </div>
+
+          <div class="status-grid" *ngIf="emailSummaryPreference">
+            <div class="status-item">
+              <div class="status-label">Last Status</div>
+              <div class="status-value">{{ emailSummaryPreference.lastSendStatus || '—' }}</div>
+            </div>
+            <div class="status-item">
+              <div class="status-label">Last Sent (UTC)</div>
+              <div class="status-value">{{ emailSummaryPreference.lastSendSucceededAtUtc || '—' }}</div>
+            </div>
+            <div class="status-item">
+              <div class="status-label">Next Run (UTC)</div>
+              <div class="status-value">{{ emailSummaryPreference.nextRunAtUtc || '—' }}</div>
+            </div>
+            <div class="status-item" *ngIf="emailSummaryPreference.lastSendError">
+              <div class="status-label">Last Error</div>
+              <div class="status-value error-text">{{ emailSummaryPreference.lastSendError }}</div>
+            </div>
+          </div>
+
+          <div class="action-row">
+            <button type="submit" class="btn btn-primary" [disabled]="emailSummarySaving">
+              <span *ngIf="emailSummarySaving">Saving...</span>
+              <span *ngIf="!emailSummarySaving">Save Preference</span>
+            </button>
+
+            <button type="button" class="btn btn-outline-primary send-now-btn" (click)="onSendSummaryNow()" [disabled]="emailSummarySendingNow">
+              <span *ngIf="emailSummarySendingNow">Queuing...</span>
+              <span *ngIf="!emailSummarySendingNow">Send Now</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
   </div>
 </div>
