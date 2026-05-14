@@ -37,25 +37,37 @@ public class SmtpEmailService : IEmailService
         await SendAsync(toEmail, toName, subject, body);
     }
 
-    private async Task SendAsync(string toEmail, string toName, string subject, string htmlBody)
+    public async Task SendInvestmentSummaryAsync(InvestmentSummaryEmailModel model, CancellationToken cancellationToken = default)
+    {
+        var (subject, html, text) = EmailTemplates.InvestmentSummaryEmail(model);
+        await SendAsync(model.RegisteredEmail, model.UserName, subject, html, text, cancellationToken);
+    }
+
+    private async Task SendAsync(
+        string toEmail,
+        string toName,
+        string subject,
+        string htmlBody,
+        string? textBody = null,
+        CancellationToken cancellationToken = default)
     {
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(_options.FromName, _options.FromAddress));
         message.To.Add(new MailboxAddress(toName, toEmail));
         message.Subject = subject;
-        message.Body = new BodyBuilder { HtmlBody = htmlBody }.ToMessageBody();
+        message.Body = new BodyBuilder { HtmlBody = htmlBody, TextBody = textBody }.ToMessageBody();
 
         using var client = new SmtpClient();
         try
         {
             var secureOption = _options.EnableSsl ? SecureSocketOptions.StartTls : SecureSocketOptions.None;
-            await client.ConnectAsync(_options.Host, _options.Port, secureOption);
+            await client.ConnectAsync(_options.Host, _options.Port, secureOption, cancellationToken);
 
             if (!string.IsNullOrEmpty(_options.Username))
-                await client.AuthenticateAsync(_options.Username, _options.Password);
+                await client.AuthenticateAsync(_options.Username, _options.Password, cancellationToken);
 
-            await client.SendAsync(message);
-            await client.DisconnectAsync(true);
+            await client.SendAsync(message, cancellationToken);
+            await client.DisconnectAsync(true, cancellationToken);
 
             _logger.LogInformation("Email sent. To={To} Subject={Subject}", toEmail, subject);
         }

@@ -17,6 +17,12 @@ namespace Portivio.Application.DTOs.EmailSummary
 
         public string TimeZoneId { get; set; } = string.Empty;
 
+        public EmailSummarySendStatus? LastSendStatus { get; set; }
+        public DateTime? LastSendAttemptAtUtc { get; set; }
+        public DateTime? LastSendSucceededAtUtc { get; set; }
+        public string? LastSendError { get; set; }
+        public DateTime? LastManualQueuedAtUtc { get; set; }
+
         public DateTime? NextRunAtUtc { get; set; }
         public DateTime CreatedAtUtc { get; set; }
         public DateTime UpdatedAtUtc { get; set; }

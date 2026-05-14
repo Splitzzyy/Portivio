@@ -41,5 +41,16 @@ namespace Portivio.API.Controllers
                 onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
             );
         }
+
+        [HttpPost("send-now")]
+        public async Task<IActionResult> SendNow(CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentUserId(out var userId)) return UserNotAuthenticated();
+            var result = await _emailSummaryService.QueueManualSummaryAsync(userId, cancellationToken);
+            return result.Match(
+                onSuccess: () => Ok(result.Data),
+                onFailure: (error) => StatusCode(error.StatusCode ?? 400, new { success = false, message = error.Message, errors = error.Errors })
+            );
+        }
     }
 }
