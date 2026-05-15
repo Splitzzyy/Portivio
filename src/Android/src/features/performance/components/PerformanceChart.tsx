@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { CartesianChart, Line } from 'victory-native';
 import type { Performance } from '../../../types/dtos';
 
@@ -15,10 +15,14 @@ export default function PerformanceChart({ history }: Props): React.JSX.Element 
   }));
 
   return (
-    <View>
+    <View style={styles.chartWrap}>
       <CartesianChart data={data} xKey="x" yKeys={['y']}>
         {({ points }) => <Line points={points.y} color="#4F46E5" strokeWidth={2} />}
       </CartesianChart>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  chartWrap: { height: 220, width: '100%' },
+});

@@ -58,7 +58,14 @@ export function EmailSummarySettingsScreen({
     if (!pref) return;
     setIsEnabled(pref.isEnabled);
     setFrequency(pref.frequency ?? 'Daily');
-    setTimeZoneId(pref.timeZoneId || 'Asia/Kolkata');
+    const isSeededUtc =
+      pref.timeZoneId === 'UTC' &&
+      !pref.frequency &&
+      !pref.timeOfDay &&
+      !pref.weeklyDayOfWeek &&
+      !pref.monthlyDayMode &&
+      pref.monthlyDayOfMonth == null;
+    setTimeZoneId(isSeededUtc ? 'Asia/Kolkata' : pref.timeZoneId || 'Asia/Kolkata');
     setTimeOfDay(pref.timeOfDay ?? '09:00');
     setWeeklyDayOfWeek(pref.weeklyDayOfWeek ?? 'Monday');
     setMonthlyDayMode(pref.monthlyDayMode ?? 'DayOfMonth');
@@ -105,17 +112,13 @@ export function EmailSummarySettingsScreen({
 
     const req: EmailSummary.UpdatePreferenceRequest = {
       isEnabled,
-      frequency: isEnabled ? frequency : (frequency ?? null),
-      timeOfDay: isEnabled ? timeOfDay.trim() : (timeOfDay?.trim() || null),
-      timeZoneId: timeZoneId.trim() || 'Asia/Kolkata',
-      weeklyDayOfWeek:
-        isEnabled && frequency === 'Weekly' ? weeklyDayOfWeek : null,
-      monthlyDayMode:
-        isEnabled && frequency === 'Monthly' ? monthlyDayMode : null,
+      frequency: isEnabled ? frequency : null,
+      timeOfDay: isEnabled ? timeOfDay.trim() : null,
+      timeZoneId: isEnabled ? (timeZoneId.trim() || 'Asia/Kolkata') : null,
+      weeklyDayOfWeek: isEnabled && frequency === 'Weekly' ? weeklyDayOfWeek : null,
+      monthlyDayMode: isEnabled && frequency === 'Monthly' ? monthlyDayMode : null,
       monthlyDayOfMonth:
-        isEnabled && frequency === 'Monthly' && monthlyDayMode === 'DayOfMonth'
-          ? Number(monthlyDayOfMonth)
-          : null,
+        isEnabled && frequency === 'Monthly' && monthlyDayMode === 'DayOfMonth' ? Number(monthlyDayOfMonth) : null,
     };
 
     try {
