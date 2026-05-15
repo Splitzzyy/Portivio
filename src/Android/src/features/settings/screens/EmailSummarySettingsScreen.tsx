@@ -29,7 +29,7 @@ function fmt(iso?: string | null): string {
 }
 
 function isTimeOfDay(value: string): boolean {
-  return /^([01]\\d|2[0-3]):([0-5]\\d)$/.test(value);
+  return /^([01]\d|2[0-3]):([0-5]\d)$/.test(value);
 }
 
 export function EmailSummarySettingsScreen({
