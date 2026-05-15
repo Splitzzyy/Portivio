@@ -89,6 +89,31 @@ describe('MyProfileComponent', () => {
     expect(req.isEnabled).toBeFalse();
   });
 
+  it('preserves backend timezone when saving an enabled preference', () => {
+    component.emailSummaryPreference = {
+      ...component.emailSummaryPreference!,
+      timeZoneId: 'America/New_York'
+    };
+    component.emailSummaryForm.patchValue({
+      isEnabled: true,
+      frequency: 'Daily',
+      timeOfDay: '08:30',
+      timeZoneId: 'America/New_York'
+    });
+
+    component.onSaveEmailSummaryPreference();
+
+    const req = emailSummaryServiceSpy.updatePreference.calls.mostRecent().args[0];
+    expect(req.timeZoneId).toBe('America/New_York');
+  });
+
+  it('disables schedule controls from the reactive form model when summaries are disabled', () => {
+    component.emailSummaryForm.patchValue({ isEnabled: false });
+
+    expect(component.emailSummaryForm.get('frequency')?.disabled).toBeTrue();
+    expect(component.emailSummaryForm.get('timeOfDay')?.disabled).toBeTrue();
+  });
+
   it('send now updates status to queued', () => {
     component.onSendSummaryNow();
     expect(emailSummaryServiceSpy.sendNow).toHaveBeenCalled();

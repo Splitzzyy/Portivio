@@ -111,14 +111,14 @@
 
           <div class="form-group">
             <label class="form-label">Frequency</label>
-            <select class="form-control" formControlName="frequency" [disabled]="!emailSummaryForm.get('isEnabled')?.value">
+            <select class="form-control" formControlName="frequency">
               <option *ngFor="let f of frequencies" [value]="f">{{ f }}</option>
             </select>
           </div>
 
           <div class="form-group">
             <label class="form-label">Time (HH:mm)</label>
-            <input type="time" class="form-control" formControlName="timeOfDay" [disabled]="!emailSummaryForm.get('isEnabled')?.value">
+            <input type="time" class="form-control" formControlName="timeOfDay">
             <div *ngIf="emailSummaryForm.hasError('timeOfDayRequired') && emailSummaryForm.get('isEnabled')?.value" class="text-danger">
               Time is required.
             </div>

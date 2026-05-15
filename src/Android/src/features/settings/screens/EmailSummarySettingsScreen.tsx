@@ -58,14 +58,8 @@ export function EmailSummarySettingsScreen({
     if (!pref) return;
     setIsEnabled(pref.isEnabled);
     setFrequency(pref.frequency ?? 'Daily');
-    const isSeededUtc =
-      pref.timeZoneId === 'UTC' &&
-      !pref.frequency &&
-      !pref.timeOfDay &&
-      !pref.weeklyDayOfWeek &&
-      !pref.monthlyDayMode &&
-      pref.monthlyDayOfMonth == null;
-    setTimeZoneId(isSeededUtc ? 'Asia/Kolkata' : pref.timeZoneId || 'Asia/Kolkata');
+    const isUnconfiguredUtcDefault = !pref.isEnabled && pref.timeZoneId === 'UTC';
+    setTimeZoneId(isUnconfiguredUtcDefault ? 'Asia/Kolkata' : pref.timeZoneId || 'Asia/Kolkata');
     setTimeOfDay(pref.timeOfDay ?? '09:00');
     setWeeklyDayOfWeek(pref.weeklyDayOfWeek ?? 'Monday');
     setMonthlyDayMode(pref.monthlyDayMode ?? 'DayOfMonth');

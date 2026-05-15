@@ -1,5 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
+import { Subject, takeUntil } from 'rxjs';
 import { AuthService } from '../../../../core/services/auth.service';
 import { EmailSummaryService } from '../../../../core/services/email-summary.service';
 import {
@@ -39,6 +40,7 @@ export class MyProfileComponent implements OnInit {
   passwordError = '';
 
   private readonly defaultTimeZoneId = 'Asia/Kolkata';
+  private readonly destroy$ = new Subject<void>();
 
   readonly frequencies: EmailSummaryFrequency[] = ['Daily', 'Weekly', 'Monthly'];
   readonly weekDays: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -64,8 +66,14 @@ export class MyProfileComponent implements OnInit {
       timeOfDay: ['09:00'],
       dayOfWeek: [null as DayOfWeek | null],
       monthlyDayMode: ['DayOfMonth' as MonthlyDayMode],
-      dayOfMonth: [1]
+      dayOfMonth: [1],
+      timeZoneId: [this.defaultTimeZoneId]
     }, { validators: this.emailSummaryScheduleValidator });
+
+    this.emailSummaryForm.get('isEnabled')?.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.syncEmailSummaryScheduleControlState());
+    this.syncEmailSummaryScheduleControlState();
   }
 
   ngOnInit(): void {
@@ -76,6 +84,11 @@ export class MyProfileComponent implements OnInit {
     }
 
     this.loadEmailSummaryPreference();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   passwordMatchValidator(g: FormGroup) {
@@ -134,8 +147,10 @@ export class MyProfileComponent implements OnInit {
       timeOfDay: pref.timeOfDay ?? '09:00',
       dayOfWeek: pref.weeklyDayOfWeek ?? null,
       monthlyDayMode: (pref.monthlyDayMode ?? 'DayOfMonth') as MonthlyDayMode,
-      dayOfMonth: pref.monthlyDayOfMonth ?? 1
+      dayOfMonth: pref.monthlyDayOfMonth ?? 1,
+      timeZoneId: pref.timeZoneId || this.defaultTimeZoneId
     }, { emitEvent: false });
+    this.syncEmailSummaryScheduleControlState();
     this.emailSummaryForm.updateValueAndValidity({ emitEvent: false });
   }
 
@@ -182,7 +197,7 @@ export class MyProfileComponent implements OnInit {
   }
 
   private buildUpdateEmailSummaryPreferenceRequest(): UpdateEmailSummaryPreferenceRequest {
-    const v = this.emailSummaryForm.value;
+    const v = this.emailSummaryForm.getRawValue();
     const isEnabled = v.isEnabled === true;
 
     if (!isEnabled) {
@@ -208,10 +223,26 @@ export class MyProfileComponent implements OnInit {
       monthlyDayOfMonth: frequency === 'Monthly' && v.monthlyDayMode === 'DayOfMonth'
         ? (Number(v.dayOfMonth) || null)
         : null,
-      timeZoneId: this.defaultTimeZoneId
+      timeZoneId: v.timeZoneId || this.emailSummaryPreference?.timeZoneId || this.defaultTimeZoneId
     };
 
     return request;
+  }
+
+  private syncEmailSummaryScheduleControlState(): void {
+    const scheduleControls = ['frequency', 'timeOfDay', 'dayOfWeek', 'monthlyDayMode', 'dayOfMonth', 'timeZoneId'];
+    const shouldEnable = this.emailSummaryForm.get('isEnabled')?.value === true;
+
+    scheduleControls.forEach((controlName) => {
+      const control = this.emailSummaryForm.get(controlName);
+      if (!control) return;
+
+      if (shouldEnable && control.disabled) {
+        control.enable({ emitEvent: false });
+      } else if (!shouldEnable && control.enabled) {
+        control.disable({ emitEvent: false });
+      }
+    });
   }
 
   onUpdateProfile(): void {

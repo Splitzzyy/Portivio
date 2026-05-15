@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { RouterTestingModule } from '@angular/router/testing';
+import { Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import { of } from 'rxjs';
 import { TransactionsComponent } from './transactions.component';
@@ -19,6 +20,7 @@ describe('TransactionsComponent', () => {
   let transactionSvc: jasmine.SpyObj<TransactionService>;
   let modalSvc: jasmine.SpyObj<ModalService>;
   let toastr: jasmine.SpyObj<ToastrService>;
+  let router: Router;
 
   const mockProfile: Profile = {
     id: 'p1', userId: 'u1', name: 'Personal',
@@ -55,7 +57,7 @@ describe('TransactionsComponent', () => {
 
     await TestBed.configureTestingModule({
       declarations: [TransactionsComponent],
-      imports: [CommonModule, FormsModule, RouterTestingModule],
+      imports: [CommonModule, FormsModule, RouterTestingModule.withRoutes([], { initialNavigation: 'disabled' })],
       providers: [
         { provide: ProfileService,     useValue: profileSvc },
         { provide: InstrumentService,  useValue: instrumentSvc },
@@ -67,7 +69,17 @@ describe('TransactionsComponent', () => {
 
     fixture = TestBed.createComponent(TransactionsComponent);
     component = fixture.componentInstance;
+
+    router = TestBed.inject(Router);
+    router.errorHandler = () => null;
+    spyOn(router, 'navigate').and.resolveTo(true);
+
     fixture.detectChanges();
+  });
+
+  afterEach(() => {
+    router?.dispose();
+    fixture?.destroy();
   });
 
   it('fetch populates items and total from PagedResult envelope', () => {
@@ -102,5 +114,8 @@ describe('TransactionsComponent', () => {
     component.openInvestmentModal('transactions-add-investment');
 
     expect(modalSvc.open).toHaveBeenCalledWith({ source: 'transactions-add-investment' });
+    expect(router.navigate).toHaveBeenCalledWith(['/dashboard/add-investment'], {
+      state: { data: { source: 'transactions-add-investment' } }
+    });
   });
 });

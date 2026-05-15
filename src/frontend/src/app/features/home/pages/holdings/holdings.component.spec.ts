@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { RouterTestingModule } from '@angular/router/testing';
+import { Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import { of, throwError } from 'rxjs';
 import { HoldingsComponent } from './holdings.component';
@@ -19,6 +20,7 @@ describe('HoldingsComponent', () => {
   let holdingSvc: jasmine.SpyObj<HoldingService>;
   let modalSvc: jasmine.SpyObj<ModalService>;
   let toastr: jasmine.SpyObj<ToastrService>;
+  let router: Router;
 
   const mockProfile: Profile = {
     id: 'p1', userId: 'u1', name: 'Personal',
@@ -54,7 +56,7 @@ describe('HoldingsComponent', () => {
 
     await TestBed.configureTestingModule({
       declarations: [HoldingsComponent],
-      imports: [CommonModule, FormsModule, RouterTestingModule],
+      imports: [CommonModule, FormsModule, RouterTestingModule.withRoutes([], { initialNavigation: 'disabled' })],
       providers: [
         { provide: ProfileService,    useValue: profileSvc },
         { provide: InstrumentService, useValue: instrumentSvc },
@@ -66,7 +68,17 @@ describe('HoldingsComponent', () => {
 
     fixture = TestBed.createComponent(HoldingsComponent);
     component = fixture.componentInstance;
+
+    router = TestBed.inject(Router);
+    router.errorHandler = () => null;
+    spyOn(router, 'navigate').and.resolveTo(true);
+
     fixture.detectChanges();
+  });
+
+  afterEach(() => {
+    router?.dispose();
+    fixture?.destroy();
   });
 
   it('refreshPrices replaces holdings with response and toggles spinner', () => {
@@ -128,6 +140,24 @@ describe('HoldingsComponent', () => {
       quantity: 10,
       price: 100,
       amount: 1000
+    });
+
+    expect(router.navigate).toHaveBeenCalledWith(['/dashboard/add-investment'], {
+      state: {
+        data: {
+          source: 'holdings-row-edit',
+          mode: 'edit',
+          holdingId: 'h1',
+          profileId: 'p1',
+          instrumentId: 'i1',
+          assetTypeName: 'Equity',
+          instrumentName: 'TCS Ltd',
+          instrumentSymbol: 'TCS',
+          quantity: 10,
+          price: 100,
+          amount: 1000
+        }
+      }
     });
   });
 });
