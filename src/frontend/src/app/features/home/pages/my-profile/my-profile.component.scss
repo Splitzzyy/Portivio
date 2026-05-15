@@ -8,21 +8,21 @@
 .card {
   background: var(--bg-surface) !important;
   border: 1px solid var(--border) !important;
-  border-radius: 12px;
+  border-radius: 16px; // M3 uses larger radius
   color: var(--text-primary) !important;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
-  transition: transform 0.2s ease;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 
   &:hover {
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-md);
   }
 }
 
 .card-header {
-  background: var(--bg-canvas) !important;
+  background: transparent !important;
   border-bottom: 1px solid var(--border) !important;
-  padding: 18px 24px;
+  padding: 20px 24px;
 }
 
 .card-title {
@@ -30,6 +30,7 @@
   font-size: 18px;
   font-weight: 700;
   margin: 0;
+  letter-spacing: -0.2px;
 }
 
 .card-body {
@@ -37,28 +38,24 @@
 }
 
 .form-group {
-  margin-bottom: 20px;
-}
-
-.form-group-last {
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 }
 
 .form-label {
   display: block;
   margin-bottom: 8px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-muted) !important;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
 }
 
 .form-control {
   width: 100%;
-  padding: 10px 14px;
+  padding: 12px 16px;
   border: 1px solid var(--border) !important;
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--bg-canvas) !important;
   color: var(--text-primary) !important;
   font-size: 14px;
@@ -66,35 +63,62 @@
 
   &:focus {
     border-color: var(--accent) !important;
-    box-shadow: 0 0 0 3px var(--accent-light) !important;
+    box-shadow: 0 0 0 4px var(--accent-light) !important;
   }
 
   &::placeholder {
     color: var(--text-muted);
-    opacity: 0.6;
+    opacity: 0.5;
   }
 }
 
+// Material 3 Switch Implementation
 .form-switch {
-  padding-left: 2.5em;
+  display: flex;
+  align-items: center;
+  padding-left: 0;
+  gap: 12px;
   
   .form-check-input {
-    width: 2.5em;
-    height: 1.25em;
-    margin-left: -2.5em;
+    appearance: none;
+    width: 48px;
+    height: 24px;
+    background-color: var(--border);
+    border-radius: 20px;
+    position: relative;
     cursor: pointer;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='rgba(148, 163, 184, 1)'/%3e%3c/svg%3e");
-    background-color: var(--bg-elev-1);
-    border-color: var(--border);
+    transition: background-color 0.2s ease;
+    border: 2px solid var(--border) !important;
+    margin: 0;
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      background-color: var(--text-muted);
+      border-radius: 50%;
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s;
+    }
 
     &:checked {
       background-color: var(--accent);
-      border-color: var(--accent);
-      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
+      border-color: var(--accent) !important;
+
+      &::after {
+        transform: translateX(24px);
+        background-color: var(--text-on-accent);
+        width: 18px; // Thumb grows slightly when checked
+        height: 18px;
+        top: 1px;
+      }
     }
 
     &:focus {
-      box-shadow: 0 0 0 0.25rem var(--accent-light);
+      box-shadow: 0 0 0 4px var(--accent-light) !important;
+      outline: none;
     }
   }
 
@@ -102,70 +126,86 @@
     cursor: pointer;
     font-weight: 500;
     color: var(--text-primary);
-    padding-top: 2px;
+    font-size: 14px;
   }
 }
 
+// Material 3 Button Implementation
 .btn {
-  padding: 10px 16px;
-  border-radius: 10px;
+  padding: 12px 24px;
+  border-radius: 100px; // M3 buttons are fully rounded
   font-weight: 600;
   font-size: 14px;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
 
   &:disabled {
-    opacity: 0.5;
+    opacity: 0.38;
     cursor: not-allowed;
+    box-shadow: none !important;
+  }
+
+  i {
+    font-size: 16px;
   }
 }
 
 .btn-primary {
   background: var(--accent) !important;
   color: var(--text-on-accent) !important;
-  border: none !important;
-  box-shadow: 0 4px 12px var(--accent-light);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
 
   &:hover:not(:disabled) {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.12);
     filter: brightness(1.1);
-    transform: translateY(-1px);
-    box-shadow: 0 6px 16px var(--accent-light);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
   }
 }
 
 .btn-outline-primary {
   background: transparent !important;
   color: var(--accent) !important;
-  border: 1.5px solid var(--accent) !important;
+  border: 1px solid var(--border) !important; // M3 Outlined Button
 
   &:hover:not(:disabled) {
     background: var(--accent-light) !important;
+    border-color: var(--accent) !important;
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
   }
 }
 
 .alert {
-  padding: 14px 16px;
-  border-radius: 10px;
-  margin-bottom: 20px;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 24px;
   font-size: 14px;
   display: flex;
   align-items: center;
   gap: 12px;
+  border: none !important;
 }
 
 .alert-danger {
   color: var(--negative) !important;
-  background: rgba(239, 68, 68, 0.08) !important;
-  border: 1px solid rgba(239, 68, 68, 0.15) !important;
+  background: rgba(239, 68, 68, 0.12) !important;
 }
 
 .alert-success {
   color: var(--positive) !important;
-  background: rgba(16, 185, 129, 0.08) !important;
-  border: 1px solid rgba(16, 185, 129, 0.15) !important;
+  background: rgba(16, 185, 129, 0.12) !important;
 }
 
 .text-danger {
@@ -173,40 +213,47 @@
   font-size: 12px;
   margin-top: 6px;
   font-weight: 500;
-}
-
-.muted-text {
-  color: var(--text-muted) !important;
-  font-size: 14px;
+  padding-left: 4px;
 }
 
 .email-display {
-  padding: 10px 14px;
+  padding: 12px 16px;
   background: var(--bg-canvas);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   color: var(--text-primary);
-  font-family: monospace;
-  font-size: 14px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
 }
 
 .action-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
-  margin-top: 24px;
-  padding-top: 20px;
+  margin-top: 32px;
+  padding-top: 24px;
   border-top: 1px solid var(--border);
+}
+
+@media (min-width: 576px) {
+  .action-row {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+  
+  .btn {
+    min-width: 160px;
+  }
 }
 
 .status-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 12px;
-  margin-top: 24px;
+  gap: 16px;
+  margin-top: 32px;
 }
 
-@media (min-width: 576px) {
+@media (min-width: 768px) {
   .status-grid {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -214,52 +261,41 @@
 
 .status-card {
   background: var(--bg-canvas);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 14px;
+  border-radius: 16px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  position: relative;
-  overflow: hidden;
+  gap: 8px;
+  border: 1px solid var(--border);
+  transition: all 0.2s ease;
 
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 3px;
-    height: 100%;
-    background: var(--accent);
-    opacity: 0.5;
+  &:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
   }
-
-  &.status-error::before { background: var(--negative); }
 }
 
 .status-label {
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 10px;
+  font-weight: 800;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.8px;
+  letter-spacing: 1.2px;
 }
 
 .status-value {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .status-error-msg {
   grid-column: 1 / -1;
   background: rgba(239, 68, 68, 0.05);
-  border: 1px solid rgba(239, 68, 68, 0.1);
-  border-radius: 10px;
-  padding: 10px 14px;
-  font-size: 12px;
+  border-left: 4px solid var(--negative);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
   color: var(--negative);
+  line-height: 1.5;
 }

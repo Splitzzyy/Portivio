@@ -31,8 +31,9 @@
           </div>
 
           <button type="submit" class="btn btn-primary" [disabled]="profileForm.invalid || profileUpdating">
-            <span *ngIf="profileUpdating">Updating...</span>
-            <span *ngIf="!profileUpdating">Update Profile</span>
+            <i class="fas fa-user-edit" *ngIf="!profileUpdating"></i>
+            <i class="fas fa-spinner fa-spin" *ngIf="profileUpdating"></i>
+            <span>{{ profileUpdating ? 'Updating...' : 'Update Profile' }}</span>
           </button>
         </form>
       </div>
@@ -47,9 +48,11 @@
         <form [formGroup]="passwordForm" (ngSubmit)="onChangePassword()">
           
           <div *ngIf="passwordError" class="alert alert-danger">
+            <i class="fas fa-exclamation-circle"></i>
             {{ passwordError }}
           </div>
           <div *ngIf="passwordSuccess" class="alert alert-success">
+            <i class="fas fa-check-circle"></i>
             Password changed successfully.
           </div>
 
@@ -72,8 +75,9 @@
           </div>
 
           <button type="submit" class="btn btn-primary" [disabled]="passwordForm.invalid || passwordUpdating">
-            <span *ngIf="passwordUpdating">Changing...</span>
-            <span *ngIf="!passwordUpdating">Change Password</span>
+            <i class="fas fa-key" *ngIf="!passwordUpdating"></i>
+            <i class="fas fa-spinner fa-spin" *ngIf="passwordUpdating"></i>
+            <span>{{ passwordUpdating ? 'Changing...' : 'Change Password' }}</span>
           </button>
         </form>
       </div>
