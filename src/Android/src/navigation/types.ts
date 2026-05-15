@@ -38,6 +38,7 @@ export type MoreStackParamList = {
   InstrumentEdit: { instrumentId?: string };
   AssetTypesList: undefined;
   PerformanceScreen: { profileId: string };
+  EmailSummarySettings: undefined;
 };
 
 export type AppTabsParamList = {

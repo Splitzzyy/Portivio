@@ -29,6 +29,7 @@ import { InstrumentsListScreen } from '../features/instruments/screens/Instrumen
 import { InstrumentEditScreen } from '../features/instruments/screens/InstrumentEditScreen';
 import { AssetTypesListScreen } from '../features/instruments/screens/AssetTypesListScreen';
 import { PerformanceScreen } from '../features/performance/screens/PerformanceScreen';
+import { EmailSummarySettingsScreen } from '../features/settings/screens/EmailSummarySettingsScreen';
 
 const Tabs = createBottomTabNavigator<AppTabsParamList>();
 const DashStack = createNativeStackNavigator<DashboardStackParamList>();
@@ -151,6 +152,11 @@ function MoreStack(): React.JSX.Element {
         name="PerformanceScreen"
         component={PerformanceScreen}
         options={{ title: 'Performance' }}
+      />
+      <MoreNav.Screen
+        name="EmailSummarySettings"
+        component={EmailSummarySettingsScreen}
+        options={{ title: 'Email Summary' }}
       />
     </MoreNav.Navigator>
   );

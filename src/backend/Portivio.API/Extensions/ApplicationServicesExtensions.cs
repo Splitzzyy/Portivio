@@ -27,6 +27,7 @@ public static class ApplicationServicesExtensions
         services.Configure<GoogleAuthOptions>(configuration.GetSection(GoogleAuthOptions.SectionName));
         services.Configure<MarketDataOptions>(configuration.GetSection(MarketDataOptions.SectionName));
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+        services.Configure<EmailSummaryOptions>(configuration.GetSection(EmailSummaryOptions.SectionName));
     }
 
     private static void RegisterAuthServices(IServiceCollection services)
@@ -47,6 +48,7 @@ public static class ApplicationServicesExtensions
         services.AddScoped<ISIPPlanService, SIPPlanService>();
         services.AddScoped<IPriceHistoryService, PriceHistoryService>();
         services.AddScoped<IPortfolioPerformanceService, PortfolioPerformanceService>();
+        services.AddScoped<IEmailSummaryService, EmailSummaryService>();
         services.AddScoped<IAssetStrategy, EquityStrategy>();
         services.AddScoped<IAssetStrategy, MutualFundStrategy>();
         services.AddScoped<IAssetStrategy, FixedDepositStrategy>();

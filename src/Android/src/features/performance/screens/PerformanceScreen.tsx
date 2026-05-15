@@ -86,7 +86,7 @@ export function PerformanceScreen({
         loading={snap.isPending}
         onPress={async () => {
           try {
-            await snap.mutateAsync();
+            await snap.mutateAsync(undefined);
             Toast.show({ type: 'success', text1: 'Snapshot recorded' });
             void refetch();
           } catch (e: unknown) {

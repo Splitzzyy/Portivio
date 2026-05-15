@@ -8,6 +8,8 @@ public static class HangfireExtensions
 {
     public const string DailyHoldingsRefreshJobId = "refresh-holdings-daily";
     public const string DailyHoldingsRefreshCron = "0 6 * * *";          // 06:00 IST (TimeZone applied below)
+    public const string EmailSummaryDispatcherJobId = "email-summary-dispatcher";
+    public const string DefaultEmailSummaryDispatcherCron = "*/5 * * * *";
 
     // Every 15 min during NSE market hours (Mon–Fri 9:00–15:59 IST).
     // Starts slightly before open (9:00 vs 9:15) so first tick is close to open.
@@ -71,7 +73,31 @@ public static class HangfireExtensions
         BackgroundJob.Enqueue<IHoldingRecalculationService>(
             svc => svc.RunDailyRefreshAsync(CancellationToken.None));
 
+        RegisterEmailSummaryDispatcher(app);
+
         return app;
+    }
+
+    private static void RegisterEmailSummaryDispatcher(WebApplication app)
+    {
+        if (app.Environment.IsEnvironment("Testing"))
+            return;
+
+        var options = app.Configuration
+            .GetSection(EmailSummaryOptions.SectionName)
+            .Get<EmailSummaryOptions>() ?? new EmailSummaryOptions();
+
+        if (!options.DispatcherEnabled)
+            return;
+
+        var cron = string.IsNullOrWhiteSpace(options.DispatcherCron)
+            ? DefaultEmailSummaryDispatcherCron
+            : options.DispatcherCron;
+
+        RecurringJob.AddOrUpdate<IEmailSummaryService>(
+            recurringJobId: EmailSummaryDispatcherJobId,
+            methodCall: svc => svc.DispatchDueSchedulesAsync(CancellationToken.None),
+            cronExpression: cron);
     }
 
     private static TimeZoneInfo TryFindIst()

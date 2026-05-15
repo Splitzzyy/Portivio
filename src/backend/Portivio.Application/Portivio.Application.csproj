@@ -22,4 +22,8 @@
     <ProjectReference Include="..\Portivio.Infrastructure\Portivio.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Portivio.Tests" />
+  </ItemGroup>
+
 </Project>

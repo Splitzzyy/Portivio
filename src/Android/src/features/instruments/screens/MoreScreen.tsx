@@ -38,6 +38,12 @@ export function MoreScreen({ navigation }: MoreScreenProps<'MoreHome'>): React.J
           left={(p) => <List.Icon {...p} icon="shape" />}
           onPress={() => navigation.navigate('AssetTypesList')}
         />
+        <List.Item
+          title="Email Summary"
+          description="Scheduled portfolio reports"
+          left={(p) => <List.Icon {...p} icon="email-outline" />}
+          onPress={() => navigation.navigate('EmailSummarySettings')}
+        />
         <Divider />
         <List.Subheader>Per Profile</List.Subheader>
         {showSip && (

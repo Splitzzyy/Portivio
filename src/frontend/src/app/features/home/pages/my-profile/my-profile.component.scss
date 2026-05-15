@@ -1,100 +1,313 @@
 .profile-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 24px;
-  max-width: 900px;
+  max-width: 1000px;
 }
 
 .card {
   background: var(--bg-surface) !important;
   border: 1px solid var(--border) !important;
-  border-radius: 8px;
+  border-radius: 16px; // M3 uses larger radius
   color: var(--text-primary) !important;
   box-shadow: var(--shadow-sm);
   overflow: hidden;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+
+  &:hover {
+    box-shadow: var(--shadow-md);
+  }
 }
 
 .card-header {
-  background: var(--bg-canvas) !important;
+  background: transparent !important;
   border-bottom: 1px solid var(--border) !important;
-  padding: 16px 20px;
+  padding: 20px 24px;
 }
 
 .card-title {
   color: var(--text-primary) !important;
-  font-size: 20px;
-  font-weight: 800;
+  font-size: 18px;
+  font-weight: 700;
   margin: 0;
+  letter-spacing: -0.2px;
 }
 
 .card-body {
-  padding: 20px;
+  padding: 24px;
 }
 
 .form-group {
-  margin-bottom: 16px;
-}
-
-.form-group-last {
   margin-bottom: 24px;
 }
 
 .form-label {
   display: block;
   margin-bottom: 8px;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-muted) !important;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .form-control {
   width: 100%;
   padding: 12px 16px;
   border: 1px solid var(--border) !important;
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--bg-canvas) !important;
   color: var(--text-primary) !important;
   font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:focus {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 4px var(--accent-light) !important;
+  }
 
   &::placeholder {
     color: var(--text-muted);
-    opacity: 0.75;
+    opacity: 0.5;
+  }
+}
+
+// Material 3 Switch Implementation (Refined for visibility and contrast)
+.form-switch {
+  display: flex;
+  align-items: center;
+  padding-left: 0 !important; // Override bootstrap
+  gap: 16px;
+  margin-bottom: 24px;
+  
+  .form-check-input {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    width: 52px !important;
+    height: 32px !important;
+    background-color: var(--bg-canvas) !important;
+    border: 2px solid var(--text-muted) !important;
+    border-radius: 100px !important;
+    position: relative !important;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    margin: 0 !important;
+    flex-shrink: 0;
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 6px;
+      width: 16px;
+      height: 16px;
+      background-color: var(--text-muted);
+      border-radius: 50%;
+      transform: translateY(-50%);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 2;
+    }
+
+    &:checked {
+      background-color: var(--accent) !important;
+      border-color: var(--accent) !important;
+
+      &::after {
+        left: calc(100% - 26px);
+        background-color: var(--text-on-accent);
+        width: 20px;
+        height: 20px;
+      }
+    }
+
+    &:focus {
+      box-shadow: 0 0 0 4px var(--accent-light) !important;
+      outline: none;
+    }
+
+    &:hover:not(:checked) {
+      border-color: var(--text-primary) !important;
+      &::after {
+        background-color: var(--text-primary);
+      }
+    }
+  }
+
+  .form-check-label {
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: 15px;
+    user-select: none;
+  }
+}
+
+// Material 3 Button Implementation
+.btn {
+  padding: 12px 24px;
+  border-radius: 100px; // M3 buttons are fully rounded
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+
+  &:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+    box-shadow: none !important;
+  }
+
+  i {
+    font-size: 16px;
   }
 }
 
 .btn-primary {
-  width: 100%;
-  padding: 12px;
-  border-radius: 8px;
-  font-weight: 700;
+  background: var(--accent) !important;
+  color: var(--text-on-accent) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
 
-  &:disabled {
-    opacity: 0.65;
-    cursor: not-allowed;
+  &:hover:not(:disabled) {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.12);
+    filter: brightness(1.1);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+}
+
+.btn-outline-primary {
+  background: transparent !important;
+  color: var(--accent) !important;
+  border: 1px solid var(--border) !important; // M3 Outlined Button
+
+  &:hover:not(:disabled) {
+    background: var(--accent-light) !important;
+    border-color: var(--accent) !important;
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
   }
 }
 
 .alert {
-  padding: 12px;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  border: 1px solid transparent;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: none !important;
 }
 
 .alert-danger {
   color: var(--negative) !important;
-  background: rgba(239, 68, 68, 0.1) !important;
-  border-color: rgba(239, 68, 68, 0.22) !important;
+  background: rgba(239, 68, 68, 0.12) !important;
 }
 
 .alert-success {
   color: var(--positive) !important;
-  background: rgba(16, 185, 129, 0.1) !important;
-  border-color: rgba(16, 185, 129, 0.22) !important;
+  background: rgba(16, 185, 129, 0.12) !important;
 }
 
 .text-danger {
   color: var(--negative) !important;
   font-size: 12px;
-  margin-top: 4px;
+  margin-top: 6px;
+  font-weight: 500;
+  padding-left: 4px;
+}
+
+.email-display {
+  padding: 12px 16px;
+  background: var(--bg-canvas);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
+}
+
+.action-row {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+@media (min-width: 576px) {
+  .action-row {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+  
+  .btn {
+    min-width: 160px;
+  }
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-top: 32px;
+}
+
+@media (min-width: 768px) {
+  .status-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.status-card {
+  background: var(--bg-canvas);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--border);
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+}
+
+.status-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+}
+
+.status-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.status-error-msg {
+  grid-column: 1 / -1;
+  background: rgba(239, 68, 68, 0.05);
+  border-left: 4px solid var(--negative);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--negative);
+  line-height: 1.5;
 }

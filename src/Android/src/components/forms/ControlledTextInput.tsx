@@ -5,7 +5,10 @@ import { View } from 'react-native';
 
 interface Props<T extends FieldValues>
   extends UseControllerProps<T>,
-    Omit<React.ComponentProps<typeof TextInput>, 'value' | 'onChangeText' | 'onBlur' | 'error'> {
+    Omit<
+      React.ComponentProps<typeof TextInput>,
+      'value' | 'onChangeText' | 'onBlur' | 'error' | 'defaultValue'
+    > {
   name: Path<T>;
   label: string;
 }

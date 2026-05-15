@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
+import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
@@ -16,6 +17,7 @@ import { AssetIngestResponse, Instrument, Profile } from '../../../../core/model
 describe('AddInvestmentComponent', () => {
   let component: AddInvestmentComponent;
   let fixture: ComponentFixture<AddInvestmentComponent>;
+  let router: Router;
   let profileSvc: jasmine.SpyObj<ProfileService>;
   let instrumentSvc: jasmine.SpyObj<InstrumentService>;
   let transactionSvc: jasmine.SpyObj<TransactionService>;
@@ -68,7 +70,7 @@ describe('AddInvestmentComponent', () => {
     transactionSvc.list.and.returnValue(of({ items: [], page: 1, pageSize: 5, total: 0, hasMore: false }));
 
     await TestBed.configureTestingModule({
-      imports: [RouterTestingModule, FormsModule, CommonModule, HttpClientTestingModule],
+      imports: [RouterTestingModule.withRoutes([], { initialNavigation: 'disabled' }), FormsModule, CommonModule, HttpClientTestingModule],
       declarations: [AddInvestmentComponent],
       providers: [
         { provide: ProfileService,    useValue: profileSvc     },
@@ -82,7 +84,14 @@ describe('AddInvestmentComponent', () => {
 
     fixture   = TestBed.createComponent(AddInvestmentComponent);
     component = fixture.componentInstance;
+    router = TestBed.inject(Router);
+    router.errorHandler = () => null;
     fixture.detectChanges();
+  });
+
+  afterEach(() => {
+    router?.dispose();
+    fixture?.destroy();
   });
 
   // ---- creation & init ----
