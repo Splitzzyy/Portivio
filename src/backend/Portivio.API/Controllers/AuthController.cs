@@ -98,6 +98,7 @@ namespace Portivio.API.Controllers
         /// Verify user email with verification token
         /// </summary>
         [HttpPost("verify-email")]
+        [AllowAnonymous]
         public async Task<ActionResult<AuthResponse>> VerifyEmail([FromBody] VerifyEmailRequest request)
         {
             var result = await _authService.VerifyEmailAsync(request);
@@ -112,6 +113,7 @@ namespace Portivio.API.Controllers
         /// Resend verification email
         /// </summary>
         [HttpPost("resend-verification")]
+        [AllowAnonymous]
         public async Task<ActionResult<AuthResponse>> ResendVerification([FromQuery] string email)
         {
             var result = await _authService.ResendVerificationEmailAsync(email);
@@ -126,6 +128,7 @@ namespace Portivio.API.Controllers
         /// Request password reset
         /// </summary>
         [HttpPost("forgot-password")]
+        [AllowAnonymous]
         public async Task<ActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
         {
             var result = await _authService.ForgotPasswordAsync(request);
@@ -140,6 +143,7 @@ namespace Portivio.API.Controllers
         /// Reset password with reset token
         /// </summary>
         [HttpPost("reset-password")]
+        [AllowAnonymous]
         public async Task<ActionResult<AuthResponse>> ResetPassword([FromBody] ResetPasswordRequest request)
         {
             var result = await _authService.ResetPasswordAsync(request);
