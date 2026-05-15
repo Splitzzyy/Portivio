@@ -72,47 +72,51 @@
   }
 }
 
-// Material 3 Switch Implementation
+// Material 3 Switch Implementation (Refined for visibility and contrast)
 .form-switch {
   display: flex;
   align-items: center;
-  padding-left: 0;
-  gap: 12px;
+  padding-left: 0 !important; // Override bootstrap
+  gap: 16px;
+  margin-bottom: 24px;
   
   .form-check-input {
-    appearance: none;
-    width: 48px;
-    height: 24px;
-    background-color: var(--border);
-    border-radius: 20px;
-    position: relative;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    width: 52px !important;
+    height: 32px !important;
+    background-color: var(--bg-canvas) !important;
+    border: 2px solid var(--text-muted) !important;
+    border-radius: 100px !important;
+    position: relative !important;
     cursor: pointer;
-    transition: background-color 0.2s ease;
-    border: 2px solid var(--border) !important;
-    margin: 0;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    margin: 0 !important;
+    flex-shrink: 0;
 
     &::after {
       content: '';
       position: absolute;
-      top: 2px;
-      left: 2px;
+      top: 50%;
+      left: 6px;
       width: 16px;
       height: 16px;
       background-color: var(--text-muted);
       border-radius: 50%;
-      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s;
+      transform: translateY(-50%);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 2;
     }
 
     &:checked {
-      background-color: var(--accent);
+      background-color: var(--accent) !important;
       border-color: var(--accent) !important;
 
       &::after {
-        transform: translateX(24px);
+        left: calc(100% - 26px);
         background-color: var(--text-on-accent);
-        width: 18px; // Thumb grows slightly when checked
-        height: 18px;
-        top: 1px;
+        width: 20px;
+        height: 20px;
       }
     }
 
@@ -120,13 +124,21 @@
       box-shadow: 0 0 0 4px var(--accent-light) !important;
       outline: none;
     }
+
+    &:hover:not(:checked) {
+      border-color: var(--text-primary) !important;
+      &::after {
+        background-color: var(--text-primary);
+      }
+    }
   }
 
   .form-check-label {
     cursor: pointer;
     font-weight: 500;
     color: var(--text-primary);
-    font-size: 14px;
+    font-size: 15px;
+    user-select: none;
   }
 }
 
