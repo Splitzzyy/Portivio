@@ -72,6 +72,10 @@ export const endpoints = {
     byId: (instrumentId: Guid, priceId: Guid) =>
       `/instruments/${instrumentId}/prices/${priceId}`,
   },
+  emailSummary: {
+    preferences: '/email-summary/preferences',
+    sendNow: '/email-summary/send-now',
+  },
 };
 
 export const AUTH_ALLOWLIST = [

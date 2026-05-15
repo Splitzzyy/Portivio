@@ -406,6 +406,52 @@ export namespace Assets {
   }
 }
 
+export namespace EmailSummary {
+  export type Frequency = 'Daily' | 'Weekly' | 'Monthly' | string;
+  export type MonthlyDayMode = 'DayOfMonth' | 'LastDay' | string;
+  export type SendStatus = 'Queued' | 'Succeeded' | 'Failed' | 'Skipped' | string;
+  export type TimeOfDay = string; // HH:mm
+  export type DayOfWeek =
+    | 'Sunday'
+    | 'Monday'
+    | 'Tuesday'
+    | 'Wednesday'
+    | 'Thursday'
+    | 'Friday'
+    | 'Saturday'
+    | string;
+
+  export interface PreferenceResponse {
+    id: Guid;
+    userId: Guid;
+    isEnabled: boolean;
+    frequency?: Frequency | null;
+    timeOfDay?: TimeOfDay | null;
+    weeklyDayOfWeek?: DayOfWeek | null;
+    monthlyDayMode?: MonthlyDayMode | null;
+    monthlyDayOfMonth?: number | null;
+    timeZoneId: string;
+    lastSendStatus?: SendStatus | null;
+    lastSendAttemptAtUtc?: Iso | null;
+    lastSendSucceededAtUtc?: Iso | null;
+    lastSendError?: string | null;
+    lastManualQueuedAtUtc?: Iso | null;
+    nextRunAtUtc?: Iso | null;
+    createdAtUtc: Iso;
+    updatedAtUtc: Iso;
+  }
+
+  export interface UpdatePreferenceRequest {
+    isEnabled: boolean;
+    frequency?: Frequency | null;
+    timeOfDay?: TimeOfDay | null;
+    weeklyDayOfWeek?: DayOfWeek | null;
+    monthlyDayMode?: MonthlyDayMode | null;
+    monthlyDayOfMonth?: number | null;
+    timeZoneId?: string | null;
+  }
+}
+
 export interface ApiErrorBody {
   message?: string;
   errors?: string[] | Record<string, string[]>;

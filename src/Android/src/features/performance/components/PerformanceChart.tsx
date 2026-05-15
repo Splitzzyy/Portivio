@@ -1,11 +1,6 @@
 import React from 'react';
-import { Dimensions, View } from 'react-native';
-import {
-  VictoryAxis,
-  VictoryChart,
-  VictoryLine,
-  VictoryTheme,
-} from 'victory-native';
+import { View } from 'react-native';
+import { CartesianChart, Line } from 'victory-native';
 import type { Performance } from '../../../types/dtos';
 
 interface Props {
@@ -15,18 +10,15 @@ interface Props {
 export default function PerformanceChart({ history }: Props): React.JSX.Element {
   const sorted = [...history].sort((a, b) => a.date.localeCompare(b.date));
   const data = sorted.map((p) => ({
-    x: new Date(p.date),
+    x: new Date(p.date).getTime(),
     y: Number(p.currentValue),
   }));
-  const width = Dimensions.get('window').width - 64;
 
   return (
     <View>
-      <VictoryChart theme={VictoryTheme.material} width={width} scale={{ x: 'time' }}>
-        <VictoryAxis fixLabelOverlap />
-        <VictoryAxis dependentAxis />
-        <VictoryLine data={data} interpolation="monotoneX" />
-      </VictoryChart>
+      <CartesianChart data={data} xKey="x" yKeys={['y']}>
+        {({ points }) => <Line points={points.y} color="#4F46E5" strokeWidth={2} />}
+      </CartesianChart>
     </View>
   );
 }
