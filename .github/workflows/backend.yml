@@ -54,7 +54,7 @@ jobs:
 
       - name: Build & push API image
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: src/backend
           push: true
