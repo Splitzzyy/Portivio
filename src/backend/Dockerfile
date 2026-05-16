@@ -25,6 +25,9 @@ RUN dotnet publish Portivio.API/Portivio.API.csproj \
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
+# Run as non-root user
+USER $APP_UID
+
 COPY --from=build /app/publish .
 
 ENV ASPNETCORE_URLS=http://+:5274 \
