@@ -16,6 +16,7 @@ namespace Portivio.Application.Services
         Task<Result> DeleteHoldingAsync(Guid userId, Guid profileId, Guid holdingId);
         Task<Result> RecalculateHoldingFromTransactionsAsync(Guid profileId, Guid instrumentId);
         Task<Result> UpdateCurrentPriceAsync(Guid instrumentId, decimal currentPrice);
+        Task<Result> BulkUpdateCurrentPricesAsync(Dictionary<Guid, decimal> instrumentPrices);
     }
 
     public class HoldingService : IHoldingService
@@ -353,6 +354,41 @@ namespace Portivio.Application.Services
             {
                 _logger.LogError(ex, "Error updating current prices. InstrumentId={InstrumentId} Price={Price}", instrumentId, currentPrice);
                 return Result.InternalServerError($"Error updating current prices: {ex.Message}");
+            }
+        }
+
+        public async Task<Result> BulkUpdateCurrentPricesAsync(Dictionary<Guid, decimal> instrumentPrices)
+        {
+            try
+            {
+                var instrumentIds = instrumentPrices.Keys.ToList();
+                var holdings = await _context.Holdings
+                    .Where(h => instrumentIds.Contains(h.InstrumentId))
+                    .ToListAsync();
+
+                foreach (var holding in holdings)
+                {
+                    if (instrumentPrices.TryGetValue(holding.InstrumentId, out var currentPrice))
+                    {
+                        holding.CurrentPrice = currentPrice;
+                        holding.MarketValue = holding.Quantity * currentPrice;
+                        holding.UnrealizedPnL = (currentPrice - holding.AvgPrice) * holding.Quantity;
+                        holding.LastUpdated = DateTime.UtcNow;
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
+                if (holdings.Count > 0)
+                    _logger.LogInformation("Bulk current prices propagated. InstrumentsAffected={InstrumentCount} HoldingsAffected={Count}",
+                        instrumentIds.Count, holdings.Count);
+
+                return Result.Success($"Updated current prices for {holdings.Count} holding(s)");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error bulk updating current prices.");
+                return Result.InternalServerError($"Error bulk updating current prices: {ex.Message}");
             }
         }
 

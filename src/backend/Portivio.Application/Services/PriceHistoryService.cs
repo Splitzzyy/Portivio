@@ -132,6 +132,17 @@ namespace Portivio.Application.Services
 
                 var response = new BulkAddPriceResponse();
 
+                // Extract all dates and normalize them
+                var dates = request.Prices.Select(p => p.Date.ToUniversalTime().Date).Distinct().ToList();
+
+                // Fetch existing entries for these dates in one query
+                var existingDates = await _context.PriceHistories
+                    .Where(ph => ph.InstrumentId == instrumentId && dates.Contains(ph.Date.Date))
+                    .Select(ph => ph.Date.Date)
+                    .ToListAsync();
+
+                var existingDateSet = new HashSet<DateTime>(existingDates);
+
                 foreach (var item in request.Prices)
                 {
                     if (item.Price <= 0)
@@ -142,10 +153,7 @@ namespace Portivio.Application.Services
                     }
 
                     var normalizedDate = item.Date.ToUniversalTime().Date;
-                    var exists = await _context.PriceHistories.AnyAsync(
-                        ph => ph.InstrumentId == instrumentId && ph.Date.Date == normalizedDate);
-
-                    if (exists)
+                    if (existingDateSet.Contains(normalizedDate))
                     {
                         response.Skipped++;
                         continue;
@@ -162,6 +170,7 @@ namespace Portivio.Application.Services
                     });
 
                     response.Inserted++;
+                    existingDateSet.Add(normalizedDate); // Avoid duplicates within the same batch
                 }
 
                 await _context.SaveChangesAsync();

@@ -174,5 +174,43 @@ namespace Portivio.Tests.Services
 
             Assert.False(await context.Holdings.AnyAsync(h => h.ProfileId == profile.Id && h.InstrumentId == instrument.Id));
         }
+
+        [Fact]
+        public async Task BulkUpdateCurrentPrices_UpdatesMultipleInstruments()
+        {
+            using var context = CreateInMemoryDbContext();
+            var (_, profile, assetType, instrument1) = SeedBasicData(context);
+            
+            var instrument2 = new Instrument { Id = Guid.NewGuid(), AssetTypeId = assetType.Id, Name = "Test Corp 2", Symbol = "TEST2", Currency = "USD" };
+            context.Instruments.Add(instrument2);
+            
+            var holding1 = new Holding { Id = Guid.NewGuid(), ProfileId = profile.Id, InstrumentId = instrument1.Id, Quantity = 10m, AvgPrice = 100m, CurrentPrice = 100m, MarketValue = 1000m, UnrealizedPnL = 0m, LastUpdated = DateTime.UtcNow };
+            var holding2 = new Holding { Id = Guid.NewGuid(), ProfileId = profile.Id, InstrumentId = instrument2.Id, Quantity = 5m, AvgPrice = 200m, CurrentPrice = 200m, MarketValue = 1000m, UnrealizedPnL = 0m, LastUpdated = DateTime.UtcNow };
+            
+            context.Holdings.AddRange(holding1, holding2);
+            await context.SaveChangesAsync();
+
+            var service = new HoldingService(context, CreateMockLogger(), new ProfileAccessGuard(context));
+            
+            var updates = new Dictionary<Guid, decimal>
+            {
+                { instrument1.Id, 110m },
+                { instrument2.Id, 220m }
+            };
+
+            var result = await service.BulkUpdateCurrentPricesAsync(updates);
+
+            Assert.True(result.IsSuccess);
+            
+            var updatedHolding1 = await context.Holdings.FirstAsync(h => h.Id == holding1.Id);
+            Assert.Equal(110m, updatedHolding1.CurrentPrice);
+            Assert.Equal(1100m, updatedHolding1.MarketValue);
+            Assert.Equal(100m, updatedHolding1.UnrealizedPnL);
+
+            var updatedHolding2 = await context.Holdings.FirstAsync(h => h.Id == holding2.Id);
+            Assert.Equal(220m, updatedHolding2.CurrentPrice);
+            Assert.Equal(1100m, updatedHolding2.MarketValue);
+            Assert.Equal(100m, updatedHolding2.UnrealizedPnL);
+        }
     }
 }
