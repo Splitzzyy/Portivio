@@ -11,7 +11,7 @@ namespace Portivio.API.Controllers
     [Authorize]
     [EnableRateLimiting("per-user")]
     [Route("api/instruments")]
-    public class InstrumentController : ControllerBase
+    public class InstrumentController : PortivioControllerBase
     {
         private readonly IInstrumentService _instrumentService;
 

@@ -7,11 +7,23 @@ Financial portfolio management application. Track stocks, mutual funds, SIP plan
 | | Backend | Frontend |
 |---|:-------:|:--------:|
 | Build | [![Build](https://github.com/Splitzzyy/Portivio/actions/workflows/build-on-main.yml/badge.svg?branch=main)](https://github.com/Splitzzyy/Portivio/actions/workflows/build-on-main.yml) | [![Build](https://github.com/Splitzzyy/Portivio/actions/workflows/build-on-main.yml/badge.svg?branch=main)](https://github.com/Splitzzyy/Portivio/actions/workflows/build-on-main.yml) |
-| Tests | ![Backend tests](https://img.shields.io/badge/tests-147%2F147%20passed-brightgreen) | ![Frontend tests](https://img.shields.io/badge/frontend%20tests-82%2F82%20passed-brightgreen) |
+| Tests | ![Backend tests](https://img.shields.io/badge/tests-198%2F198%20passed-brightgreen) | ![Frontend tests](https://img.shields.io/badge/frontend%20tests-123%2F123%20passed-brightgreen) |
 
 Both backend and frontend builds/tests run through the single `build-on-main.yml` workflow.
 
 [![Secret Scan](https://github.com/Splitzzyy/Portivio/actions/workflows/secret-scan.yml/badge.svg)](https://github.com/Splitzzyy/Portivio/actions/workflows/secret-scan.yml)
+
+---
+
+## Features
+
+- **Portfolio Tracking:** Manage stocks, mutual funds, FDs, RDs, PPF, and Gold.
+- **Multiple Profiles:** Track investments for different family members or entities.
+- **Performance Analytics:** Real-time returns, unrealized P/L, and historical snapshots.
+- **Email Summaries:** Scheduled and manual investment summaries with customizable frequency.
+- **Centralized Auditing:** Security-critical events logged with IP and device metadata.
+- **SSO Integration:** Google Login support alongside traditional email/password.
+- **Modern UI:** Responsive Angular 18 frontend with rich dashboard visualizations.
 
 ---
 

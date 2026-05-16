@@ -14,7 +14,7 @@ public static class WebApplicationExtensions
             {
                 logger.LogInformation("[Startup] Running EF Core migrations...");
                 var db = scope.ServiceProvider.GetRequiredService<PortivioDbContext>();
-                db.Database.Migrate();
+                await db.Database.MigrateAsync();
                 logger.LogInformation("[Startup] Migrations OK.");
             }
             catch (Exception ex)

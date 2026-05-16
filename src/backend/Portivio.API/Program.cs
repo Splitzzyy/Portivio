@@ -69,6 +69,7 @@ builder.Services.AddPortivioRateLimiting();
 var app = builder.Build();
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
+app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseForwardedHeaders();
 app.UseStatusCodePages();
 app.UsePortivioSwagger();

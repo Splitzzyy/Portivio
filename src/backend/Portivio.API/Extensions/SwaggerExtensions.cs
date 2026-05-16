@@ -36,9 +36,12 @@ public static class SwaggerExtensions
 
     public static WebApplication UsePortivioSwagger(this WebApplication app)
     {
-        app.MapOpenApi();
-        app.UseSwagger();
-        app.UseSwaggerUI();
+        if (app.Environment.IsDevelopment())
+        {
+            app.MapOpenApi();
+            app.UseSwagger();
+            app.UseSwaggerUI();
+        }
         return app;
     }
 }

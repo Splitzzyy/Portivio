@@ -8,6 +8,12 @@
 
 ## ✅ Recently Implemented (since last audit)
 
+- **X7** **Centralized Audit Logging** — `IAuditService` + `AuditService` live; all security events (login, signup, reset, verify) recorded with IP/UA metadata.
+- **I5** **Swagger Gated** — `UsePortivioSwagger()` now conditionally mapped only in `Development` environment.
+- **I6** **Non-root Docker Containers** — Backend `Dockerfile` updated to use `USER $APP_UID`.
+- **I4** **Security Headers** — `SecurityHeadersMiddleware` implemented with HSTS, CSP, X-Frame-Options, and nosniff.
+- **X4** **Correlation IDs** — `AuditService` captures `X-Correlation-ID` or `TraceIdentifier`.
+- **B11** **Global Exception Middleware** — Enhanced to handle `UnauthorizedAccessException`, `ArgumentException`, etc., with environment-aware detail levels.
 - **B1** `app.UseRateLimiter()` — wired in `Program.cs` after `UseAuthorization()`
 - **B2** `DELETE /api/auth/cleanup-tokens` removed; replaced by `TokenCleanupService` (`IHostedService`, 24h cycle)
 - **B9** CLAUDE.md rewritten — BCrypt + auth flows now documented accurately
@@ -31,7 +37,7 @@
 ### Infrastructure
 - [ ] **I2** No `appsettings.Production.json` — Swagger always on, CORS origins empty in prod, no prod overrides
 - [ ] **I3** JWT key + DB password hardcoded in `docker-compose.yml` — move to `.env` / Docker secrets
-- [ ] **I5** Swagger exposed in all environments — `UsePortivioSwagger()` calls `MapOpenApi() + UseSwagger() + UseSwaggerUI()` unconditionally; gate behind `env.IsDevelopment()`
+
 
 ---
 
@@ -45,10 +51,9 @@
 - [ ] **F3** Angular services missing for `MarketDataController`, `PriceHistoryController`, `PortfolioPerformanceController` — no UI yet calls these endpoints
 
 ### Infrastructure
-- [ ] **I4** No security headers — missing `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Content-Security-Policy`, `Referrer-Policy`
-- [ ] **I6** Docker containers run as root — no `USER` directive in either Dockerfile (backend or frontend)
 - [ ] **I7** No gzip / caching in nginx — missing `gzip on`, `Cache-Control` for static assets in `nginx.conf`
 - [ ] **I8** No `restart: unless-stopped` on services in `docker-compose.yml`
+
 
 ---
 
@@ -92,10 +97,8 @@
 
 ## ⚡ Quick Wins (< 30 min each)
 
-- [ ] Gate `UsePortivioSwagger()` body behind `if (app.Environment.IsDevelopment())` in `SwaggerExtensions.cs`
 - [ ] Replace `Validators.email` → `emailFormatValidator()` in `forgot-password.component.ts:34`
 - [ ] Delete unused functional `authGuard` export from `auth.guard.ts:23`
 - [ ] Add `restart: unless-stopped` to all services in `docker-compose.yml`
 - [ ] Uncomment + wire `goToProfile()` → `/home/profiles` in `home.component.ts:72`
-- [ ] Add `USER app` directive after `WORKDIR /app` in backend `Dockerfile`
 - [ ] Add `gzip on; gzip_types text/css application/javascript application/json;` to `nginx.conf`
