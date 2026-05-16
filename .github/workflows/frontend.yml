@@ -32,12 +32,11 @@ jobs:
           FRONTEND_ENV: ${{ secrets.FRONTEND_ENV }}
         run: |
           mkdir -p src/environments
-          if [ -n "$FRONTEND_ENV" ]; then
-            printf '%s' "$FRONTEND_ENV" > src/environments/environment.prod.ts
-          else
-            echo "Using dummy environment file (secret missing)"
-            echo "export const environment = { production: true, showSip: true, apiUrl: '', oauth: { google: { clientId: '' } } };" > src/environments/environment.prod.ts
+          if [ -z "$FRONTEND_ENV" ]; then
+            echo "ERROR: FRONTEND_ENV secret is missing. Failing build as requested."
+            exit 1
           fi
+          printf '%s' "$FRONTEND_ENV" > src/environments/environment.prod.ts
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
