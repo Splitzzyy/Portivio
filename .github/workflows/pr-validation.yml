@@ -10,11 +10,9 @@ concurrency:
 
 jobs:
   backend:
-    name: Backend
     uses: ./.github/workflows/backend.yml
     secrets: inherit
 
   frontend:
-    name: Frontend
     uses: ./.github/workflows/frontend.yml
     secrets: inherit
