@@ -38,6 +38,30 @@ namespace Portivio.Tests.Services
             return (user, profile, assetType);
         }
 
+        private static async Task<HoldingSnapshot> ComputeHoldingHelperAsync(IAssetStrategy strategy, PortivioDbContext ctx, Guid profileId, Guid instrumentId, DateTime asOf)
+        {
+            var holding = await ctx.Holdings.Include(h => h.Instrument)
+                .FirstOrDefaultAsync(h => h.ProfileId == profileId && h.InstrumentId == instrumentId);
+            
+            if (holding == null)
+            {
+                var inst = await ctx.Instruments.FindAsync(instrumentId);
+                holding = new Holding { ProfileId = profileId, InstrumentId = instrumentId, Instrument = inst! };
+            }
+
+            var txs = await ctx.Transactions
+                .Where(t => t.ProfileId == profileId && t.InstrumentId == instrumentId)
+                .ToListAsync();
+
+            var latestPrice = await ctx.PriceHistories
+                .Where(ph => ph.InstrumentId == instrumentId && ph.Date <= asOf)
+                .OrderByDescending(ph => ph.Date)
+                .Select(ph => (decimal?)ph.Price)
+                .FirstOrDefaultAsync();
+
+            return await strategy.ComputeHoldingAsync(holding, asOf, txs, latestPrice, default);
+        }
+
         // ── MutualFundStrategy ──────────────────────────────────────────────────
 
         [Fact]
@@ -51,7 +75,7 @@ namespace Portivio.Tests.Services
             await ctx.SaveChangesAsync();
 
             var strategy = new MutualFundStrategy(ctx);
-            var snapshot = await strategy.ComputeHoldingAsync(profile.Id, inst.Id, DateTime.UtcNow, default);
+            var snapshot = await ComputeHoldingHelperAsync(strategy, ctx, profile.Id, inst.Id, DateTime.UtcNow);
 
             Assert.Equal(100m, snapshot.Quantity);
             Assert.Equal(50m, snapshot.AvgPrice);
@@ -97,7 +121,7 @@ namespace Portivio.Tests.Services
             await ctx.SaveChangesAsync();
 
             var strategy = new FixedDepositStrategy(ctx);
-            var snapshot = await strategy.ComputeHoldingAsync(profile.Id, inst.Id, DateTime.UtcNow, default);
+            var snapshot = await ComputeHoldingHelperAsync(strategy, ctx, profile.Id, inst.Id, DateTime.UtcNow);
 
             Assert.Equal(1m, snapshot.Quantity);
             Assert.True(snapshot.AccruedInterest > 0m, "Should have accrued interest after 1 year");
@@ -145,7 +169,7 @@ namespace Portivio.Tests.Services
             await ctx.SaveChangesAsync();
 
             var strategy = new RecurringDepositStrategy(ctx);
-            var snapshot = await strategy.ComputeHoldingAsync(profile.Id, inst.Id, DateTime.UtcNow, default);
+            var snapshot = await ComputeHoldingHelperAsync(strategy, ctx, profile.Id, inst.Id, DateTime.UtcNow);
 
             Assert.Equal(1m, snapshot.Quantity);
             Assert.Equal(15000m, snapshot.AvgPrice); // 3 × 5000
@@ -180,7 +204,7 @@ namespace Portivio.Tests.Services
             await ctx.SaveChangesAsync();
 
             var strategy = new PpfStrategy(ctx);
-            var snapshot = await strategy.ComputeHoldingAsync(profile.Id, inst.Id, DateTime.UtcNow, default);
+            var snapshot = await ComputeHoldingHelperAsync(strategy, ctx, profile.Id, inst.Id, DateTime.UtcNow);
 
             Assert.Equal(1m, snapshot.Quantity);
             Assert.True(snapshot.AccruedInterest > 0m, "Should have accrued interest after 2 years at 7.1%");
@@ -207,7 +231,7 @@ namespace Portivio.Tests.Services
             await ctx.SaveChangesAsync();
 
             var strategy = new GoldStrategy(ctx);
-            var snapshot = await strategy.ComputeHoldingAsync(profile.Id, inst.Id, DateTime.UtcNow, default);
+            var snapshot = await ComputeHoldingHelperAsync(strategy, ctx, profile.Id, inst.Id, DateTime.UtcNow);
 
             Assert.Equal(10m, snapshot.Quantity);
             Assert.Equal(6000m, snapshot.AvgPrice);

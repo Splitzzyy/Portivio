@@ -20,7 +20,7 @@ namespace Portivio.Application.Services.Strategies
         AssetCategory Category { get; }
         Result ValidateInstrumentMetadata(JsonDocument? meta);
         Result ValidateTransaction(Transaction tx, Instrument inst);
-        Task<HoldingSnapshot> ComputeHoldingAsync(Guid profileId, Guid instrumentId, DateTime asOfUtc, CancellationToken ct);
+        Task<HoldingSnapshot> ComputeHoldingAsync(Holding holding, DateTime asOfUtc, IEnumerable<Transaction> transactions, decimal? latestPrice, CancellationToken ct);
         Task<decimal?> FetchCurrentPriceAsync(Instrument inst, CancellationToken ct);
     }
 }

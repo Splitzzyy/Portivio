@@ -41,36 +41,32 @@ namespace Portivio.Application.Services.Strategies
             };
         }
 
-        public async Task<HoldingSnapshot> ComputeHoldingAsync(Guid profileId, Guid instrumentId, DateTime asOfUtc, CancellationToken ct)
+        public Task<HoldingSnapshot> ComputeHoldingAsync(Holding holding, DateTime asOfUtc, IEnumerable<Transaction> transactions, decimal? latestPrice, CancellationToken ct)
         {
-            var transactions = await _context.Transactions
-                .Where(t => t.ProfileId == profileId && t.InstrumentId == instrumentId)
-                .ToListAsync(ct);
-
-            var contributions = transactions.Where(t => t.Type == TransactionType.Contribution).Sum(t => t.Amount);
+            var contributions = transactions.Where(t => t.Type == TransactionType.Contribution).ToList();
             var withdrawals = transactions.Where(t => t.Type is TransactionType.Withdrawal or TransactionType.Maturity).Sum(t => t.Amount);
-            var netContributed = contributions - withdrawals;
+            var totalDeposited = contributions.Sum(t => t.Amount) - withdrawals;
 
-            if (netContributed <= 0)
-                return new HoldingSnapshot(0m, 0m, 0m, 0m, 0m, 0m, 0m, null);
+            if (totalDeposited <= 0)
+                return Task.FromResult(new HoldingSnapshot(0m, 0m, 0m, 0m, 0m, 0m, 0m, null));
 
-            var instrument = await _context.Instruments.FindAsync(new object[] { instrumentId }, ct);
-            var accruedInterest = instrument?.Metadata != null
-                ? ComputeRdInterest(instrument.Metadata, transactions.Count(t => t.Type == TransactionType.Contribution), asOfUtc)
+            var accruedInterest = holding.Instrument?.Metadata != null
+                ? ComputeRdInterest(holding.Instrument.Metadata, contributions.Count, asOfUtc)
                 : 0m;
 
-            var currentValue = netContributed + accruedInterest;
+            var currentValue = totalDeposited + accruedInterest;
 
-            return new HoldingSnapshot(
+            return Task.FromResult(new HoldingSnapshot(
                 Quantity: 1m,
-                AvgPrice: netContributed,
+                AvgPrice: totalDeposited,
                 CurrentPrice: currentValue,
                 MarketValue: currentValue,
                 UnrealizedPnL: accruedInterest,
                 RealizedPnL: 0m,
                 AccruedInterest: accruedInterest,
-                Snapshot: null);
+                Snapshot: null));
         }
+
 
         public async Task<decimal?> FetchCurrentPriceAsync(Instrument inst, CancellationToken ct)
         {
