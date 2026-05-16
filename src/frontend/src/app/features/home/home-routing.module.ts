@@ -9,6 +9,7 @@ import { TransactionsComponent } from './pages/transactions/transactions.compone
 import { SipPlansComponent } from './pages/sip-plans/sip-plans.component';
 import { AddInvestmentComponent } from './pages/add-investment/add-investment.component';
 import { MyProfileComponent } from './pages/my-profile/my-profile.component';
+import { EmailSummaryComponent } from './pages/email-summary/email-summary.component';
 import { environment } from '../../../environments/environment';
 
 const routes: Routes = [
@@ -22,6 +23,7 @@ const routes: Routes = [
       { path: 'holdings', component: HoldingsComponent, data: { title: 'Holdings - Portivio' } },
       { path: 'transactions', component: TransactionsComponent, data: { title: 'Transactions - Portivio' } },
       { path: 'my-profile', component: MyProfileComponent, data: { title: 'My Profile - Portivio' } },
+      { path: 'email-summary', component: EmailSummaryComponent, data: { title: 'Email Summary - Portivio' } },
       { path: 'add-investment', component: AddInvestmentComponent, data: { title: 'Add Investment - Portivio' } },
       ...(environment.showSip ? [{ path: 'sip-plans', component: SipPlansComponent, data: { title: 'SIP Plans - Portivio' } }] : [])
     ]

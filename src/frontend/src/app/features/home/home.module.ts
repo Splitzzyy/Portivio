@@ -10,6 +10,7 @@ import { TransactionsComponent } from './pages/transactions/transactions.compone
 import { SipPlansComponent } from './pages/sip-plans/sip-plans.component';
 import { AddInvestmentComponent } from './pages/add-investment/add-investment.component';
 import { MyProfileComponent } from './pages/my-profile/my-profile.component';
+import { EmailSummaryComponent } from './pages/email-summary/email-summary.component';
 
 @NgModule({
   declarations: [
@@ -20,7 +21,8 @@ import { MyProfileComponent } from './pages/my-profile/my-profile.component';
     TransactionsComponent,
     SipPlansComponent,
     AddInvestmentComponent,
-    MyProfileComponent
+    MyProfileComponent,
+    EmailSummaryComponent
   ],
   imports: [CommonModule, SharedModule, HomeRoutingModule]
 })
