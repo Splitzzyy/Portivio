@@ -38,12 +38,8 @@ namespace Portivio.Application.Services.Strategies
             };
         }
 
-        public async Task<HoldingSnapshot> ComputeHoldingAsync(Guid profileId, Guid instrumentId, DateTime asOfUtc, CancellationToken ct)
+        public Task<HoldingSnapshot> ComputeHoldingAsync(Holding holding, DateTime asOfUtc, IEnumerable<Transaction> transactions, decimal? latestPrice, CancellationToken ct)
         {
-            var transactions = await _context.Transactions
-                .Where(t => t.ProfileId == profileId && t.InstrumentId == instrumentId)
-                .ToListAsync(ct);
-
             var buys = transactions.Where(t => t.Type == TransactionType.Buy).ToList();
             var sells = transactions.Where(t => t.Type == TransactionType.Sell).ToList();
 
@@ -55,17 +51,11 @@ namespace Portivio.Application.Services.Strategies
                 ? buys.Sum(t => t.Quantity * t.Price) / totalBuyGrams
                 : 0m;
 
-            var latestPrice = await _context.PriceHistories
-                .Where(ph => ph.InstrumentId == instrumentId && ph.Date <= asOfUtc)
-                .OrderByDescending(ph => ph.Date)
-                .Select(ph => (decimal?)ph.Price)
-                .FirstOrDefaultAsync(ct);
-
             var currentPrice = latestPrice ?? (buys.Count > 0
                 ? buys.OrderByDescending(t => t.TransactionDate).First().Price
                 : 0m);
 
-            return new HoldingSnapshot(
+            return Task.FromResult(new HoldingSnapshot(
                 Quantity: netGrams,
                 AvgPrice: avgCostPerGram,
                 CurrentPrice: currentPrice,
@@ -73,7 +63,7 @@ namespace Portivio.Application.Services.Strategies
                 UnrealizedPnL: (currentPrice - avgCostPerGram) * netGrams,
                 RealizedPnL: 0m,
                 AccruedInterest: 0m,
-                Snapshot: null);
+                Snapshot: null));
         }
 
         public async Task<decimal?> FetchCurrentPriceAsync(Instrument inst, CancellationToken ct)

@@ -38,12 +38,8 @@ namespace Portivio.Application.Services.Strategies
             };
         }
 
-        public async Task<HoldingSnapshot> ComputeHoldingAsync(Guid profileId, Guid instrumentId, DateTime asOfUtc, CancellationToken ct)
+        public Task<HoldingSnapshot> ComputeHoldingAsync(Holding holding, DateTime asOfUtc, IEnumerable<Transaction> transactions, decimal? latestPrice, CancellationToken ct)
         {
-            var transactions = await _context.Transactions
-                .Where(t => t.ProfileId == profileId && t.InstrumentId == instrumentId)
-                .ToListAsync(ct);
-
             var netUnits = transactions.Sum(t => t.Type switch
             {
                 TransactionType.Buy or TransactionType.BonusUnits or TransactionType.Split or TransactionType.Merger => t.Quantity,
@@ -55,17 +51,11 @@ namespace Portivio.Application.Services.Strategies
             var totalBuyUnits = buys.Sum(t => t.Quantity);
             var avgNav = totalBuyUnits > 0 ? buys.Sum(t => t.Quantity * t.Price) / totalBuyUnits : 0m;
 
-            var latestNav = await _context.PriceHistories
-                .Where(ph => ph.InstrumentId == instrumentId && ph.Date <= asOfUtc)
-                .OrderByDescending(ph => ph.Date)
-                .Select(ph => (decimal?)ph.Price)
-                .FirstOrDefaultAsync(ct);
-
-            var currentNav = latestNav ?? (buys.Count > 0
+            var currentNav = latestPrice ?? (buys.Count > 0
                 ? buys.OrderByDescending(t => t.TransactionDate).First().Price
                 : 0m);
 
-            return new HoldingSnapshot(
+            return Task.FromResult(new HoldingSnapshot(
                 Quantity: netUnits,
                 AvgPrice: avgNav,
                 CurrentPrice: currentNav,
@@ -73,7 +63,7 @@ namespace Portivio.Application.Services.Strategies
                 UnrealizedPnL: (currentNav - avgNav) * netUnits,
                 RealizedPnL: 0m,
                 AccruedInterest: 0m,
-                Snapshot: null);
+                Snapshot: null));
         }
 
         public async Task<decimal?> FetchCurrentPriceAsync(Instrument inst, CancellationToken ct)

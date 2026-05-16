@@ -118,42 +118,68 @@ namespace Portivio.Application.Services.MarketData
                     return Result<SyncSummaryResponse>.Success(summary, "No NAVs to sync");
                 }
 
-                var assetType = await GetOrCreateAssetTypeAsync(MutualFundAssetTypeName, ct);
+                var assetType = await _context.AssetTypes.FirstOrDefaultAsync(a => a.Name == MutualFundAssetTypeName, ct);
+                if (assetType == null)
+                {
+                    summary.Errors.Add("Mutual Fund asset type not found");
+                    return Result<SyncSummaryResponse>.Success(summary, "Mutual Fund asset type not found");
+                }
+
                 var existingBySymbol = await _context.Instruments
                     .Where(i => i.AssetTypeId == assetType.Id)
                     .ToDictionaryAsync(i => i.Symbol, StringComparer.OrdinalIgnoreCase, ct);
 
+                var instrumentIds = existingBySymbol.Values.Select(i => i.Id).ToList();
+                
+                // Assuming all NAVs from provider are for today
+                var today = DateTime.UtcNow.Date;
+                var existingPriceDates = await _context.PriceHistories
+                    .Where(ph => instrumentIds.Contains(ph.InstrumentId) && ph.Date.Date == today)
+                    .Select(ph => ph.InstrumentId)
+                    .ToListAsync(ct);
+                
+                var existingPriceSet = new HashSet<Guid>(existingPriceDates);
+                var instrumentPricesToUpdate = new Dictionary<Guid, decimal>();
+
                 foreach (var nav in navs)
                 {
-                    try
+                    if (!existingBySymbol.TryGetValue(nav.Isin, out var instrument))
                     {
-                        if (!existingBySymbol.TryGetValue(nav.Isin, out var instrument))
-                        {
-                            instrument = new Instrument
-                            {
-                                Id = Guid.NewGuid(),
-                                AssetTypeId = assetType.Id,
-                                Name = nav.SchemeName,
-                                Symbol = nav.Isin,
-                                Currency = MutualFundCurrency
-                            };
-                            _context.Instruments.Add(instrument);
-                            existingBySymbol[nav.Isin] = instrument;
-                            summary.CreatedInstruments++;
-                        }
+                        // Skip instruments that don't exist
+                        continue;
+                    }
 
-                        var inserted = await UpsertPriceAsync(instrument.Id, nav.Nav, nav.AsOf, nav.Source, ct);
-                        if (inserted) summary.Inserted++;
-                        else summary.Skipped++;
-                    }
-                    catch (Exception inner)
+                    if (existingPriceSet.Contains(instrument.Id))
                     {
-                        summary.Errors.Add($"ISIN {nav.Isin}: {inner.Message}");
+                        summary.Skipped++;
+                        continue;
                     }
+
+                    var normalizedDate = DateTime.SpecifyKind(nav.AsOf.ToUniversalTime().Date, DateTimeKind.Utc);
+                    
+                    _context.PriceHistories.Add(new PriceHistory
+                    {
+                        Id = Guid.NewGuid(),
+                        InstrumentId = instrument.Id,
+                        Price = nav.Nav,
+                        Date = normalizedDate,
+                        Source = nav.Source ?? string.Empty,
+                        CreatedAt = DateTime.UtcNow
+                    });
+
+                    instrumentPricesToUpdate[instrument.Id] = nav.Nav;
+                    summary.Inserted++;
+                    existingPriceSet.Add(instrument.Id); // Prevent duplicate inserts in same batch
                 }
 
                 await _context.SaveChangesAsync(ct);
-                return Result<SyncSummaryResponse>.Success(summary, $"NAV sync complete: {summary.Inserted} inserted, {summary.Skipped} skipped, {summary.CreatedInstruments} new instruments");
+                
+                if (instrumentPricesToUpdate.Count > 0)
+                {
+                    await _holdingService.BulkUpdateCurrentPricesAsync(instrumentPricesToUpdate);
+                }
+
+                return Result<SyncSummaryResponse>.Success(summary, $"NAV sync complete: {summary.Inserted} inserted, {summary.Skipped} skipped");
             }
             catch (Exception ex)
             {

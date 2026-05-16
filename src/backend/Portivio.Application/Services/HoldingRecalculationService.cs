@@ -158,44 +158,66 @@ namespace Portivio.Application.Services
             var holdings = await _context.Holdings
                 .Include(h => h.Instrument)
                 .ToListAsync(ct);
+            
             var asOf = DateTime.UtcNow;
-            var groups = holdings.GroupBy(h => h.ProfileId);
+            
+            // Pre-fetch all data for holdings
+            var instrumentIds = holdings.Select(h => h.InstrumentId).Distinct().ToList();
+            var profileIds = holdings.Select(h => h.ProfileId).Distinct().ToList();
 
-            foreach (var group in groups)
+            var allTransactions = await _context.Transactions
+                .Where(t => profileIds.Contains(t.ProfileId) && instrumentIds.Contains(t.InstrumentId))
+                .ToListAsync(ct);
+            
+            var transactionsLookup = allTransactions
+                .GroupBy(t => new { t.ProfileId, t.InstrumentId })
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            var latestPrices = await _context.PriceHistories
+                .Where(ph => instrumentIds.Contains(ph.InstrumentId) && ph.Date <= asOf)
+                .GroupBy(ph => ph.InstrumentId)
+                .Select(g => g.OrderByDescending(ph => ph.Date).First())
+                .ToListAsync(ct);
+            
+            var pricesLookup = latestPrices.ToDictionary(p => p.InstrumentId, p => (decimal?)p.Price);
+
+            foreach (var holding in holdings)
             {
-                foreach (var holding in group)
+                try
                 {
-                    try
-                    {
-                        var strategy = _strategies.For(holding.Instrument.Category);
-                        var snapshot = await strategy.ComputeHoldingAsync(
-                            holding.ProfileId, holding.InstrumentId, asOf, ct);
+                    var strategy = _strategies.For(holding.Instrument.Category);
+                    
+                    transactionsLookup.TryGetValue(new { holding.ProfileId, holding.InstrumentId }, out var holdingTransactions);
+                    pricesLookup.TryGetValue(holding.InstrumentId, out var latestPrice);
 
-                        if (snapshot.Quantity <= 0)
-                        {
-                            _context.Holdings.Remove(holding);
-                            continue;
-                        }
+                    var snapshot = await strategy.ComputeHoldingAsync(
+                        holding, asOf, holdingTransactions ?? new List<Transaction>(), latestPrice, ct);
 
-                        holding.Quantity = snapshot.Quantity;
-                        holding.AvgPrice = snapshot.AvgPrice;
-                        holding.CurrentPrice = snapshot.CurrentPrice;
-                        holding.MarketValue = snapshot.MarketValue;
-                        holding.UnrealizedPnL = snapshot.UnrealizedPnL;
-                        holding.RealizedPnL = snapshot.RealizedPnL;
-                        holding.AccruedInterest = snapshot.AccruedInterest;
-                        holding.Snapshot = snapshot.Snapshot;
-                        holding.LastUpdated = asOf;
-                        holdingsRecomputed++;
-                    }
-                    catch (Exception ex)
+                    if (snapshot.Quantity <= 0)
                     {
-                        errorMessages.Add($"holding {holding.Id}: {ex.Message}");
-                        _logger.LogWarning(ex, "Per-holding recompute failed. HoldingId={HoldingId}", holding.Id);
+                        _context.Holdings.Remove(holding);
+                        continue;
                     }
+
+                    holding.Quantity = snapshot.Quantity;
+                    holding.AvgPrice = snapshot.AvgPrice;
+                    holding.CurrentPrice = snapshot.CurrentPrice;
+                    holding.MarketValue = snapshot.MarketValue;
+                    holding.UnrealizedPnL = snapshot.UnrealizedPnL;
+                    holding.RealizedPnL = snapshot.RealizedPnL;
+                    holding.AccruedInterest = snapshot.AccruedInterest;
+                    holding.Snapshot = snapshot.Snapshot;
+                    holding.LastUpdated = asOf;
+                    holdingsRecomputed++;
                 }
-                await _context.SaveChangesAsync(ct);
+                catch (Exception ex)
+                {
+                    errorMessages.Add($"holding {holding.Id}: {ex.Message}");
+                    _logger.LogWarning(ex, "Per-holding recompute failed. HoldingId={HoldingId}", holding.Id);
+                }
             }
+            
+            await _context.SaveChangesAsync(ct);
 
             var summary = new RecalculationSummary(
                 attempted, pricesUpdated, pricesSkipped, holdingsRecomputed,
@@ -273,10 +295,34 @@ namespace Portivio.Application.Services
                 var asOf = DateTime.UtcNow;
                 var recomputed = 0;
 
+                // Pre-fetch all data for profile holdings
+                var instrumentIds = holdings.Select(h => h.InstrumentId).Distinct().ToList();
+
+                var allTransactions = await _context.Transactions
+                    .Where(t => t.ProfileId == profileId && instrumentIds.Contains(t.InstrumentId))
+                    .ToListAsync(ct);
+                
+                var transactionsLookup = allTransactions
+                    .GroupBy(t => t.InstrumentId)
+                    .ToDictionary(g => g.Key, g => g.ToList());
+
+                var latestPrices = await _context.PriceHistories
+                    .Where(ph => instrumentIds.Contains(ph.InstrumentId) && ph.Date <= asOf)
+                    .GroupBy(ph => ph.InstrumentId)
+                    .Select(g => g.OrderByDescending(ph => ph.Date).First())
+                    .ToListAsync(ct);
+                
+                var pricesLookup = latestPrices.ToDictionary(p => p.InstrumentId, p => (decimal?)p.Price);
+
                 foreach (var holding in holdings)
                 {
                     var strategy = _strategies.For(holding.Instrument.Category);
-                    var snapshot = await strategy.ComputeHoldingAsync(profileId, holding.InstrumentId, asOf, ct);
+                    
+                    transactionsLookup.TryGetValue(holding.InstrumentId, out var holdingTransactions);
+                    pricesLookup.TryGetValue(holding.InstrumentId, out var latestPrice);
+
+                    var snapshot = await strategy.ComputeHoldingAsync(
+                        holding, asOf, holdingTransactions ?? new List<Transaction>(), latestPrice, ct);
 
                     if (snapshot.Quantity <= 0)
                     {

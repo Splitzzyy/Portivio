@@ -145,7 +145,26 @@ namespace Portivio.Application.Services
                 _context.Transactions.Add(transaction);
                 await _context.SaveChangesAsync(ct);
 
-                var snapshot = await strategy.ComputeHoldingAsync(cmd.ProfileId, cmd.InstrumentId, now, ct);
+                var holding = await _context.Holdings
+                    .Include(h => h.Instrument)
+                    .FirstOrDefaultAsync(h => h.ProfileId == cmd.ProfileId && h.InstrumentId == cmd.InstrumentId, ct);
+
+                if (holding == null)
+                {
+                    holding = new Holding { ProfileId = cmd.ProfileId, InstrumentId = cmd.InstrumentId, Instrument = instrument };
+                }
+
+                var txs = await _context.Transactions
+                    .Where(t => t.ProfileId == cmd.ProfileId && t.InstrumentId == cmd.InstrumentId)
+                    .ToListAsync(ct);
+
+                var latestPrice = await _context.PriceHistories
+                    .Where(ph => ph.InstrumentId == cmd.InstrumentId && ph.Date <= now)
+                    .OrderByDescending(ph => ph.Date)
+                    .Select(ph => (decimal?)ph.Price)
+                    .FirstOrDefaultAsync(ct);
+
+                var snapshot = await strategy.ComputeHoldingAsync(holding, now, txs, latestPrice, ct);
 
                 await UpsertHoldingAsync(cmd.ProfileId, cmd.InstrumentId, snapshot, ct);
                 await _context.SaveChangesAsync(ct);

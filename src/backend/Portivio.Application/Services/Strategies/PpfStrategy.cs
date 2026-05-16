@@ -42,28 +42,23 @@ namespace Portivio.Application.Services.Strategies
             };
         }
 
-        public async Task<HoldingSnapshot> ComputeHoldingAsync(Guid profileId, Guid instrumentId, DateTime asOfUtc, CancellationToken ct)
+        public Task<HoldingSnapshot> ComputeHoldingAsync(Holding holding, DateTime asOfUtc, IEnumerable<Transaction> transactions, decimal? latestPrice, CancellationToken ct)
         {
-            var transactions = await _context.Transactions
-                .Where(t => t.ProfileId == profileId && t.InstrumentId == instrumentId)
-                .ToListAsync(ct);
-
             var contributions = transactions.Where(t => t.Type == TransactionType.Contribution).Sum(t => t.Amount);
             var withdrawals = transactions.Where(t => t.Type is TransactionType.Withdrawal or TransactionType.Maturity).Sum(t => t.Amount);
             var netBalance = contributions - withdrawals;
 
             if (netBalance <= 0)
-                return new HoldingSnapshot(0m, 0m, 0m, 0m, 0m, 0m, 0m, null);
+                return Task.FromResult(new HoldingSnapshot(0m, 0m, 0m, 0m, 0m, 0m, 0m, null));
 
-            var instrument = await _context.Instruments.FindAsync(new object[] { instrumentId }, ct);
-            var rate = GetCurrentRate(instrument, instrumentId);
-            var yearsHeld = GetYearsHeld(instrument, asOfUtc);
+            var rate = GetCurrentRate(holding.Instrument, holding.InstrumentId);
+            var yearsHeld = GetYearsHeld(holding.Instrument, asOfUtc);
 
             // PPF: annual compounding — simplified to compound on total contributions
             var accruedInterest = netBalance * ((decimal)Math.Pow((double)(1 + rate / 100m), (double)yearsHeld) - 1m);
             var currentValue = netBalance + accruedInterest;
 
-            return new HoldingSnapshot(
+            return Task.FromResult(new HoldingSnapshot(
                 Quantity: 1m,
                 AvgPrice: netBalance,
                 CurrentPrice: currentValue,
@@ -71,7 +66,7 @@ namespace Portivio.Application.Services.Strategies
                 UnrealizedPnL: accruedInterest,
                 RealizedPnL: 0m,
                 AccruedInterest: accruedInterest,
-                Snapshot: null);
+                Snapshot: null));
         }
 
         public async Task<decimal?> FetchCurrentPriceAsync(Instrument inst, CancellationToken ct)

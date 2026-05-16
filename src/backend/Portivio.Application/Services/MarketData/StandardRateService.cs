@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Portivio.Application.DTOs.MarketData;
 using Portivio.Application.Results;
+using Portivio.Application.Services;
 using Portivio.Domain.Entities;
 using Portivio.Infrastructure.Data;
 
@@ -27,17 +28,20 @@ namespace Portivio.Application.Services.MarketData
 
         private readonly PortivioDbContext _context;
         private readonly IStandardRateProvider _rateProvider;
+        private readonly IHoldingService _holdingService;
         private readonly MarketDataOptions _options;
         private readonly ILogger<StandardRateService> _logger;
 
         public StandardRateService(
             PortivioDbContext context,
             IStandardRateProvider rateProvider,
+            IHoldingService holdingService,
             IOptions<MarketDataOptions> options,
             ILogger<StandardRateService> logger)
         {
             _context = context;
             _rateProvider = rateProvider;
+            _holdingService = holdingService;
             _options = options.Value;
             _logger = logger;
         }
@@ -78,49 +82,68 @@ namespace Portivio.Application.Services.MarketData
                     return Result<SyncSummaryResponse>.Success(summary, "No FD rates to sync");
                 }
 
-                var assetType = await GetOrCreateAssetTypeAsync(FdAssetTypeName, ct);
+                var assetType = await _context.AssetTypes.FirstOrDefaultAsync(a => a.Name == FdAssetTypeName, ct);
+                if (assetType == null)
+                {
+                    summary.Errors.Add("FD asset type not found");
+                    return Result<SyncSummaryResponse>.Success(summary, "FD asset type not found");
+                }
+
+                var existingBySymbol = await _context.Instruments
+                    .Where(i => i.AssetTypeId == assetType.Id)
+                    .ToDictionaryAsync(i => i.Symbol, StringComparer.OrdinalIgnoreCase, ct);
+
+                var instrumentIds = existingBySymbol.Values.Select(i => i.Id).ToList();
+                var today = DateTime.UtcNow.Date;
+
+                var existingPriceDates = await _context.PriceHistories
+                    .Where(ph => instrumentIds.Contains(ph.InstrumentId) && ph.Date.Date == today)
+                    .Select(ph => ph.InstrumentId)
+                    .ToListAsync(ct);
+
+                var existingPriceSet = new HashSet<Guid>(existingPriceDates);
+                var instrumentPricesToUpdate = new Dictionary<Guid, decimal>();
 
                 foreach (var rate in rates)
                 {
-                    try
+                    var symbol = BuildFdSymbol(rate.Bank, rate.TenureMonths);
+                    if (!existingBySymbol.TryGetValue(symbol, out var instrument))
                     {
-                        var symbol = BuildFdSymbol(rate.Bank, rate.TenureMonths);
-                        var name = $"FD {rate.Bank} {rate.TenureMonths}M";
-
-                        var existing = await _context.Instruments
-                            .FirstOrDefaultAsync(i => i.AssetTypeId == assetType.Id && i.Symbol == symbol, ct);
-
-                        Instrument instrument;
-                        if (existing == null)
-                        {
-                            instrument = new Instrument
-                            {
-                                Id = Guid.NewGuid(),
-                                AssetTypeId = assetType.Id,
-                                Name = name,
-                                Symbol = symbol,
-                                Currency = Currency
-                            };
-                            _context.Instruments.Add(instrument);
-                            await _context.SaveChangesAsync(ct);
-                            summary.CreatedInstruments++;
-                        }
-                        else
-                        {
-                            instrument = existing;
-                        }
-
-                        var inserted = await UpsertRateAsync(instrument.Id, rate.RatePercent, rate.AsOf, rate.Source, ct);
-                        if (inserted) summary.Inserted++;
-                        else summary.Skipped++;
+                        // Skip if instrument doesn't exist
+                        continue;
                     }
-                    catch (Exception inner)
+
+                    if (existingPriceSet.Contains(instrument.Id))
                     {
-                        summary.Errors.Add($"{rate.Bank} {rate.TenureMonths}M: {inner.Message}");
+                        summary.Skipped++;
+                        continue;
                     }
+
+                    var normalizedDate = DateTime.SpecifyKind(rate.AsOf.ToUniversalTime().Date, DateTimeKind.Utc);
+
+                    _context.PriceHistories.Add(new PriceHistory
+                    {
+                        Id = Guid.NewGuid(),
+                        InstrumentId = instrument.Id,
+                        Price = rate.RatePercent,
+                        Date = normalizedDate,
+                        Source = rate.Source ?? string.Empty,
+                        CreatedAt = DateTime.UtcNow
+                    });
+
+                    instrumentPricesToUpdate[instrument.Id] = rate.RatePercent;
+                    summary.Inserted++;
+                    existingPriceSet.Add(instrument.Id);
                 }
 
-                return Result<SyncSummaryResponse>.Success(summary, $"FD rate sync complete: {summary.Inserted} inserted, {summary.Skipped} skipped, {summary.CreatedInstruments} new instruments");
+                await _context.SaveChangesAsync(ct);
+
+                if (instrumentPricesToUpdate.Count > 0)
+                {
+                    await _holdingService.BulkUpdateCurrentPricesAsync(instrumentPricesToUpdate);
+                }
+
+                return Result<SyncSummaryResponse>.Success(summary, $"FD rate sync complete: {summary.Inserted} inserted, {summary.Skipped} skipped");
             }
             catch (Exception ex)
             {
