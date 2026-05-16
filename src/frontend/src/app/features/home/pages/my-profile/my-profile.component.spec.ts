@@ -13,8 +13,8 @@ describe('MyProfileComponent', () => {
   beforeEach(async () => {
     authServiceSpy = jasmine.createSpyObj('AuthService', ['getCurrentUser', 'updateProfile', 'changePassword']);
     authServiceSpy.getCurrentUser.and.returnValue({ id: '1', email: 'test@example.com', name: 'Test User', isVerified: true, isActive: true });
-    authServiceSpy.updateProfile.and.returnValue(of({}));
-    authServiceSpy.changePassword.and.returnValue(of({}));
+    authServiceSpy.updateProfile.and.returnValue(of({ success: true }));
+    authServiceSpy.changePassword.and.returnValue(of({ success: true }));
 
     await TestBed.configureTestingModule({
       declarations: [MyProfileComponent],
