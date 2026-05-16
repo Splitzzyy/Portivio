@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, throwError, of } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import {
@@ -188,6 +188,23 @@ export class AuthService {
     // Refresh token is in an HttpOnly cookie — not readable from JS.
     // Method kept for interface compatibility; always returns null.
     return null;
+  }
+
+  /**
+   * Restores session on app startup.
+   * If the access token is missing or expired, attempts to refresh it using
+   * the HttpOnly refresh token cookie. If that also fails, the user is cleared.
+   */
+  restoreSession(): Observable<unknown> {
+    if (this.hasValidToken()) {
+      return of(null);
+    }
+
+    // Try to refresh. If there's no cookie or it's invalid, it fails silently
+    // and the app starts in unauthenticated mode.
+    return this.refreshToken().pipe(
+      catchError(() => of(null))
+    );
   }
 
   // ---------------------------------------------------------------------------

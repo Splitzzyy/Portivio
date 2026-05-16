@@ -1,10 +1,17 @@
-import { NgModule } from '@angular/core';
+import { NgModule, APP_INITIALIZER } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HTTP_INTERCEPTORS } from '@angular/common/http';
 import { AuthService } from './services/auth.service';
 import { AuthGuard, NoAuthGuard } from './guards/auth.guard';
 import { JwtInterceptor } from './interceptors/jwt.interceptor';
 import { ErrorInterceptor } from './interceptors/error.interceptor';
+
+/**
+ * Factory for restoring session on startup.
+ */
+export function initializeApp(authService: AuthService) {
+  return () => authService.restoreSession();
+}
 
 /**
  * Core module containing singleton services, guards, and interceptors.
@@ -22,6 +29,12 @@ import { ErrorInterceptor } from './interceptors/error.interceptor';
     AuthService,
     AuthGuard,
     NoAuthGuard,
+    {
+      provide: APP_INITIALIZER,
+      useFactory: initializeApp,
+      deps: [AuthService],
+      multi: true
+    },
     {
       provide: HTTP_INTERCEPTORS,
       useClass: JwtInterceptor,
