@@ -5,7 +5,9 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Portivio.Application.DTOs.Auth;
 using Portivio.Application.Results;
+using Portivio.Domain.Constants;
 using Portivio.Domain.Entities;
+using Portivio.Domain.Services.Audit;
 using Portivio.Infrastructure.Data;
 using Portivio.Infrastructure.Services;
 using System.IdentityModel.Tokens.Jwt;
@@ -38,19 +40,22 @@ namespace Portivio.Application.Services
         private readonly GoogleAuthOptions _googleAppSettings;
         private readonly ILogger<AuthService> _logger;
         private readonly IEmailJobService _emailJobService;
+        private readonly IAuditService _auditService;
 
         public AuthService(
             PortivioDbContext context,
             IOptions<AppSettingsOptions> jwtOptions,
             IOptions<GoogleAuthOptions> googleOptions,
             ILogger<AuthService> logger,
-            IEmailJobService emailJobService)
+            IEmailJobService emailJobService,
+            IAuditService auditService)
         {
             _context = context;
             _jwtSettings = jwtOptions.Value;
             _googleAppSettings = googleOptions.Value;
             _logger = logger;
             _emailJobService = emailJobService;
+            _auditService = auditService;
         }
 
         public async Task<Result<AuthResponse>> LoginAsync(LoginRequest request)
@@ -60,6 +65,18 @@ namespace Portivio.Application.Services
                 // Validate input
                 if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
                 {
+                    await AuditSafeAsync(
+                        Guid.Empty,
+                        AuditActions.Auth_Login_Failure,
+                        AuditEntities.User,
+                        Guid.Empty,
+                        newValues: new Dictionary<string, object?>
+                        {
+                            ["Reason"] = "MissingCredentials",
+                            ["Email"] = request.Email,
+                            ["IpAddress"] = request.IpAddress,
+                            ["DeviceInfo"] = request.DeviceInfo
+                        });
                     _logger.LogWarning("Login failed: missing credentials. AuthEvent={AuthEvent} Outcome={Outcome} IpAddress={IpAddress}",
                         "Login", "BadRequest", request.IpAddress);
                     return Result<AuthResponse>.BadRequest("Email and password are required");
@@ -69,6 +86,12 @@ namespace Portivio.Application.Services
 
                 if (user == null)
                 {
+                    await AuditSafeAsync(
+                        Guid.Empty,
+                        AuditActions.Auth_Login_Failure,
+                        AuditEntities.User,
+                        Guid.Empty,
+                        newValues: new Dictionary<string, object?> { ["Reason"] = "UserNotFound", ["Email"] = request.Email });
                     _logger.LogWarning("Login failed: invalid credentials (user not found). AuthEvent={AuthEvent} Outcome={Outcome} Email={Email} IpAddress={IpAddress}",
                         "Login", "Unauthorized", request.Email, request.IpAddress);
                     return Result<AuthResponse>.Unauthorized("Invalid credentials");
@@ -76,6 +99,12 @@ namespace Portivio.Application.Services
 
                 if (!user.IsVerified)
                 {
+                    await AuditSafeAsync(
+                        user.Id,
+                        AuditActions.Auth_Login_Failure,
+                        AuditEntities.User,
+                        user.Id,
+                        newValues: new Dictionary<string, object?> { ["Reason"] = "EmailNotVerified", ["Email"] = request.Email });
                     _logger.LogWarning("Login failed: email not verified. AuthEvent={AuthEvent} Outcome={Outcome} Email={Email} UserId={UserId} IpAddress={IpAddress}",
                         "Login", "BadRequest", request.Email, user.Id, request.IpAddress);
                     return Result<AuthResponse>.BadRequest("Email not verified. Please verify your email to login.");
@@ -83,6 +112,12 @@ namespace Portivio.Application.Services
 
                 if (!user.IsActive)
                 {
+                    await AuditSafeAsync(
+                        user.Id,
+                        AuditActions.Auth_Login_Failure,
+                        AuditEntities.User,
+                        user.Id,
+                        newValues: new Dictionary<string, object?> { ["Reason"] = "AccountInactive", ["Email"] = request.Email });
                     _logger.LogWarning("Login failed: account is inactive. AuthEvent={AuthEvent} Outcome={Outcome} Email={Email} UserId={UserId} IpAddress={IpAddress}",
                         "Login", "Forbidden", request.Email, user.Id, request.IpAddress);
                     return Result<AuthResponse>.Forbidden("Account is inactive");
@@ -90,28 +125,52 @@ namespace Portivio.Application.Services
 
                 if (!VerifyPassword(request.Password, user.PasswordHash))
                 {
+                    await AuditSafeAsync(
+                        user.Id,
+                        AuditActions.Auth_Login_Failure,
+                        AuditEntities.User,
+                        user.Id,
+                        newValues: new Dictionary<string, object?> { ["Reason"] = "WrongPassword", ["Email"] = request.Email });
                     _logger.LogWarning("Login failed: invalid credentials (wrong password). AuthEvent={AuthEvent} Outcome={Outcome} Email={Email} UserId={UserId} IpAddress={IpAddress}",
                         "Login", "Unauthorized", request.Email, user.Id, request.IpAddress);
                     return Result<AuthResponse>.Unauthorized("Invalid credentials");
                 }
 
-                user.LastLoginAt = DateTime.UtcNow;
-                _context.Users.Update(user);
-
                 var tokensResult = await GenerateTokensAsync(
-                    user,
+                    user!,
                     request.IpAddress ?? "Unknown",
                     request.DeviceInfo ?? "Unknown",
                     request.IssueRefreshToken);
                 
                 if (tokensResult.IsFailure)
                 {
+                    await AuditSafeAsync(
+                        user.Id,
+                        AuditActions.Auth_Login_Failure,
+                        AuditEntities.User,
+                        user.Id,
+                        newValues: new Dictionary<string, object?> { ["Reason"] = "TokenGenerationFailure", ["Email"] = request.Email, ["Error"] = tokensResult.Message });
                     _logger.LogError("Login failed: token generation error. AuthEvent={AuthEvent} Outcome={Outcome} Email={Email} UserId={UserId} Error={Error}",
                         "Login", "Failure", request.Email, user.Id, tokensResult.Message);
                     return Result<AuthResponse>.Failure(tokensResult.Message, tokensResult.Errors, tokensResult.StatusCode ?? 500);
                 }
 
+                user.LastLoginAt = DateTime.UtcNow;
+                _context.Users.Update(user);
                 await _context.SaveChangesAsync();
+
+                await AuditSafeAsync(
+                    user.Id,
+                    AuditActions.Auth_Login_Success,
+                    AuditEntities.User,
+                    user.Id,
+                    newValues: new Dictionary<string, object?>
+                    {
+                        ["Email"] = request.Email,
+                        ["IssueRefreshToken"] = request.IssueRefreshToken,
+                        ["IpAddress"] = request.IpAddress,
+                        ["DeviceInfo"] = request.DeviceInfo
+                    });
 
                 _logger.LogInformation("Login successful. AuthEvent={AuthEvent} Outcome={Outcome} Email={Email} UserId={UserId} IpAddress={IpAddress} DeviceInfo={DeviceInfo} IssueRefreshToken={IssueRefreshToken}",
                     "Login", "Success", request.Email, user.Id, request.IpAddress, request.DeviceInfo, request.IssueRefreshToken);
@@ -185,6 +244,13 @@ namespace Portivio.Application.Services
 
                 _context.Users.Add(user);
                 await _context.SaveChangesAsync();
+
+                await AuditSafeAsync(
+                    user.Id,
+                    AuditActions.Auth_Signup_Success,
+                    AuditEntities.User,
+                    user.Id,
+                    newValues: new Dictionary<string, object?> { ["Email"] = user.Email });
 
                 _emailJobService.EnqueueVerificationEmail(user.Email, user.Name, verificationToken);
                 _emailJobService.EnqueueWelcomeEmail(user.Email, user.Name);
@@ -290,6 +356,17 @@ namespace Portivio.Application.Services
                 _context.Users.Update(user);
                 await _context.SaveChangesAsync();
 
+                await AuditSafeAsync(
+                    user.Id,
+                    AuditActions.Auth_VerifyEmail_Success,
+                    AuditEntities.User,
+                    user.Id,
+                    newValues: new Dictionary<string, object?>
+                    {
+                        ["Email"] = user.Email,
+                        ["IsVerified"] = true
+                    });
+
                 var response = new AuthResponse
                 {
                     Success = true,
@@ -369,6 +446,16 @@ namespace Portivio.Application.Services
 
                 _emailJobService.EnqueuePasswordResetEmail(user.Email, user.Name, resetToken);
 
+                await AuditSafeAsync(
+                    user.Id,
+                    AuditActions.Auth_ForgotPassword_Requested,
+                    AuditEntities.User,
+                    user.Id,
+                    newValues: new Dictionary<string, object?>
+                    {
+                        ["Email"] = user.Email
+                    });
+
                 var response = new AuthResponse
                 {
                     Success = true,
@@ -419,6 +506,17 @@ namespace Portivio.Application.Services
                 _context.Users.Update(user);
                 await _context.SaveChangesAsync();
 
+                await AuditSafeAsync(
+                    user.Id,
+                    AuditActions.Auth_ResetPassword_Success,
+                    AuditEntities.User,
+                    user.Id,
+                    newValues: new Dictionary<string, object?>
+                    {
+                        ["Email"] = user.Email,
+                        ["IsActive"] = true
+                    });
+
                 var response = new AuthResponse
                 {
                     Success = true,
@@ -440,12 +538,34 @@ namespace Portivio.Application.Services
                 if (string.IsNullOrWhiteSpace(request.Token))
                 {
                     _logger.LogWarning("Google login rejected: missing token. IP={IpAddress}", request.IpAddress);
+                    await AuditSafeAsync(
+                        Guid.Empty,
+                        AuditActions.Auth_GoogleLogin_Failure,
+                        AuditEntities.User,
+                        Guid.Empty,
+                        newValues: new Dictionary<string, object?>
+                        {
+                            ["Reason"] = "MissingToken",
+                            ["IpAddress"] = request.IpAddress,
+                            ["DeviceInfo"] = request.DeviceInfo
+                        });
                     return Result<AuthResponse>.BadRequest("Google token is required");
                 }
 
                 if (string.IsNullOrWhiteSpace(_googleAppSettings.ClientId))
                 {
                     _logger.LogCritical("Google login cannot proceed: GoogleAuth:ClientId is not configured");
+                    await AuditSafeAsync(
+                        Guid.Empty,
+                        AuditActions.Auth_GoogleLogin_Failure,
+                        AuditEntities.User,
+                        Guid.Empty,
+                        newValues: new Dictionary<string, object?>
+                        {
+                            ["Reason"] = "ClientIdNotConfigured",
+                            ["IpAddress"] = request.IpAddress,
+                            ["DeviceInfo"] = request.DeviceInfo
+                        });
                     return Result<AuthResponse>.InternalServerError("Google Client ID is not configured");
                 }
 
@@ -464,6 +584,19 @@ namespace Portivio.Application.Services
                 {
                     _logger.LogWarning("Google token validation failed. IP={IpAddress} Reason={Reason}",
                         request.IpAddress, ex.Message);
+
+                    await AuditSafeAsync(
+                        Guid.Empty,
+                        AuditActions.Auth_GoogleLogin_Failure,
+                        AuditEntities.User,
+                        Guid.Empty,
+                        newValues: new Dictionary<string, object?>
+                        {
+                            ["Reason"] = "InvalidOrExpiredToken",
+                            ["Error"] = ex.Message,
+                            ["IpAddress"] = request.IpAddress,
+                            ["DeviceInfo"] = request.DeviceInfo
+                        });
                     return Result<AuthResponse>.Unauthorized("Invalid or expired Google token");
                 }
 
@@ -474,6 +607,19 @@ namespace Portivio.Application.Services
                 {
                     _logger.LogWarning("Google login rejected: email not verified. Email={Email} IP={IpAddress}",
                         payload.Email, request.IpAddress);
+
+                    await AuditSafeAsync(
+                        Guid.Empty,
+                        AuditActions.Auth_GoogleLogin_Failure,
+                        AuditEntities.User,
+                        Guid.Empty,
+                        newValues: new Dictionary<string, object?>
+                        {
+                            ["Reason"] = "EmailNotVerified",
+                            ["Email"] = payload.Email,
+                            ["IpAddress"] = request.IpAddress,
+                            ["DeviceInfo"] = request.DeviceInfo
+                        });
                     return Result<AuthResponse>.Unauthorized("Google account email is not verified");
                 }
 
@@ -493,27 +639,63 @@ namespace Portivio.Application.Services
                         CreatedAt = DateTime.UtcNow
                     };
 
-                    _context.Users.Add(user);
-                    _emailJobService.EnqueueWelcomeEmail(user.Email, user.Name);
                 }
 
-                user!.LastLoginAt = DateTime.UtcNow;
-
                 var tokensResult = await GenerateTokensAsync(
-                    user,
+                    user!,
                     request.IpAddress ?? "Unknown",
                     request.DeviceInfo ?? "Unknown",
                     true);
 
                 if (tokensResult.IsFailure)
                 {
+                    await AuditSafeAsync(
+                        user!.Id,
+                        AuditActions.Auth_GoogleLogin_Failure,
+                        AuditEntities.User,
+                        user.Id,
+                        newValues: new Dictionary<string, object?>
+                        {
+                            ["Reason"] = "TokenGenerationFailure",
+                            ["Email"] = user.Email,
+                            ["Error"] = tokensResult.Message,
+                            ["IpAddress"] = request.IpAddress,
+                            ["DeviceInfo"] = request.DeviceInfo,
+                            ["IsNewUser"] = isNewUser
+                        });
                     _logger.LogError("Token generation failed for Google login. UserId={UserId} Error={Error}",
                         user!.Id, tokensResult.Message);
                     return Result<AuthResponse>.Failure(tokensResult.Message, tokensResult.Errors, tokensResult.StatusCode ?? 500);
                 }
 
+                user!.LastLoginAt = DateTime.UtcNow;
+                if (isNewUser)
+                {
+                    _context.Users.Add(user);
+                }
+                else
+                {
+                    _context.Users.Update(user);
+                }
+
                 // Saves both new user (if any) and auth token atomically in a single implicit transaction
                 await _context.SaveChangesAsync();
+
+                if (isNewUser)
+                    _emailJobService.EnqueueWelcomeEmail(user.Email, user.Name);
+
+                await AuditSafeAsync(
+                    user!.Id,
+                    AuditActions.Auth_GoogleLogin_Success,
+                    AuditEntities.User,
+                    user.Id,
+                    newValues: new Dictionary<string, object?>
+                    {
+                        ["Email"] = user.Email,
+                        ["IsNewUser"] = isNewUser,
+                        ["IpAddress"] = request.IpAddress,
+                        ["DeviceInfo"] = request.DeviceInfo
+                    });
 
                 if (isNewUser)
                     _logger.LogInformation("New user registered via Google SSO. UserId={UserId} Email={Email} IP={IpAddress}",
@@ -613,6 +795,16 @@ namespace Portivio.Application.Services
                 _context.Users.Update(user);
                 await _context.SaveChangesAsync();
 
+                await AuditSafeAsync(
+                    user.Id,
+                    AuditActions.Auth_ChangePassword_Success,
+                    AuditEntities.User,
+                    user.Id,
+                    newValues: new Dictionary<string, object?>
+                    {
+                        ["PasswordChanged"] = true
+                    });
+
                 var response = new AuthResponse
                 {
                     Success = true,
@@ -635,7 +827,15 @@ namespace Portivio.Application.Services
                     .ToListAsync();
 
                 if (!tokens.Any())
+                {
+                    await AuditSafeAsync(
+                        userId,
+                        AuditActions.Auth_Logout,
+                        AuditEntities.User,
+                        userId,
+                        newValues: new Dictionary<string, object?> { ["RevokedTokenCount"] = 0 });
                     return Result.Success("Logout successful", 200);
+                }
 
                 foreach (var token in tokens)
                 {
@@ -644,6 +844,13 @@ namespace Portivio.Application.Services
 
                 _context.AuthTokens.UpdateRange(tokens);
                 await _context.SaveChangesAsync();
+
+                await AuditSafeAsync(
+                    userId,
+                    AuditActions.Auth_Logout,
+                    AuditEntities.User,
+                    userId,
+                    newValues: new Dictionary<string, object?> { ["RevokedTokenCount"] = tokens.Count });
 
                 return Result.Success("Logout successful", 200);
             }
@@ -672,6 +879,25 @@ namespace Portivio.Application.Services
             catch (Exception ex)
             {
                 return Result.InternalServerError($"Cleanup failed: {ex.Message}");
+            }
+        }
+
+        private async Task AuditSafeAsync(
+            Guid userId,
+            string action,
+            string entity,
+            Guid entityId,
+            object? oldValues = null,
+            object? newValues = null)
+        {
+            try
+            {
+                await _auditService.LogAsync(userId, action, entity, entityId, oldValues, newValues);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Audit logging failed. Action={Action} Entity={Entity} EntityId={EntityId} UserId={UserId}",
+                    action, entity, entityId, userId);
             }
         }
 
