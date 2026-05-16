@@ -94,14 +94,15 @@ namespace Portivio.Application.Services.MarketData
                     .ToDictionaryAsync(i => i.Symbol, StringComparer.OrdinalIgnoreCase, ct);
 
                 var instrumentIds = existingBySymbol.Values.Select(i => i.Id).ToList();
-                var today = DateTime.UtcNow.Date;
-
-                var existingPriceDates = await _context.PriceHistories
-                    .Where(ph => instrumentIds.Contains(ph.InstrumentId) && ph.Date.Date == today)
-                    .Select(ph => ph.InstrumentId)
+                // Check for existing prices based on the dates returned by the provider
+                var datesToCheck = rates.Select(r => r.AsOf.ToUniversalTime().Date).Distinct().ToList();
+                var existingPriceEntries = await _context.PriceHistories
+                    .Where(ph => instrumentIds.Contains(ph.InstrumentId) && datesToCheck.Contains(ph.Date.Date))
+                    .Select(ph => new { ph.InstrumentId, ph.Date })
                     .ToListAsync(ct);
 
-                var existingPriceSet = new HashSet<Guid>(existingPriceDates);
+                var existingPriceSet = new HashSet<string>(
+                    existingPriceEntries.Select(x => $"{x.InstrumentId}_{x.Date:yyyy-MM-dd}"));
                 var instrumentPricesToUpdate = new Dictionary<Guid, decimal>();
 
                 foreach (var rate in rates)
@@ -113,27 +114,28 @@ namespace Portivio.Application.Services.MarketData
                         continue;
                     }
 
-                    if (existingPriceSet.Contains(instrument.Id))
+                    var normalizedDate = rate.AsOf.ToUniversalTime().Date;
+                    var key = $"{instrument.Id}_{normalizedDate:yyyy-MM-dd}";
+
+                    if (existingPriceSet.Contains(key))
                     {
                         summary.Skipped++;
                         continue;
                     }
-
-                    var normalizedDate = DateTime.SpecifyKind(rate.AsOf.ToUniversalTime().Date, DateTimeKind.Utc);
 
                     _context.PriceHistories.Add(new PriceHistory
                     {
                         Id = Guid.NewGuid(),
                         InstrumentId = instrument.Id,
                         Price = rate.RatePercent,
-                        Date = normalizedDate,
+                        Date = DateTime.SpecifyKind(normalizedDate, DateTimeKind.Utc),
                         Source = rate.Source ?? string.Empty,
                         CreatedAt = DateTime.UtcNow
                     });
 
                     instrumentPricesToUpdate[instrument.Id] = rate.RatePercent;
                     summary.Inserted++;
-                    existingPriceSet.Add(instrument.Id);
+                    existingPriceSet.Add(key);
                 }
 
                 await _context.SaveChangesAsync(ct);
@@ -307,10 +309,9 @@ namespace Portivio.Application.Services.MarketData
 
         private async Task<bool> UpsertRateAsync(Guid instrumentId, decimal ratePercent, DateTime asOf, string source, CancellationToken ct)
         {
-            var normalizedDate = DateTime.SpecifyKind(asOf.ToUniversalTime().Date, DateTimeKind.Utc);
-
+            var normalizedDate = asOf.ToUniversalTime().Date;
             var exists = await _context.PriceHistories.AnyAsync(
-                ph => ph.InstrumentId == instrumentId && ph.Date.Date == normalizedDate.Date, ct);
+                ph => ph.InstrumentId == instrumentId && ph.Date.Date == normalizedDate, ct);
 
             if (exists) return false;
 
@@ -319,7 +320,7 @@ namespace Portivio.Application.Services.MarketData
                 Id = Guid.NewGuid(),
                 InstrumentId = instrumentId,
                 Price = ratePercent,
-                Date = normalizedDate,
+                Date = DateTime.SpecifyKind(normalizedDate, DateTimeKind.Utc),
                 Source = source ?? string.Empty,
                 CreatedAt = DateTime.UtcNow
             });

@@ -102,7 +102,7 @@ namespace Portivio.Application.Services
                     Id = Guid.NewGuid(),
                     InstrumentId = instrumentId,
                     Price = request.Price,
-                    Date = new DateTime(normalizedDate.Year, normalizedDate.Month, normalizedDate.Day, 0, 0, 0, DateTimeKind.Utc),
+                    Date = DateTime.SpecifyKind(normalizedDate, DateTimeKind.Utc),
                     Source = request.Source?.Trim() ?? string.Empty,
                     CreatedAt = DateTime.UtcNow
                 };
@@ -136,12 +136,12 @@ namespace Portivio.Application.Services
                 var dates = request.Prices.Select(p => p.Date.ToUniversalTime().Date).Distinct().ToList();
 
                 // Fetch existing entries for these dates in one query
-                var existingDates = await _context.PriceHistories
+                var existingPriceEntries = await _context.PriceHistories
                     .Where(ph => ph.InstrumentId == instrumentId && dates.Contains(ph.Date.Date))
-                    .Select(ph => ph.Date.Date)
+                    .Select(ph => ph.Date)
                     .ToListAsync();
 
-                var existingDateSet = new HashSet<DateTime>(existingDates);
+                var existingDateSet = new HashSet<string>(existingPriceEntries.Select(d => d.Date.ToString("yyyy-MM-dd")));
 
                 foreach (var item in request.Prices)
                 {
@@ -153,7 +153,9 @@ namespace Portivio.Application.Services
                     }
 
                     var normalizedDate = item.Date.ToUniversalTime().Date;
-                    if (existingDateSet.Contains(normalizedDate))
+                    var key = normalizedDate.ToString("yyyy-MM-dd");
+                    
+                    if (existingDateSet.Contains(key))
                     {
                         response.Skipped++;
                         continue;
@@ -164,13 +166,13 @@ namespace Portivio.Application.Services
                         Id = Guid.NewGuid(),
                         InstrumentId = instrumentId,
                         Price = item.Price,
-                        Date = new DateTime(normalizedDate.Year, normalizedDate.Month, normalizedDate.Day, 0, 0, 0, DateTimeKind.Utc),
+                        Date = DateTime.SpecifyKind(normalizedDate, DateTimeKind.Utc),
                         Source = item.Source?.Trim() ?? string.Empty,
                         CreatedAt = DateTime.UtcNow
                     });
 
                     response.Inserted++;
-                    existingDateSet.Add(normalizedDate); // Avoid duplicates within the same batch
+                    existingDateSet.Add(key); // Avoid duplicates within the same batch
                 }
 
                 await _context.SaveChangesAsync();

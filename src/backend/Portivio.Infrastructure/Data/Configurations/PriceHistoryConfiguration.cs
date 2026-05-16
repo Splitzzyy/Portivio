@@ -10,7 +10,9 @@ namespace Portivio.Infrastructure.Data.Configurations
         {
             builder.HasKey(p => p.Id);
             builder.HasIndex(p => p.InstrumentId);
-            builder.HasIndex(p => new { p.InstrumentId, p.Date }).HasDatabaseName("idx_pricehistory_instrument_date");
+            builder.HasIndex(p => new { p.InstrumentId, p.Date })
+                .IsUnique()
+                .HasDatabaseName("idx_pricehistory_instrument_date_unique");
             builder.Property(p => p.Price).HasPrecision(18, 4);
         }
     }

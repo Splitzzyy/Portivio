@@ -131,14 +131,15 @@ namespace Portivio.Application.Services.MarketData
 
                 var instrumentIds = existingBySymbol.Values.Select(i => i.Id).ToList();
                 
-                // Assuming all NAVs from provider are for today
-                var today = DateTime.UtcNow.Date;
-                var existingPriceDates = await _context.PriceHistories
-                    .Where(ph => instrumentIds.Contains(ph.InstrumentId) && ph.Date.Date == today)
-                    .Select(ph => ph.InstrumentId)
+                // Check for existing prices based on the dates returned by the provider
+                var datesToCheck = navs.Select(n => n.AsOf.ToUniversalTime().Date).Distinct().ToList();
+                var existingPriceEntries = await _context.PriceHistories
+                    .Where(ph => instrumentIds.Contains(ph.InstrumentId) && datesToCheck.Contains(ph.Date.Date))
+                    .Select(ph => new { ph.InstrumentId, ph.Date })
                     .ToListAsync(ct);
-                
-                var existingPriceSet = new HashSet<Guid>(existingPriceDates);
+
+                var existingPriceSet = new HashSet<string>(
+                    existingPriceEntries.Select(x => $"{x.InstrumentId}_{x.Date:yyyy-MM-dd}"));
                 var instrumentPricesToUpdate = new Dictionary<Guid, decimal>();
 
                 foreach (var nav in navs)
@@ -149,27 +150,28 @@ namespace Portivio.Application.Services.MarketData
                         continue;
                     }
 
-                    if (existingPriceSet.Contains(instrument.Id))
+                    var normalizedDate = nav.AsOf.ToUniversalTime().Date;
+                    var key = $"{instrument.Id}_{normalizedDate:yyyy-MM-dd}";
+
+                    if (existingPriceSet.Contains(key))
                     {
                         summary.Skipped++;
                         continue;
                     }
 
-                    var normalizedDate = DateTime.SpecifyKind(nav.AsOf.ToUniversalTime().Date, DateTimeKind.Utc);
-                    
                     _context.PriceHistories.Add(new PriceHistory
                     {
                         Id = Guid.NewGuid(),
                         InstrumentId = instrument.Id,
                         Price = nav.Nav,
-                        Date = normalizedDate,
+                        Date = DateTime.SpecifyKind(normalizedDate, DateTimeKind.Utc),
                         Source = nav.Source ?? string.Empty,
                         CreatedAt = DateTime.UtcNow
                     });
 
                     instrumentPricesToUpdate[instrument.Id] = nav.Nav;
                     summary.Inserted++;
-                    existingPriceSet.Add(instrument.Id); // Prevent duplicate inserts in same batch
+                    existingPriceSet.Add(key); // Prevent duplicate inserts in same batch
                 }
 
                 await _context.SaveChangesAsync(ct);
@@ -269,10 +271,11 @@ namespace Portivio.Application.Services.MarketData
 
         private async Task<bool> UpsertPriceAsync(Guid instrumentId, decimal price, DateTime asOf, string source, CancellationToken ct)
         {
-            var normalizedDate = DateTime.SpecifyKind(asOf.ToUniversalTime().Date, DateTimeKind.Utc);
+            var normalizedDate = asOf.ToUniversalTime().Date;
+            var keyDate = normalizedDate.ToString("yyyy-MM-dd");
 
             var exists = await _context.PriceHistories.AnyAsync(
-                ph => ph.InstrumentId == instrumentId && ph.Date.Date == normalizedDate.Date, ct);
+                ph => ph.InstrumentId == instrumentId && ph.Date.Date == normalizedDate, ct);
 
             if (exists) return false;
 
@@ -281,7 +284,7 @@ namespace Portivio.Application.Services.MarketData
                 Id = Guid.NewGuid(),
                 InstrumentId = instrumentId,
                 Price = price,
-                Date = normalizedDate,
+                Date = DateTime.SpecifyKind(normalizedDate, DateTimeKind.Utc),
                 Source = source ?? string.Empty,
                 CreatedAt = DateTime.UtcNow
             });

@@ -89,7 +89,7 @@ if (!isTesting)
 // Boot-time refresh: cron is daily 06:00 IST, but if the API just started up
 // outside that window, enqueue one fresh run so users don't sit on stale prices
 // until tomorrow. Idempotent on same-day re-runs (PriceHistory per-day uniqueness).
-if (!isTesting)
+if (!isTesting && !environment.IsDevelopment())
 {
     try
     {

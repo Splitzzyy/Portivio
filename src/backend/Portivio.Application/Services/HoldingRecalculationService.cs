@@ -380,9 +380,9 @@ namespace Portivio.Application.Services
                 return false;
             }
 
-            var today = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
+            var today = DateTime.UtcNow.Date;
             var alreadyToday = await _context.PriceHistories.AnyAsync(
-                ph => ph.InstrumentId == inst.Id && ph.Date.Date == today.Date, ct);
+                ph => ph.InstrumentId == inst.Id && ph.Date.Date == today, ct);
             if (alreadyToday) return false;
 
             _context.PriceHistories.Add(new PriceHistory
@@ -390,7 +390,7 @@ namespace Portivio.Application.Services
                 Id = Guid.NewGuid(),
                 InstrumentId = inst.Id,
                 Price = rate.Value,
-                Date = today,
+                Date = DateTime.SpecifyKind(today, DateTimeKind.Utc),
                 Source = "config",
                 CreatedAt = DateTime.UtcNow
             });
@@ -414,9 +414,9 @@ namespace Portivio.Application.Services
 
         private async Task UpsertLivePriceAsync(Guid instrumentId, decimal price, DateTime asOf, string source, CancellationToken ct)
         {
-            var today = DateTime.SpecifyKind(asOf.Date, DateTimeKind.Utc);
+            var normalizedDate = asOf.ToUniversalTime().Date;
             var existing = await _context.PriceHistories
-                .FirstOrDefaultAsync(ph => ph.InstrumentId == instrumentId && ph.Date.Date == today.Date, ct);
+                .FirstOrDefaultAsync(ph => ph.InstrumentId == instrumentId && ph.Date.Date == normalizedDate, ct);
 
             if (existing is not null)
             {
@@ -430,7 +430,7 @@ namespace Portivio.Application.Services
                     Id = Guid.NewGuid(),
                     InstrumentId = instrumentId,
                     Price = price,
-                    Date = today,
+                    Date = DateTime.SpecifyKind(normalizedDate, DateTimeKind.Utc),
                     Source = source,
                     CreatedAt = DateTime.UtcNow
                 });
