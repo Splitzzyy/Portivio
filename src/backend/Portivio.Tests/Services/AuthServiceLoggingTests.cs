@@ -5,6 +5,7 @@ using Moq;
 using Portivio.Application.DTOs.Auth;
 using Portivio.Application.Services;
 using Portivio.Domain.Entities;
+using Portivio.Domain.Services.Audit;
 using Portivio.Infrastructure.Data;
 using Portivio.Infrastructure.Services;
 using Xunit;
@@ -82,7 +83,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), loggerMock.Object, Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), loggerMock.Object, Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
             var request = new LoginRequest
             {
                 Email = "test@example.com",
@@ -107,7 +108,7 @@ namespace Portivio.Tests.Services
             var context = CreateInMemoryDbContext();
             var jwtOptions = CreateJwtOptions();
             var loggerMock = new Mock<ILogger<AuthService>>();
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), loggerMock.Object, Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), loggerMock.Object, Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
 
             var request = new LoginRequest
             {
@@ -146,7 +147,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), loggerMock.Object, Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), loggerMock.Object, Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
             var request = new LoginRequest
             {
                 Email = "unverified@example.com",
@@ -184,7 +185,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), loggerMock.Object, Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), loggerMock.Object, Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
             var request = new LoginRequest
             {
                 Email = "inactive@example.com",
@@ -222,7 +223,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), loggerMock.Object, Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), loggerMock.Object, Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
             var request = new LoginRequest
             {
                 Email = "test@example.com",
@@ -245,7 +246,7 @@ namespace Portivio.Tests.Services
             var context = CreateInMemoryDbContext();
             var jwtOptions = CreateJwtOptions();
             var loggerMock = new Mock<ILogger<AuthService>>();
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), loggerMock.Object, Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), loggerMock.Object, Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
 
             var request = new LoginRequest
             {
@@ -269,7 +270,7 @@ namespace Portivio.Tests.Services
             var loggerMock = new Mock<ILogger<AuthService>>();
             
             // Passing null context to force an exception
-            var service = new AuthService(null!, jwtOptions, Options.Create(new GoogleAuthOptions()), loggerMock.Object, Mock.Of<IEmailJobService>());
+            var service = new AuthService(null!, jwtOptions, Options.Create(new GoogleAuthOptions()), loggerMock.Object, Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
             
             var request = new LoginRequest
             {

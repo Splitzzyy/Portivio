@@ -21,6 +21,8 @@ var configuration = builder.Configuration;
 var environment = builder.Environment;
 var isTesting = environment.IsEnvironment("Testing");
 
+builder.Services.AddHttpContextAccessor();
+
 if (!isTesting)
 {
     builder.Services.AddScoped<TransactionFilter>();

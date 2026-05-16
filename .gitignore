@@ -99,3 +99,7 @@ $RECYCLE.BIN/
 *.msm
 *.msp
 .run-with-it/
+.run-with-it/
+technical_requirements.md
+prd.md
+issues.md

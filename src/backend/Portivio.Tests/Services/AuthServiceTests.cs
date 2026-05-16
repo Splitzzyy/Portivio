@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -5,9 +6,12 @@ using Microsoft.Extensions.Options;
 using Moq;
 using Portivio.Application.DTOs.Auth;
 using Portivio.Application.Services;
+using Portivio.Domain.Constants;
 using Portivio.Domain.Entities;
+using Portivio.Domain.Services.Audit;
 using Portivio.Infrastructure.Data;
 using Portivio.Infrastructure.Services;
+using Portivio.Infrastructure.Services.Audit;
 using Xunit;
 
 namespace Portivio.Tests.Services
@@ -39,6 +43,7 @@ namespace Portivio.Tests.Services
             // Arrange
             var context = CreateInMemoryDbContext();
             var jwtOptions = CreateJwtOptions();
+            var auditServiceMock = new Mock<IAuditService>();
 
             var user = new User
             {
@@ -54,7 +59,13 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var service = new AuthService(
+                context,
+                jwtOptions,
+                Options.Create(new GoogleAuthOptions()),
+                Mock.Of<ILogger<AuthService>>(),
+                Mock.Of<IEmailJobService>(),
+                auditServiceMock.Object);
             var request = new LoginRequest
             {
                 Email = "test@example.com",
@@ -71,6 +82,15 @@ namespace Portivio.Tests.Services
             Assert.Equal("Login successful", result.Message);
             Assert.NotNull(result.Data.AccessToken);
             Assert.Null(result.Data.RefreshToken);
+
+            auditServiceMock.Verify(a => a.LogAsync(
+                    user.Id,
+                    AuditActions.Auth_Login_Success,
+                    AuditEntities.User,
+                    user.Id,
+                    null,
+                    It.IsAny<object?>()),
+                Times.Once);
         }
 
         [Fact]
@@ -93,7 +113,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
             var request = new LoginRequest
             {
                 Email = "phone@example.com",
@@ -129,7 +149,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
             var request = new LoginRequest
             {
                 Email = "desktop@example.com",
@@ -150,7 +170,8 @@ namespace Portivio.Tests.Services
             // Arrange
             var context = CreateInMemoryDbContext();
             var jwtOptions = CreateJwtOptions();
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var auditServiceMock = new Mock<IAuditService>();
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), auditServiceMock.Object);
 
             var request = new LoginRequest
             {
@@ -173,6 +194,7 @@ namespace Portivio.Tests.Services
             // Arrange
             var context = CreateInMemoryDbContext();
             var jwtOptions = CreateJwtOptions();
+            var auditServiceMock = new Mock<IAuditService>();
 
             var user = new User
             {
@@ -188,7 +210,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), auditServiceMock.Object);
             var request = new LoginRequest
             {
                 Email = "unverified@example.com",
@@ -202,6 +224,15 @@ namespace Portivio.Tests.Services
             Assert.True(result.IsFailure);
             Assert.Equal(400, result.StatusCode);
             Assert.Contains("Email not verified", result.Message);
+
+            auditServiceMock.Verify(a => a.LogAsync(
+                    user.Id,
+                    AuditActions.Auth_Login_Failure,
+                    AuditEntities.User,
+                    user.Id,
+                    null,
+                    It.Is<Dictionary<string, object?>>(d => (string)d["Reason"]! == "EmailNotVerified")),
+                Times.Once);
         }
 
         [Fact]
@@ -225,7 +256,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
             var request = new LoginRequest
             {
                 Email = "inactive@example.com",
@@ -247,7 +278,8 @@ namespace Portivio.Tests.Services
             // Arrange
             var context = CreateInMemoryDbContext();
             var jwtOptions = CreateJwtOptions();
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var auditServiceMock = new Mock<IAuditService>();
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), auditServiceMock.Object);
 
             var request = new LoginRequest
             {
@@ -261,6 +293,17 @@ namespace Portivio.Tests.Services
             // Assert
             Assert.True(result.IsFailure);
             Assert.Equal(400, result.StatusCode);
+
+            auditServiceMock.Verify(a => a.LogAsync(
+                    null,
+                    AuditActions.Auth_Login_Failure,
+                    AuditEntities.User,
+                    Guid.Empty,
+                    null,
+                    It.Is<Dictionary<string, object?>>(d =>
+                        (string)d["Reason"]! == "MissingCredentials"
+                        && (string)d["Email"]! == string.Empty)),
+                Times.Once);
         }
 
         [Fact]
@@ -285,7 +328,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
             var request = new LoginRequest
             {
                 Email = "test@example.com",
@@ -300,6 +343,99 @@ namespace Portivio.Tests.Services
             // Assert
             Assert.NotNull(updatedUser?.LastLoginAt);
             Assert.True(updatedUser.LastLoginAt > DateTime.UtcNow.AddSeconds(-5));
+        }
+
+        [Fact]
+        public async Task LoginAsync_WithInvalidPassword_AuditsFailureWithReason()
+        {
+            var context = CreateInMemoryDbContext();
+            var jwtOptions = CreateJwtOptions();
+            var auditServiceMock = new Mock<IAuditService>();
+
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = "test@example.com",
+                Name = "Test User",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("CorrectPassword"),
+                IsVerified = true,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            context.Users.Add(user);
+            await context.SaveChangesAsync();
+
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), auditServiceMock.Object);
+            var result = await service.LoginAsync(new LoginRequest
+            {
+                Email = "test@example.com",
+                Password = "WrongPassword"
+            });
+
+            Assert.True(result.IsFailure);
+            Assert.Equal(401, result.StatusCode);
+
+            auditServiceMock.Verify(a => a.LogAsync(
+                    user.Id,
+                    AuditActions.Auth_Login_Failure,
+                    AuditEntities.User,
+                    user.Id,
+                    null,
+                    It.Is<Dictionary<string, object?>>(d => (string)d["Reason"]! == "WrongPassword")),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task LoginAsync_WhenTokenGenerationFails_DoesNotPersistPendingAuthStateThroughAudit()
+        {
+            var context = CreateInMemoryDbContext();
+            var jwtOptions = Options.Create(new AppSettingsOptions
+            {
+                Key = "short",
+                Issuer = "Portivio",
+                Audience = "PortivioUsers"
+            });
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = "token-fail@example.com",
+                Name = "Token Fail User",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"),
+                IsVerified = true,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                LastLoginAt = null
+            };
+
+            context.Users.Add(user);
+            await context.SaveChangesAsync();
+
+            var auditService = new AuditService(context, new HttpContextAccessor());
+            var service = new AuthService(
+                context,
+                jwtOptions,
+                Options.Create(new GoogleAuthOptions()),
+                Mock.Of<ILogger<AuthService>>(),
+                Mock.Of<IEmailJobService>(),
+                auditService);
+
+            var result = await service.LoginAsync(new LoginRequest
+            {
+                Email = "token-fail@example.com",
+                Password = "Password123",
+                IssueRefreshToken = true
+            });
+
+            Assert.True(result.IsFailure);
+
+            var updatedUser = await context.Users.SingleAsync(u => u.Id == user.Id);
+            Assert.Null(updatedUser.LastLoginAt);
+            Assert.Empty(await context.AuthTokens.Where(t => t.UserId == user.Id).ToListAsync());
+
+            var auditLog = await context.AuditLogs.SingleAsync();
+            Assert.Equal(AuditActions.Auth_Login_Failure, auditLog.Action);
+            Assert.Contains("TokenGenerationFailure", auditLog.NewValues);
         }
     }
 
@@ -330,7 +466,8 @@ namespace Portivio.Tests.Services
             // Arrange
             var context = CreateInMemoryDbContext();
             var jwtOptions = CreateJwtOptions();
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var auditServiceMock = new Mock<IAuditService>();
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), auditServiceMock.Object);
 
             var request = new SignupRequest
             {
@@ -356,6 +493,15 @@ namespace Portivio.Tests.Services
             Assert.False(string.IsNullOrWhiteSpace(createdUser.PasswordHash));
             Assert.NotEqual("Password123", createdUser.PasswordHash);
             Assert.True(BCrypt.Net.BCrypt.Verify("Password123", createdUser.PasswordHash));
+
+            auditServiceMock.Verify(a => a.LogAsync(
+                    createdUser.Id,
+                    AuditActions.Auth_Signup_Success,
+                    AuditEntities.User,
+                    createdUser.Id,
+                    null,
+                    It.IsAny<object?>()),
+                Times.Once);
         }
 
         [Fact]
@@ -364,7 +510,7 @@ namespace Portivio.Tests.Services
             // Arrange
             var context = CreateInMemoryDbContext();
             var jwtOptions = CreateJwtOptions();
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
 
             var request = new SignupRequest
             {
@@ -403,7 +549,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(existingUser);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
             var request = new SignupRequest
             {
                 Email = "existing@example.com",
@@ -427,7 +573,7 @@ namespace Portivio.Tests.Services
             // Arrange
             var context = CreateInMemoryDbContext();
             var jwtOptions = CreateJwtOptions();
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
 
             var request = new SignupRequest
             {
@@ -443,6 +589,102 @@ namespace Portivio.Tests.Services
             // Assert
             Assert.True(result.IsFailure);
             Assert.Equal(400, result.StatusCode);
+        }
+    }
+
+    public class AuthServiceGoogleLoginTests
+    {
+        private PortivioDbContext CreateInMemoryDbContext()
+        {
+            var options = new DbContextOptionsBuilder<PortivioDbContext>()
+                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+                .Options;
+
+            return new PortivioDbContext(options);
+        }
+
+        private IOptions<AppSettingsOptions> CreateJwtOptions()
+        {
+            return Options.Create(new AppSettingsOptions
+            {
+                Key = "super-secret-key-that-is-at-least-32-characters-long",
+                Issuer = "Portivio",
+                Audience = "PortivioUsers"
+            });
+        }
+
+        [Fact]
+        public async Task GoogleLoginAsync_WithMissingToken_AuditsFailureWithReason()
+        {
+            var context = CreateInMemoryDbContext();
+            var jwtOptions = CreateJwtOptions();
+            var auditServiceMock = new Mock<IAuditService>();
+            var service = new AuthService(
+                context,
+                jwtOptions,
+                Options.Create(new GoogleAuthOptions { ClientId = "configured-client-id" }),
+                Mock.Of<ILogger<AuthService>>(),
+                Mock.Of<IEmailJobService>(),
+                auditServiceMock.Object);
+
+            var result = await service.GoogleLoginAsync(new GoogleLoginRequest
+            {
+                Token = "",
+                IpAddress = "127.0.0.1",
+                DeviceInfo = "Chrome"
+            });
+
+            Assert.True(result.IsFailure);
+            Assert.Equal(400, result.StatusCode);
+
+            auditServiceMock.Verify(a => a.LogAsync(
+                    null,
+                    AuditActions.Auth_GoogleLogin_Failure,
+                    AuditEntities.User,
+                    Guid.Empty,
+                    null,
+                    It.Is<Dictionary<string, object?>>(d =>
+                        (string)d["Reason"]! == "MissingToken"
+                        && (string)d["IpAddress"]! == "127.0.0.1"
+                        && (string)d["DeviceInfo"]! == "Chrome")),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task GoogleLoginAsync_WithoutClientId_AuditsFailureWithReason()
+        {
+            var context = CreateInMemoryDbContext();
+            var jwtOptions = CreateJwtOptions();
+            var auditServiceMock = new Mock<IAuditService>();
+            var service = new AuthService(
+                context,
+                jwtOptions,
+                Options.Create(new GoogleAuthOptions()),
+                Mock.Of<ILogger<AuthService>>(),
+                Mock.Of<IEmailJobService>(),
+                auditServiceMock.Object);
+
+            var result = await service.GoogleLoginAsync(new GoogleLoginRequest
+            {
+                Token = "google-token",
+                IpAddress = "127.0.0.1",
+                DeviceInfo = "Chrome"
+            });
+
+            Assert.True(result.IsFailure);
+            Assert.Equal(500, result.StatusCode);
+
+            auditServiceMock.Verify(a => a.LogAsync(
+                    null,
+                    AuditActions.Auth_GoogleLogin_Failure,
+                    AuditEntities.User,
+                    Guid.Empty,
+                    null,
+                    It.Is<Dictionary<string, object?>>(d =>
+                        (string)d["Reason"]! == "ClientIdNotConfigured"
+                        && (string)d["IpAddress"]! == "127.0.0.1"
+                        && (string)d["DeviceInfo"]! == "Chrome")),
+                Times.Once);
         }
     }
 
@@ -489,7 +731,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
             var request = new VerifyEmailRequest
             {
                 Email = "test@example.com",
@@ -512,7 +754,7 @@ namespace Portivio.Tests.Services
             // Arrange
             var context = CreateInMemoryDbContext();
             var jwtOptions = CreateJwtOptions();
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
 
             var request = new VerifyEmailRequest
             {
@@ -549,7 +791,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
             var request = new VerifyEmailRequest
             {
                 Email = "verified@example.com",
@@ -626,7 +868,8 @@ namespace Portivio.Tests.Services
             context.AuthTokens.AddRange(token1, token2);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var auditServiceMock = new Mock<IAuditService>();
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), auditServiceMock.Object);
 
             // Act
             var result = await service.LogoutAsync(userId);
@@ -635,6 +878,15 @@ namespace Portivio.Tests.Services
             Assert.True(result.IsSuccess);
             var tokens = await context.AuthTokens.Where(t => t.UserId == userId).ToListAsync();
             Assert.All(tokens, t => Assert.True(t.Revoked));
+
+            auditServiceMock.Verify(a => a.LogAsync(
+                    userId,
+                    AuditActions.Auth_Logout,
+                    AuditEntities.User,
+                    userId,
+                    null,
+                    It.IsAny<object?>()),
+                Times.Once);
         }
 
         [Fact]
@@ -645,13 +897,23 @@ namespace Portivio.Tests.Services
             var jwtOptions = CreateJwtOptions();
             var userId = Guid.NewGuid();
 
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var auditServiceMock = new Mock<IAuditService>();
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), auditServiceMock.Object);
 
             // Act
             var result = await service.LogoutAsync(userId);
 
             // Assert
             Assert.True(result.IsSuccess);
+
+            auditServiceMock.Verify(a => a.LogAsync(
+                    userId,
+                    AuditActions.Auth_Logout,
+                    AuditEntities.User,
+                    userId,
+                    null,
+                    It.IsAny<object?>()),
+                Times.Once);
         }
     }
 
@@ -714,7 +976,7 @@ namespace Portivio.Tests.Services
             context.AuthTokens.AddRange(expiredToken, validToken);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
 
             // Act
             var result = await service.CleanupExpiredTokensAsync();
@@ -750,7 +1012,7 @@ namespace Portivio.Tests.Services
             context.AuthTokens.Add(validToken);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
 
             // Act
             var result = await service.CleanupExpiredTokensAsync();
@@ -789,7 +1051,7 @@ namespace Portivio.Tests.Services
             // Arrange
             var context = CreateInMemoryDbContext();
             var jwtOptions = CreateJwtOptions();
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
 
             // Act
             var result = await service.RefreshTokenAsync("");
@@ -806,7 +1068,7 @@ namespace Portivio.Tests.Services
             // Arrange
             var context = CreateInMemoryDbContext();
             var jwtOptions = CreateJwtOptions();
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
 
             // Act
             var result = await service.RefreshTokenAsync("invalid-token");
@@ -851,7 +1113,7 @@ namespace Portivio.Tests.Services
             });
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, jwtOptions, Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
 
             var result = await service.RefreshTokenAsync(refreshToken);
 
@@ -881,7 +1143,7 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, CreateJwtOptions(), Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, CreateJwtOptions(), Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
             var result = await service.UpdateProfileAsync(user.Id, new UpdateUserProfileRequest { Name = "New Name" });
 
             Assert.True(result.IsSuccess);
@@ -898,13 +1160,23 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, CreateJwtOptions(), Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var auditServiceMock = new Mock<IAuditService>();
+            var service = new AuthService(context, CreateJwtOptions(), Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), auditServiceMock.Object);
             var req = new ChangePasswordRequest { NewPassword = "NewPassword123", ConfirmPassword = "NewPassword123" };
             var result = await service.ChangePasswordAsync(user.Id, req);
 
             Assert.True(result.IsSuccess);
             Assert.NotEqual(oldHash, user.PasswordHash);
             Assert.True(BCrypt.Net.BCrypt.Verify("NewPassword123", user.PasswordHash));
+
+            auditServiceMock.Verify(a => a.LogAsync(
+                    user.Id,
+                    AuditActions.Auth_ChangePassword_Success,
+                    AuditEntities.User,
+                    user.Id,
+                    null,
+                    It.Is<object?>(v => AuditValuePredicates.PasswordChangedNewValues(v, req.NewPassword))),
+                Times.Once);
         }
 
         [Fact]
@@ -915,13 +1187,214 @@ namespace Portivio.Tests.Services
             context.Users.Add(user);
             await context.SaveChangesAsync();
 
-            var service = new AuthService(context, CreateJwtOptions(), Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>());
+            var service = new AuthService(context, CreateJwtOptions(), Options.Create(new GoogleAuthOptions()), Mock.Of<ILogger<AuthService>>(), Mock.Of<IEmailJobService>(), Mock.Of<IAuditService>());
             var req = new ChangePasswordRequest { NewPassword = "NewPassword123", ConfirmPassword = "DifferentPassword" };
             var result = await service.ChangePasswordAsync(user.Id, req);
 
             Assert.False(result.IsSuccess);
             Assert.Equal(400, result.StatusCode);
             Assert.Equal("Passwords do not match", result.Message);
+        }
+    }
+
+    public class AuthServiceAccountModificationAuditTests
+    {
+        private PortivioDbContext CreateInMemoryDbContext()
+        {
+            var options = new DbContextOptionsBuilder<PortivioDbContext>()
+                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+                .Options;
+            return new PortivioDbContext(options);
+        }
+
+        private IOptions<AppSettingsOptions> CreateJwtOptions()
+        {
+            return Options.Create(new AppSettingsOptions
+            {
+                Key = "super-secret-key-that-is-at-least-32-characters-long",
+                Issuer = "Portivio",
+                Audience = "PortivioUsers"
+            });
+        }
+
+        [Fact]
+        public async Task VerifyEmailAsync_OnSuccess_LogsAuditWithoutToken()
+        {
+            var context = CreateInMemoryDbContext();
+            var auditServiceMock = new Mock<IAuditService>();
+
+            var token = "verify-token";
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = "verify@example.com",
+                Name = "Verify User",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"),
+                IsVerified = false,
+                IsActive = true,
+                EmailVerificationToken = token,
+                EmailVerificationTokenExpiry = DateTime.UtcNow.AddHours(2),
+                CreatedAt = DateTime.UtcNow
+            };
+
+            context.Users.Add(user);
+            await context.SaveChangesAsync();
+
+            var service = new AuthService(
+                context,
+                CreateJwtOptions(),
+                Options.Create(new GoogleAuthOptions()),
+                Mock.Of<ILogger<AuthService>>(),
+                Mock.Of<IEmailJobService>(),
+                auditServiceMock.Object);
+
+            var result = await service.VerifyEmailAsync(new VerifyEmailRequest { Email = user.Email, VerificationToken = token });
+
+            Assert.True(result.IsSuccess);
+            Assert.True(user.IsVerified);
+            Assert.Null(user.EmailVerificationToken);
+
+            auditServiceMock.Verify(a => a.LogAsync(
+                    user.Id,
+                    AuditActions.Auth_VerifyEmail_Success,
+                    AuditEntities.User,
+                    user.Id,
+                    null,
+                    It.Is<object?>(v => AuditValuePredicates.RequiresKeyAndNoForbiddenValues(v, "Email", token))),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task ForgotPasswordAsync_OnSuccess_LogsAuditWithoutResetToken()
+        {
+            var context = CreateInMemoryDbContext();
+            var auditServiceMock = new Mock<IAuditService>();
+
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = "forgot@example.com",
+                Name = "Forgot User",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"),
+                IsVerified = true,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            context.Users.Add(user);
+            await context.SaveChangesAsync();
+
+            var service = new AuthService(
+                context,
+                CreateJwtOptions(),
+                Options.Create(new GoogleAuthOptions()),
+                Mock.Of<ILogger<AuthService>>(),
+                Mock.Of<IEmailJobService>(),
+                auditServiceMock.Object);
+
+            var result = await service.ForgotPasswordAsync(new ForgotPasswordRequest { Email = user.Email });
+
+            Assert.True(result.IsSuccess);
+            Assert.False(string.IsNullOrWhiteSpace(user.PasswordResetToken));
+
+            var savedResetToken = user.PasswordResetToken!;
+
+            auditServiceMock.Verify(a => a.LogAsync(
+                    user.Id,
+                    AuditActions.Auth_ForgotPassword_Requested,
+                    AuditEntities.User,
+                    user.Id,
+                    null,
+                    It.Is<object?>(v => AuditValuePredicates.RequiresKeyAndNoForbiddenValues(v, "Email", savedResetToken))),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task ResetPasswordAsync_OnSuccess_LogsAuditWithoutPasswordOrToken()
+        {
+            var context = CreateInMemoryDbContext();
+            var auditServiceMock = new Mock<IAuditService>();
+
+            var resetToken = "reset-token";
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = "reset@example.com",
+                Name = "Reset User",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("OldPassword123"),
+                IsVerified = true,
+                IsActive = false,
+                PasswordResetToken = resetToken,
+                PasswordResetTokenExpiry = DateTime.UtcNow.AddHours(1),
+                CreatedAt = DateTime.UtcNow
+            };
+
+            context.Users.Add(user);
+            await context.SaveChangesAsync();
+
+            var service = new AuthService(
+                context,
+                CreateJwtOptions(),
+                Options.Create(new GoogleAuthOptions()),
+                Mock.Of<ILogger<AuthService>>(),
+                Mock.Of<IEmailJobService>(),
+                auditServiceMock.Object);
+
+            var newPassword = "NewPassword123";
+            var result = await service.ResetPasswordAsync(new ResetPasswordRequest
+            {
+                Email = user.Email,
+                ResetToken = resetToken,
+                NewPassword = newPassword,
+                ConfirmPassword = newPassword
+            });
+
+            Assert.True(result.IsSuccess);
+            Assert.True(user.IsActive);
+            Assert.Null(user.PasswordResetToken);
+            Assert.True(BCrypt.Net.BCrypt.Verify(newPassword, user.PasswordHash));
+
+            auditServiceMock.Verify(a => a.LogAsync(
+                    user.Id,
+                    AuditActions.Auth_ResetPassword_Success,
+                    AuditEntities.User,
+                    user.Id,
+                    null,
+                    It.Is<object?>(v => AuditValuePredicates.RequiresKeyAndNoForbiddenValues(v, "Email", resetToken, newPassword))),
+                Times.Once);
+        }
+    }
+
+    internal static class AuditValuePredicates
+    {
+        public static bool PasswordChangedNewValues(object? value, string forbiddenPassword)
+        {
+            if (value is not IDictionary<string, object?> dict)
+                return false;
+
+            if (!dict.TryGetValue("PasswordChanged", out var passwordChanged)
+                || passwordChanged is not bool passwordChangedBool
+                || !passwordChangedBool)
+                return false;
+
+            return dict.Values.All(val => val?.ToString() != forbiddenPassword);
+        }
+
+        public static bool RequiresKeyAndNoForbiddenValues(object? value, string requiredKey, params string[] forbiddenValues)
+        {
+            if (value is not IDictionary<string, object?> dict)
+                return false;
+
+            if (!dict.ContainsKey(requiredKey))
+                return false;
+
+            foreach (var forbiddenValue in forbiddenValues)
+            {
+                if (dict.Values.Any(val => val?.ToString() == forbiddenValue))
+                    return false;
+            }
+
+            return true;
         }
     }
 }
