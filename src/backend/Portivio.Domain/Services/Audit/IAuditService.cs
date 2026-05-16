@@ -1,4 +1,4 @@
-namespace Portivio.Application.Services.Audit
+namespace Portivio.Domain.Services.Audit
 {
     public interface IAuditService
     {

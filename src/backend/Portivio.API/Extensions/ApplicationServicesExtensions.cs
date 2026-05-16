@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Options;
 using Portivio.API.Services;
 using Portivio.Application.Services;
-using Portivio.Application.Services.Audit;
 using Portivio.Application.Services.Authorization;
 using Portivio.Application.Services.MarketData;
 using Portivio.Application.Services.Strategies;
+using Portivio.Domain.Services.Audit;
 using Portivio.Infrastructure.Services.Audit;
 using Portivio.Infrastructure.Services;
 

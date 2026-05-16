@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Http;
-using Portivio.Application.Services.Audit;
 using Portivio.Domain.Entities;
+using Portivio.Domain.Services.Audit;
 using Portivio.Infrastructure.Data;
 using System.Text.Json;
 
@@ -65,4 +65,3 @@ namespace Portivio.Infrastructure.Services.Audit
         }
     }
 }
-
