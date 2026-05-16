@@ -66,7 +66,7 @@ namespace Portivio.Application.Services
                 if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
                 {
                     await AuditSafeAsync(
-                        Guid.Empty,
+                        null,
                         AuditActions.Auth_Login_Failure,
                         AuditEntities.User,
                         Guid.Empty,
@@ -87,7 +87,7 @@ namespace Portivio.Application.Services
                 if (user == null)
                 {
                     await AuditSafeAsync(
-                        Guid.Empty,
+                        null,
                         AuditActions.Auth_Login_Failure,
                         AuditEntities.User,
                         Guid.Empty,
@@ -539,7 +539,7 @@ namespace Portivio.Application.Services
                 {
                     _logger.LogWarning("Google login rejected: missing token. IP={IpAddress}", request.IpAddress);
                     await AuditSafeAsync(
-                        Guid.Empty,
+                        null,
                         AuditActions.Auth_GoogleLogin_Failure,
                         AuditEntities.User,
                         Guid.Empty,
@@ -556,7 +556,7 @@ namespace Portivio.Application.Services
                 {
                     _logger.LogCritical("Google login cannot proceed: GoogleAuth:ClientId is not configured");
                     await AuditSafeAsync(
-                        Guid.Empty,
+                        null,
                         AuditActions.Auth_GoogleLogin_Failure,
                         AuditEntities.User,
                         Guid.Empty,
@@ -586,7 +586,7 @@ namespace Portivio.Application.Services
                         request.IpAddress, ex.Message);
 
                     await AuditSafeAsync(
-                        Guid.Empty,
+                        null,
                         AuditActions.Auth_GoogleLogin_Failure,
                         AuditEntities.User,
                         Guid.Empty,
@@ -609,7 +609,7 @@ namespace Portivio.Application.Services
                         payload.Email, request.IpAddress);
 
                     await AuditSafeAsync(
-                        Guid.Empty,
+                        null,
                         AuditActions.Auth_GoogleLogin_Failure,
                         AuditEntities.User,
                         Guid.Empty,
@@ -883,7 +883,7 @@ namespace Portivio.Application.Services
         }
 
         private async Task AuditSafeAsync(
-            Guid userId,
+            Guid? userId,
             string action,
             string entity,
             Guid entityId,

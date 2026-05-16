@@ -18,7 +18,7 @@ namespace Portivio.Infrastructure.Services.Audit
         }
 
         public async Task LogAsync(
-            Guid userId,
+            Guid? userId,
             string action,
             string entity,
             Guid entityId,

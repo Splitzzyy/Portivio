@@ -295,7 +295,7 @@ namespace Portivio.Tests.Services
             Assert.Equal(400, result.StatusCode);
 
             auditServiceMock.Verify(a => a.LogAsync(
-                    Guid.Empty,
+                    null,
                     AuditActions.Auth_Login_Failure,
                     AuditEntities.User,
                     Guid.Empty,
@@ -638,7 +638,7 @@ namespace Portivio.Tests.Services
             Assert.Equal(400, result.StatusCode);
 
             auditServiceMock.Verify(a => a.LogAsync(
-                    Guid.Empty,
+                    null,
                     AuditActions.Auth_GoogleLogin_Failure,
                     AuditEntities.User,
                     Guid.Empty,
@@ -675,7 +675,7 @@ namespace Portivio.Tests.Services
             Assert.Equal(500, result.StatusCode);
 
             auditServiceMock.Verify(a => a.LogAsync(
-                    Guid.Empty,
+                    null,
                     AuditActions.Auth_GoogleLogin_Failure,
                     AuditEntities.User,
                     Guid.Empty,
