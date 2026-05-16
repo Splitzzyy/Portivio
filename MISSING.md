@@ -9,6 +9,7 @@
 ## ✅ Recently Implemented (since last audit)
 
 - **X7** **Centralized Audit Logging** — `IAuditService` + `AuditService` live; all security events (login, signup, reset, verify) recorded with IP/UA metadata.
+- **CI1** **PR Validation Workflow** — New GitHub Action added to trigger build/test on all Pull Requests targeting `main`.
 - **I5** **Swagger Gated** — `UsePortivioSwagger()` now conditionally mapped only in `Development` environment.
 - **I6** **Non-root Docker Containers** — Backend `Dockerfile` updated to use `USER $APP_UID`.
 - **I4** **Security Headers** — `SecurityHeadersMiddleware` implemented with HSTS, CSP, X-Frame-Options, and nosniff.
