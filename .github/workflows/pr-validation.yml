@@ -43,6 +43,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Generate dummy environment file
+        run: |
+          mkdir -p src/environments
+          echo "export const environment = { production: true, apiUrl: '' };" > src/environments/environment.prod.ts
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
