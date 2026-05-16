@@ -13,18 +13,12 @@ jobs:
   backend:
     name: Backend
     uses: ./.github/workflows/backend.yml
-    secrets:
-      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-      APP_SETTINGS: ${{ secrets.APP_SETTINGS }}
+    secrets: inherit
 
   frontend:
     name: Frontend
     uses: ./.github/workflows/frontend.yml
-    secrets:
-      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-      FRONTEND_ENV: ${{ secrets.FRONTEND_ENV }}
+    secrets: inherit
 
   update-badges:
     name: Update Test Badges
@@ -57,5 +51,3 @@ jobs:
           git add docs/badges/backend-status.svg docs/badges/frontend-status.svg
           git commit -m "chore: update test status badges [skip ci]" || { echo "No changes to commit"; exit 0; }
           git push origin HEAD:main
-
-

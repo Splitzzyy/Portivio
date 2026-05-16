@@ -1,0 +1,18 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: pr-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    uses: ./.github/workflows/backend.yml
+    secrets: inherit
+
+  frontend:
+    uses: ./.github/workflows/frontend.yml
+    secrets: inherit

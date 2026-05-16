@@ -23,25 +23,17 @@ regexes = [
   "\"Key\": \"\"",
   "\"ApiKey\": \"\"",
 ]
-
-[[rules.allowlist]]
-description = "Skip backend test project and frontend spec files"
 paths = [
+  # Skip backend test project and frontend spec files
   '''Portivio\.Tests/''',
   '''\.spec\.ts$''',
   '''\.spec\.js$''',
-]
 
-[[rules.allowlist]]
-description = "Skip example and template config files"
-paths = [
+  # Skip example and template config files
   '''appsettings\.example\.json$''',
   '''environment\.ts$''',
-]
 
-[[rules.allowlist]]
-description = "Skip migration snapshots"
-paths = [
+  # Skip migration snapshots
   '''Migrations/.*\.Designer\.cs''',
   '''Migrations/PortivioDbContextModelSnapshot\.cs''',
 ]

@@ -179,10 +179,11 @@ bun run test
 
 | Workflow | Trigger | What it does |
 |----------|---------|-------------|
-| `backend.yml` | push/PR | Restore · Build · Test · Docker push |
-| `frontend.yml` | push/PR | Install · Build · Test · Docker push |
-| `build-on-main.yml` | push to main | Runs both · Updates badges |
-| `secret-scan.yml` | push/PR | Gitleaks secret detection |
+| `pr-validation.yml` | pull_request | **Validation:** Restore · Build · Test for both layers |
+| `backend.yml` | workflow_call | **Backend:** Restore · Build · Test · Docker push |
+| `frontend.yml` | workflow_call | **Frontend:** Install · Build · Test · Docker push |
+| `build-on-main.yml` | push to main | **Deployment:** Runs both · Updates badges |
+| `secret-scan.yml` | push/PR | **Security:** Gitleaks secret detection |
 
 Docker images pushed to Docker Hub: `rghvgrv/portifio-api`, `rghvgrv/portifio-frontend`
 
