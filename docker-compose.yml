@@ -36,17 +36,17 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:5274
-      Postgres__ConnectionString: "Host=db;Port=5432;Database=portivio;Username=postgres;Password=postgres"
-      Jwt__Key: "ReplaceWithA32CharOrLongerKey_ChangeMe!"
-      Jwt__Issuer: "portivio"
-      Jwt__Audience: "portivio"
-      Email__Host: "mailpit"
-      Email__Port: "1025"
-      Email__Username: ""
-      Email__Password: ""
-      Email__FromAddress: "dev@portivio.local"
-      Email__FromName: "Portivio Dev"
-      Email__EnableSsl: "false"
+      # Postgres__ConnectionString: "Host=db;Port=5432;Database=portivio;Username=postgres;Password=postgres"
+      # Jwt__Key: "ReplaceWithA32CharOrLongerKey_ChangeMe!"
+      # Jwt__Issuer: "portivio"
+      # Jwt__Audience: "portivio"
+      # Email__Host: "mailpit"
+      # Email__Port: "1025"
+      # Email__Username: ""
+      # Email__Password: ""
+      # Email__FromAddress: "dev@portivio.local"
+      # Email__FromName: "Portivio Dev"
+      # Email__EnableSsl: "false"
       Email__FrontendBaseUrl: "http://localhost:4200"
     volumes:
       - ./src/backend/Portivio.API/appsettings.Development.json:/app/appsettings.Development.json:ro
