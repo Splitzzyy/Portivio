@@ -1,9 +1,11 @@
 using Microsoft.Extensions.Options;
 using Portivio.API.Services;
 using Portivio.Application.Services;
+using Portivio.Application.Services.Audit;
 using Portivio.Application.Services.Authorization;
 using Portivio.Application.Services.MarketData;
 using Portivio.Application.Services.Strategies;
+using Portivio.Infrastructure.Services.Audit;
 using Portivio.Infrastructure.Services;
 
 namespace Portivio.API.Extensions;
@@ -14,6 +16,7 @@ public static class ApplicationServicesExtensions
     {
         RegisterOptions(services, configuration);
         RegisterAuthServices(services);
+        RegisterAuditServices(services);
         RegisterDomainServices(services);
         RegisterEmailServices(services);
         RegisterMarketDataServices(services, configuration);
@@ -35,6 +38,11 @@ public static class ApplicationServicesExtensions
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IAuthHttpContextService, AuthHttpContextService>();
         services.AddHostedService<TokenCleanupService>();
+    }
+
+    private static void RegisterAuditServices(IServiceCollection services)
+    {
+        services.AddScoped<IAuditService, AuditService>();
     }
 
     private static void RegisterDomainServices(IServiceCollection services)

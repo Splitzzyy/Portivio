@@ -21,4 +21,8 @@
     <ProjectReference Include="..\Portivio.Domain\Portivio.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="Services\\Audit\\AuditService.cs" />
+  </ItemGroup>
+
 </Project>
