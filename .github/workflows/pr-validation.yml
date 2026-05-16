@@ -46,7 +46,18 @@ jobs:
       - name: Generate dummy environment file
         run: |
           mkdir -p src/environments
-          echo "export const environment = { production: true, apiUrl: '' };" > src/environments/environment.prod.ts
+          cat <<EOF > src/environments/environment.prod.ts
+          export const environment = {
+            production: true,
+            showSip: true,
+            apiUrl: '',
+            oauth: {
+              google: {
+                clientId: ''
+              }
+            }
+          };
+          EOF
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
