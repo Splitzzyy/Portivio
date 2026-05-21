@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Portivio.Application.DTOs.MarketData;
 using Portivio.Application.Results;
 using Portivio.Domain.Entities;
+using Portivio.Domain.Enums;
 using Portivio.Infrastructure.Data;
 
 namespace Portivio.Application.Services.MarketData
@@ -28,6 +29,8 @@ namespace Portivio.Application.Services.MarketData
         private readonly IMutualFundNavProvider _navProvider;
         private readonly IHoldingService _holdingService;
         private readonly ILogger<MarketDataService> _logger;
+
+        private sealed record NavSyncTarget(Guid InstrumentId, string Symbol, string? Isin, string? PriceSourceKey);
 
         public MarketDataService(
             PortivioDbContext context,
@@ -111,6 +114,12 @@ namespace Portivio.Application.Services.MarketData
             var summary = new SyncSummaryResponse();
             try
             {
+                var targetsByNavKey = await GetMutualFundNavTargetsInUseAsync(ct);
+                if (targetsByNavKey.Count == 0)
+                {
+                    return Result<SyncSummaryResponse>.Success(summary, "No in-use mutual fund instruments to sync");
+                }
+
                 var navs = await _navProvider.GetAllNavsAsync(ct);
                 if (navs.Count == 0)
                 {
@@ -118,21 +127,21 @@ namespace Portivio.Application.Services.MarketData
                     return Result<SyncSummaryResponse>.Success(summary, "No NAVs to sync");
                 }
 
-                var assetType = await _context.AssetTypes.FirstOrDefaultAsync(a => a.Name == MutualFundAssetTypeName, ct);
-                if (assetType == null)
+                var matchedNavs = navs
+                    .Where(n => !string.IsNullOrWhiteSpace(n.Isin) && targetsByNavKey.ContainsKey(n.Isin))
+                    .ToList();
+                if (matchedNavs.Count == 0)
                 {
-                    summary.Errors.Add("Mutual Fund asset type not found");
-                    return Result<SyncSummaryResponse>.Success(summary, "Mutual Fund asset type not found");
+                    return Result<SyncSummaryResponse>.Success(summary, "No matching in-use mutual fund NAVs to sync");
                 }
 
-                var existingBySymbol = await _context.Instruments
-                    .Where(i => i.AssetTypeId == assetType.Id)
-                    .ToDictionaryAsync(i => i.Symbol, StringComparer.OrdinalIgnoreCase, ct);
-
-                var instrumentIds = existingBySymbol.Values.Select(i => i.Id).ToList();
+                var instrumentIds = targetsByNavKey.Values
+                    .SelectMany(v => v.Select(t => t.InstrumentId))
+                    .Distinct()
+                    .ToList();
                 
                 // Check for existing prices based on the dates returned by the provider
-                var datesToCheck = navs.Select(n => n.AsOf.ToUniversalTime().Date).Distinct().ToList();
+                var datesToCheck = matchedNavs.Select(n => n.AsOf.ToUniversalTime().Date).Distinct().ToList();
                 var existingPriceEntries = await _context.PriceHistories
                     .Where(ph => instrumentIds.Contains(ph.InstrumentId) && datesToCheck.Contains(ph.Date.Date))
                     .Select(ph => new { ph.InstrumentId, ph.Date })
@@ -142,36 +151,35 @@ namespace Portivio.Application.Services.MarketData
                     existingPriceEntries.Select(x => $"{x.InstrumentId}_{x.Date:yyyy-MM-dd}"));
                 var instrumentPricesToUpdate = new Dictionary<Guid, decimal>();
 
-                foreach (var nav in navs)
+                foreach (var nav in matchedNavs)
                 {
-                    if (!existingBySymbol.TryGetValue(nav.Isin, out var instrument))
-                    {
-                        // Skip instruments that don't exist
-                        continue;
-                    }
+                    var targets = targetsByNavKey[nav.Isin];
 
                     var normalizedDate = nav.AsOf.ToUniversalTime().Date;
-                    var key = $"{instrument.Id}_{normalizedDate:yyyy-MM-dd}";
-
-                    if (existingPriceSet.Contains(key))
+                    foreach (var target in targets)
                     {
-                        summary.Skipped++;
-                        continue;
+                        var key = $"{target.InstrumentId}_{normalizedDate:yyyy-MM-dd}";
+
+                        if (existingPriceSet.Contains(key))
+                        {
+                            summary.Skipped++;
+                            continue;
+                        }
+
+                        _context.PriceHistories.Add(new PriceHistory
+                        {
+                            Id = Guid.NewGuid(),
+                            InstrumentId = target.InstrumentId,
+                            Price = nav.Nav,
+                            Date = DateTime.SpecifyKind(normalizedDate, DateTimeKind.Utc),
+                            Source = nav.Source ?? string.Empty,
+                            CreatedAt = DateTime.UtcNow
+                        });
+
+                        instrumentPricesToUpdate[target.InstrumentId] = nav.Nav;
+                        summary.Inserted++;
+                        existingPriceSet.Add(key); // Prevent duplicate inserts in same batch
                     }
-
-                    _context.PriceHistories.Add(new PriceHistory
-                    {
-                        Id = Guid.NewGuid(),
-                        InstrumentId = instrument.Id,
-                        Price = nav.Nav,
-                        Date = DateTime.SpecifyKind(normalizedDate, DateTimeKind.Utc),
-                        Source = nav.Source ?? string.Empty,
-                        CreatedAt = DateTime.UtcNow
-                    });
-
-                    instrumentPricesToUpdate[instrument.Id] = nav.Nav;
-                    summary.Inserted++;
-                    existingPriceSet.Add(key); // Prevent duplicate inserts in same batch
                 }
 
                 await _context.SaveChangesAsync(ct);
@@ -189,6 +197,44 @@ namespace Portivio.Application.Services.MarketData
                 summary.Errors.Add(ex.Message);
                 return Result<SyncSummaryResponse>.InternalServerError($"Error syncing NAVs: {ex.Message}");
             }
+        }
+
+        private async Task<Dictionary<string, List<NavSyncTarget>>> GetMutualFundNavTargetsInUseAsync(CancellationToken ct)
+        {
+            var targets = await _context.Instruments
+                .AsNoTracking()
+                .Where(i => i.Category == AssetCategory.MutualFund && i.PriceSource == PriceSource.AmfiNav)
+                .Where(i => i.Holdings.Any() || i.Transactions.Any(t => !t.IsDeleted))
+                .Select(i => new NavSyncTarget(i.Id, i.Symbol, i.Isin, i.PriceSourceKey))
+                .ToListAsync(ct);
+
+            var byKey = new Dictionary<string, List<NavSyncTarget>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var target in targets)
+            {
+                foreach (var key in GetNavIdentityKeys(target))
+                {
+                    if (!byKey.TryGetValue(key, out var keyedTargets))
+                    {
+                        keyedTargets = new List<NavSyncTarget>();
+                        byKey[key] = keyedTargets;
+                    }
+
+                    if (!keyedTargets.Any(t => t.InstrumentId == target.InstrumentId))
+                        keyedTargets.Add(target);
+                }
+            }
+
+            return byKey;
+        }
+
+        private static IEnumerable<string> GetNavIdentityKeys(NavSyncTarget target)
+        {
+            if (!string.IsNullOrWhiteSpace(target.Symbol))
+                yield return target.Symbol.Trim();
+            if (!string.IsNullOrWhiteSpace(target.Isin))
+                yield return target.Isin.Trim();
+            if (!string.IsNullOrWhiteSpace(target.PriceSourceKey))
+                yield return target.PriceSourceKey.Trim();
         }
 
         public async Task<Result<StockPriceResponse>> GetLatestStockPriceAsync(string symbol, CancellationToken ct = default)
