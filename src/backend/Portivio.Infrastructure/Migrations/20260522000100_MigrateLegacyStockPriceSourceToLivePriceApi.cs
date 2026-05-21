@@ -22,12 +22,9 @@ namespace Portivio.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql(@"
-                UPDATE ""Instruments""
-                SET ""PriceSource"" = 1
-                WHERE ""PriceSource"" = 5
-                  AND ""Category"" = 0;
-            ");
+            // No safe rollback: once old rows are normalized to LivePriceApi, they
+            // cannot be distinguished from instruments that were already using it.
+            // Reintroducing the removed enum value would also strand those rows.
         }
     }
 }
