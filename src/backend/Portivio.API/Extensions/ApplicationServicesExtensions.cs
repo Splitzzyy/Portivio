@@ -67,7 +67,6 @@ public static class ApplicationServicesExtensions
         services.AddScoped<ITransactionIngestService, TransactionIngestService>();
         services.AddScoped<IAssetInstrumentService, AssetInstrumentService>();
         services.AddScoped<IHoldingRecalculationService, HoldingRecalculationService>();
-        services.AddSingleton<IRefreshThrottle, RealRefreshThrottle>();
     }
 
     private static void RegisterEmailServices(IServiceCollection services)
@@ -85,17 +84,6 @@ public static class ApplicationServicesExtensions
             client.DefaultRequestHeaders.UserAgent.ParseAdd("Portivio/1.0");
         });
 
-        services.AddHttpClient(AlphaVantageStockProvider.HttpClientName, (sp, client) =>
-        {
-            var opts = sp.GetRequiredService<IOptions<MarketDataOptions>>().Value;
-            var baseUrl = string.IsNullOrWhiteSpace(opts.AlphaVantage.BaseUrl)
-                ? "https://www.alphavantage.co"
-                : opts.AlphaVantage.BaseUrl;
-            client.BaseAddress = new Uri(baseUrl);
-            client.Timeout = TimeSpan.FromSeconds(Math.Max(5, opts.AlphaVantage.TimeoutSeconds));
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("Portivio/1.0");
-        });
-
         services.AddHttpClient("LivePriceApi", client =>
         {
             client.BaseAddress = new Uri("http://65.0.104.9");
@@ -103,7 +91,6 @@ public static class ApplicationServicesExtensions
             client.DefaultRequestHeaders.UserAgent.ParseAdd("Portivio/1.0");
         });
 
-        services.AddScoped<IStockPriceProvider, AlphaVantageStockProvider>();
         services.AddScoped<ILivePriceApiStockProvider, LivePriceApiStockProvider>();
         services.AddScoped<IMutualFundNavProvider, AmfiNavProvider>();
         services.AddScoped<IStandardRateProvider, ConfigStandardRateProvider>();

@@ -10,7 +10,6 @@ namespace Portivio.Application.Services.MarketData
 {
     public interface IMarketDataService
     {
-        Task<Result<StockPriceResponse>> SyncStockPriceAsync(string symbol, CancellationToken ct = default);
         Task<Result<MutualFundNavResponse>> SyncNavByIsinAsync(string isin, CancellationToken ct = default);
         Task<Result<SyncSummaryResponse>> SyncAllNavsAsync(CancellationToken ct = default);
         Task<Result<StockPriceResponse>> GetLatestStockPriceAsync(string symbol, CancellationToken ct = default);
@@ -21,11 +20,9 @@ namespace Portivio.Application.Services.MarketData
     {
         private const string StockAssetTypeName = "Stock";
         private const string MutualFundAssetTypeName = "Mutual Fund";
-        private const string StockCurrency = "INR";
         private const string MutualFundCurrency = "INR";
 
         private readonly PortivioDbContext _context;
-        private readonly IStockPriceProvider _stockProvider;
         private readonly IMutualFundNavProvider _navProvider;
         private readonly IHoldingService _holdingService;
         private readonly ILogger<MarketDataService> _logger;
@@ -34,47 +31,14 @@ namespace Portivio.Application.Services.MarketData
 
         public MarketDataService(
             PortivioDbContext context,
-            IStockPriceProvider stockProvider,
             IMutualFundNavProvider navProvider,
             IHoldingService holdingService,
             ILogger<MarketDataService> logger)
         {
             _context = context;
-            _stockProvider = stockProvider;
             _navProvider = navProvider;
             _holdingService = holdingService;
             _logger = logger;
-        }
-
-        public async Task<Result<StockPriceResponse>> SyncStockPriceAsync(string symbol, CancellationToken ct = default)
-        {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(symbol))
-                    return Result<StockPriceResponse>.BadRequest("Symbol is required");
-
-                var quote = await _stockProvider.GetQuoteAsync(symbol, ct);
-                if (quote is null)
-                    return Result<StockPriceResponse>.NotFound($"No quote returned for symbol '{symbol}'");
-
-                var assetType = await GetOrCreateAssetTypeAsync(StockAssetTypeName, ct);
-                var instrument = await GetOrCreateInstrumentAsync(quote.Symbol, quote.Symbol, StockCurrency, assetType.Id, ct);
-
-                await UpsertPriceAsync(instrument.Id, quote.Price, quote.AsOf, quote.Source, ct);
-
-                return Result<StockPriceResponse>.Success(new StockPriceResponse
-                {
-                    Symbol = quote.Symbol,
-                    Price = quote.Price,
-                    AsOf = quote.AsOf,
-                    Source = quote.Source
-                }, "Stock price synced", 201);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "SyncStockPriceAsync failed for {Symbol}", symbol);
-                return Result<StockPriceResponse>.InternalServerError($"Error syncing stock price: {ex.Message}");
-            }
         }
 
         public async Task<Result<MutualFundNavResponse>> SyncNavByIsinAsync(string isin, CancellationToken ct = default)

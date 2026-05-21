@@ -27,23 +27,11 @@ namespace Portivio.Tests.Services
         private static ILogger<HoldingRecalculationService> CreateMockLogger()
             => new Mock<ILogger<HoldingRecalculationService>>().Object;
 
-        private sealed class RecordingThrottle : IRefreshThrottle
-        {
-            public List<TimeSpan> Calls { get; } = new();
-            public Task DelayAsync(TimeSpan delay, CancellationToken ct)
-            {
-                Calls.Add(delay);
-                return Task.CompletedTask;
-            }
-        }
-
         private static IMarketDataService NoopMarketData()
         {
             var mock = new Mock<IMarketDataService>();
             mock.Setup(m => m.SyncAllNavsAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Result<SyncSummaryResponse>.Success(new SyncSummaryResponse()));
-            mock.Setup(m => m.SyncStockPriceAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(Result<StockPriceResponse>.Success(new StockPriceResponse()));
             return mock.Object;
         }
 
@@ -91,7 +79,7 @@ namespace Portivio.Tests.Services
                 Name = $"Inst-{symbol}",
                 Symbol = symbol,
                 Currency = "USD",
-                PriceSource = PriceSource.AlphaVantage
+                PriceSource = PriceSource.LivePriceApi
             };
             context.Users.Add(user);
             context.Profiles.Add(profile);
@@ -154,7 +142,6 @@ namespace Portivio.Tests.Services
         private static HoldingRecalculationService BuildService(
             PortivioDbContext context,
             IMarketDataService? marketData = null,
-            IRefreshThrottle? throttle = null,
             IGoldRateProvider? goldRate = null,
             ILivePriceApiStockProvider? livePrice = null,
             params IAssetStrategy[] extraStrategies) =>
@@ -165,7 +152,6 @@ namespace Portivio.Tests.Services
                 marketData ?? NoopMarketData(),
                 goldRate ?? NoopGoldRate(),
                 livePrice ?? Mock.Of<ILivePriceApiStockProvider>(),
-                throttle ?? new RecordingThrottle(),
                 CreateMockLogger());
 
         // ---------- RefreshProfileAsync (slice #28) ----------
@@ -187,7 +173,6 @@ namespace Portivio.Tests.Services
             Assert.Equal(1500m, holding.MarketValue);          // 10 * 150
             Assert.Equal(500m, holding.UnrealizedPnL);         // (150 - 100) * 10
             Assert.True(holding.LastUpdated > DateTime.UtcNow.AddDays(-1));
-            market.Verify(m => m.SyncStockPriceAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
             market.Verify(m => m.SyncAllNavsAsync(It.IsAny<CancellationToken>()), Times.Never);
         }
 
@@ -318,7 +303,6 @@ namespace Portivio.Tests.Services
             var service = BuildService(
                 context,
                 marketData: NoopMarketData(),
-                throttle: new RecordingThrottle(),
                 goldRate: goldRate.Object,
                 extraStrategies: new GoldStrategy(context));
 
@@ -346,7 +330,6 @@ namespace Portivio.Tests.Services
             var service = BuildService(
                 context,
                 marketData: NoopMarketData(),
-                throttle: new RecordingThrottle(),
                 goldRate: goldRate.Object,
                 extraStrategies: new GoldStrategy(context));
 
@@ -371,12 +354,13 @@ namespace Portivio.Tests.Services
             var market = new Mock<IMarketDataService>();
             market.Setup(m => m.SyncAllNavsAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Result<SyncSummaryResponse>.Success(new SyncSummaryResponse()));
-            market.Setup(m => m.SyncStockPriceAsync("GOOD", It.IsAny<CancellationToken>()))
-                .ReturnsAsync(Result<StockPriceResponse>.Success(new StockPriceResponse { Symbol = "GOOD", Price = 150m }));
-            market.Setup(m => m.SyncStockPriceAsync("BAD", It.IsAny<CancellationToken>()))
+            var livePrice = new Mock<ILivePriceApiStockProvider>();
+            livePrice.Setup(m => m.GetQuoteAsync("GOOD.NS", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new StockQuote("GOOD", 150m, DateTime.UtcNow, "LIVEPRICEAPI"));
+            livePrice.Setup(m => m.GetQuoteAsync("BAD.NS", It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("provider exploded"));
 
-            var service = BuildService(context, market.Object);
+            var service = BuildService(context, market.Object, livePrice: livePrice.Object);
 
             var result = await service.RunDailyRefreshAsync();
 
@@ -390,25 +374,6 @@ namespace Portivio.Tests.Services
             Assert.Equal(150m, goodHolding.CurrentPrice);
             var badHolding = await context.Holdings.FirstAsync(h => h.InstrumentId == instBad.Id);
             Assert.Equal(55m, badHolding.CurrentPrice);
-        }
-
-        [Fact]
-        public async Task RunDailyRefreshAsync_ThrottlesAlphaVantageCalls()
-        {
-            using var context = CreateInMemoryDbContext();
-            SeedEquityHolding(context, 10m, 100m, latestPriceHistory: 110m, symbol: "AAA");
-            SeedEquityHolding(context, 5m, 200m, latestPriceHistory: 210m, symbol: "BBB");
-            SeedEquityHolding(context, 1m, 300m, latestPriceHistory: 310m, symbol: "CCC");
-
-            var throttle = new RecordingThrottle();
-            var service = BuildService(context, NoopMarketData(), throttle);
-
-            var result = await service.RunDailyRefreshAsync();
-
-            Assert.True(result.IsSuccess);
-            // 3 AlphaVantage calls → throttle invoked twice (between 1↔2 and 2↔3).
-            Assert.Equal(2, throttle.Calls.Count);
-            Assert.All(throttle.Calls, c => Assert.Equal(TimeSpan.FromSeconds(12), c));
         }
 
         [Fact]
@@ -487,7 +452,6 @@ namespace Portivio.Tests.Services
             var service = BuildService(
                 context,
                 marketData: NoopMarketData(),
-                throttle: new RecordingThrottle(),
                 goldRate: goldRate.Object,
                 extraStrategies: new GoldStrategy(context));
 
@@ -499,6 +463,43 @@ namespace Portivio.Tests.Services
             var holding = await context.Holdings.FirstAsync(h => h.InstrumentId == instrument.Id);
             Assert.Equal(7480m, holding.CurrentPrice);
             Assert.Equal(74800m, holding.MarketValue);     // 10 * 7480
+        }
+
+        [Fact]
+        public async Task RunDailyRefreshAsync_FetchesLivePricesOnlyForInUseEquities()
+        {
+            using var context = CreateInMemoryDbContext();
+            var (_, _, usedInstrument) = SeedEquityHolding(context, 10m, 100m, latestPriceHistory: 110m, symbol: "USED");
+
+            var assetType = await context.AssetTypes.FirstAsync(a => a.Name == "Equity");
+            var unusedInstrument = new Instrument
+            {
+                Id = Guid.NewGuid(),
+                AssetTypeId = assetType.Id,
+                Category = AssetCategory.Equity,
+                Name = "Inst-UNUSED",
+                Symbol = "UNUSED",
+                Currency = "INR",
+                PriceSource = PriceSource.LivePriceApi
+            };
+            context.Instruments.Add(unusedInstrument);
+            await context.SaveChangesAsync();
+
+            var livePrice = new Mock<ILivePriceApiStockProvider>();
+            livePrice.Setup(m => m.GetQuoteAsync("USED.NS", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new StockQuote("USED", 150m, DateTime.UtcNow, "LIVEPRICEAPI"));
+
+            var service = BuildService(context, livePrice: livePrice.Object);
+
+            var result = await service.RunDailyRefreshAsync();
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(150m, await context.Holdings
+                .Where(h => h.InstrumentId == usedInstrument.Id)
+                .Select(h => h.CurrentPrice)
+                .FirstAsync());
+            livePrice.Verify(m => m.GetQuoteAsync("USED.NS", It.IsAny<CancellationToken>()), Times.Once);
+            livePrice.Verify(m => m.GetQuoteAsync("UNUSED.NS", It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
