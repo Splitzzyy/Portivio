@@ -29,17 +29,12 @@ namespace Portivio.Application.Services
 
     public class HoldingRecalculationService : IHoldingRecalculationService
     {
-        // AlphaVantage free tier: 5 calls/min and 500 calls/day. Stay under both.
-        private static readonly TimeSpan AlphaVantageThrottle = TimeSpan.FromSeconds(12);
-        private const int AlphaVantageDailyCap = 500;
-
         private readonly PortivioDbContext _context;
         private readonly AssetStrategyResolver _strategies;
         private readonly IProfileAccessGuard _profileAccess;
         private readonly IMarketDataService _marketData;
         private readonly IGoldRateProvider _goldRate;
         private readonly ILivePriceApiStockProvider _livePrice;
-        private readonly IRefreshThrottle _throttle;
         private readonly ILogger<HoldingRecalculationService> _logger;
 
         public HoldingRecalculationService(
@@ -49,7 +44,6 @@ namespace Portivio.Application.Services
             IMarketDataService marketData,
             IGoldRateProvider goldRate,
             ILivePriceApiStockProvider livePrice,
-            IRefreshThrottle throttle,
             ILogger<HoldingRecalculationService> logger)
         {
             _context = context;
@@ -58,7 +52,6 @@ namespace Portivio.Application.Services
             _marketData = marketData;
             _goldRate = goldRate;
             _livePrice = livePrice;
-            _throttle = throttle;
             _logger = logger;
         }
 
@@ -85,9 +78,10 @@ namespace Portivio.Application.Services
                 _logger.LogWarning(ex, "AMFI bulk sync failed");
             }
 
-            // Per-instrument external fetch for non-AMFI sources.
-            var instruments = await _context.Instruments.AsNoTracking().ToListAsync(ct);
-            var alphaCallCount = 0;
+            // Per-instrument external fetch for non-AMFI sources. Equities are scoped
+            // to instruments used by holdings or non-deleted transactions so the live
+            // price API is not called for unused/catalog stock instruments.
+            var instruments = await GetDailyRefreshInstrumentsAsync(ct);
 
             foreach (var inst in instruments)
             {
@@ -96,20 +90,6 @@ namespace Portivio.Application.Services
                 {
                     switch (inst.PriceSource)
                     {
-                        case PriceSource.AlphaVantage:
-                            if (alphaCallCount >= AlphaVantageDailyCap)
-                            {
-                                pricesSkipped++;
-                                continue;
-                            }
-                            if (alphaCallCount > 0)
-                                await _throttle.DelayAsync(AlphaVantageThrottle, ct);
-                            alphaCallCount++;
-                            var stock = await _marketData.SyncStockPriceAsync(inst.Symbol, ct);
-                            if (stock.IsSuccess) pricesUpdated++;
-                            else pricesSkipped++;
-                            break;
-
                         case PriceSource.AmfiNav:
                             // Already handled by the bulk sync above.
                             break;
@@ -266,7 +246,7 @@ namespace Portivio.Application.Services
                     }
                 }
 
-                // Fetch live prices for all equity holdings (both LivePriceApi and legacy AlphaVantage).
+                // Fetch live prices for all equity holdings.
                 var equityInstruments = holdings
                     .Where(h => h.Instrument.Category == AssetCategory.Equity)
                     .Select(h => h.Instrument)
@@ -398,9 +378,36 @@ namespace Portivio.Application.Services
             return true;
         }
 
+        private async Task<List<Instrument>> GetDailyRefreshInstrumentsAsync(CancellationToken ct)
+        {
+            var liveEquitiesInUse = await _context.Instruments
+                .AsNoTracking()
+                .Where(i => i.Category == AssetCategory.Equity && i.PriceSource == PriceSource.LivePriceApi)
+                .Where(i => i.Holdings.Any() || i.Transactions.Any(t => !t.IsDeleted))
+                .ToListAsync(ct);
+
+            var goldInstruments = await _context.Instruments
+                .AsNoTracking()
+                .Where(i => i.Category == AssetCategory.Gold && i.PriceSource == PriceSource.Manual)
+                .Where(i => i.Holdings.Any() || i.Transactions.Any(t => !t.IsDeleted))
+                .ToListAsync(ct);
+
+            var accrualInstruments = await _context.Instruments
+                .AsNoTracking()
+                .Where(i => i.PriceSource == PriceSource.AccrualFormula)
+                .Where(i => i.Holdings.Any() || i.Transactions.Any(t => !t.IsDeleted))
+                .ToListAsync(ct);
+
+            return liveEquitiesInUse
+                .Concat(goldInstruments)
+                .Concat(accrualInstruments)
+                .GroupBy(i => i.Id)
+                .Select(g => g.First())
+                .ToList();
+        }
+
         private static string ResolveTicker(Instrument inst)
         {
-            // priceSourceKey is "TCS.NS" for new instruments; bare "TCS" for legacy AlphaVantage ones
             if (!string.IsNullOrWhiteSpace(inst.PriceSourceKey) && inst.PriceSourceKey.Contains('.'))
                 return inst.PriceSourceKey;
 

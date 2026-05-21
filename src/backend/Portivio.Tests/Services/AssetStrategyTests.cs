@@ -21,11 +21,6 @@ namespace Portivio.Tests.Services
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options);
 
-        private sealed class NoopThrottle : IRefreshThrottle
-        {
-            public Task DelayAsync(TimeSpan delay, CancellationToken ct) => Task.CompletedTask;
-        }
-
         private static async Task<(User user, Profile profile, AssetType assetType)> SeedBaseAsync(PortivioDbContext ctx)
         {
             var user = new User { Id = Guid.NewGuid(), Email = $"u-{Guid.NewGuid()}@t.com", Name = "U", PasswordHash = "h", IsVerified = true, IsActive = true, CreatedAt = DateTime.UtcNow };

@@ -5,7 +5,6 @@ namespace Portivio.Application.Services.MarketData
         public const string SectionName = "MarketData";
 
         public AmfiOptions Amfi { get; set; } = new();
-        public AlphaVantageOptions AlphaVantage { get; set; } = new();
         public StandardRatesOptions StandardRates { get; set; } = new();
         public GoldOptions Gold { get; set; } = new();
     }
@@ -20,13 +19,6 @@ namespace Portivio.Application.Services.MarketData
     {
         public string NavUrl { get; set; } = "https://portal.amfiindia.com/spages/NAVAll.txt";
         public int TimeoutSeconds { get; set; } = 60;
-    }
-
-    public class AlphaVantageOptions
-    {
-        public string BaseUrl { get; set; } = "https://www.alphavantage.co";
-        public string? ApiKey { get; set; }
-        public int TimeoutSeconds { get; set; } = 30;
     }
 
     public class StandardRatesOptions

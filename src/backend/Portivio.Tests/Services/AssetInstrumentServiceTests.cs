@@ -53,18 +53,11 @@ namespace Portivio.Tests.Services
             return (user, profile);
         }
 
-        private sealed class NoopThrottle : IRefreshThrottle
-        {
-            public Task DelayAsync(TimeSpan delay, CancellationToken ct) => Task.CompletedTask;
-        }
-
         private static IMarketDataService NoopMarketData()
         {
             var mock = new Mock<IMarketDataService>();
             mock.Setup(m => m.SyncAllNavsAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Result<SyncSummaryResponse>.Success(new SyncSummaryResponse()));
-            mock.Setup(m => m.SyncStockPriceAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(Result<StockPriceResponse>.Success(new StockPriceResponse()));
             return mock.Object;
         }
 
@@ -105,7 +98,6 @@ namespace Portivio.Tests.Services
                 NoopMarketData(),
                 NoopGoldRate(),
                 NoopLivePrice(),
-                new NoopThrottle(),
                 Mock.Of<ILogger<HoldingRecalculationService>>());
             return new AssetInstrumentService(context, ingest, profileAccess, recalc);
         }

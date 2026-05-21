@@ -69,15 +69,6 @@ namespace Portivio.API.Controllers
                 onFailure: (e) => StatusCode(e.StatusCode ?? 400, new { success = false, message = e.Message, errors = e.Errors }));
         }
 
-        [HttpPost("stocks/{symbol}/sync")]
-        public async Task<IActionResult> SyncStockPrice(string symbol, CancellationToken ct)
-        {
-            var result = await _marketDataService.SyncStockPriceAsync(symbol, ct);
-            return result.Match(
-                onSuccess: () => StatusCode(result.StatusCode ?? 200, result.Data),
-                onFailure: (e) => StatusCode(e.StatusCode ?? 400, new { success = false, message = e.Message, errors = e.Errors }));
-        }
-
         [HttpGet("mutual-funds/{isin}")]
         public async Task<IActionResult> GetLatestNav(string isin, CancellationToken ct)
         {

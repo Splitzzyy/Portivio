@@ -8,11 +8,6 @@ namespace Portivio.Application.Services
 
     public record PpfRateEntry(decimal RatePercent, DateTime AsOf, string Source);
 
-    public interface IStockPriceProvider
-    {
-        Task<StockQuote?> GetQuoteAsync(string symbol, CancellationToken ct = default);
-    }
-
     public interface IMutualFundNavProvider
     {
         Task<IReadOnlyList<MutualFundNav>> GetAllNavsAsync(CancellationToken ct = default);
