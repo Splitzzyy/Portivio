@@ -25,6 +25,8 @@ namespace Portivio.Application.Services.MarketData
         private readonly PortivioDbContext _context;
         private readonly IMutualFundNavProvider _navProvider;
         private readonly IHoldingService _holdingService;
+        private readonly IMarketDataRefreshGate _refreshGate;
+        private readonly IMarketDataDistributedLock _distributedLock;
         private readonly ILogger<MarketDataService> _logger;
 
         private sealed record NavSyncTarget(Guid InstrumentId, string Symbol, string? Isin, string? PriceSourceKey);
@@ -33,11 +35,15 @@ namespace Portivio.Application.Services.MarketData
             PortivioDbContext context,
             IMutualFundNavProvider navProvider,
             IHoldingService holdingService,
+            IMarketDataRefreshGate refreshGate,
+            IMarketDataDistributedLock distributedLock,
             ILogger<MarketDataService> logger)
         {
             _context = context;
             _navProvider = navProvider;
             _holdingService = holdingService;
+            _refreshGate = refreshGate;
+            _distributedLock = distributedLock;
             _logger = logger;
         }
 
@@ -84,76 +90,93 @@ namespace Portivio.Application.Services.MarketData
                     return Result<SyncSummaryResponse>.Success(summary, "No in-use mutual fund instruments to sync");
                 }
 
-                var navs = await _navProvider.GetAllNavsAsync(ct);
-                if (navs.Count == 0)
-                {
-                    summary.Errors.Add("Provider returned no NAV entries");
-                    return Result<SyncSummaryResponse>.Success(summary, "No NAVs to sync");
-                }
-
-                var matchedNavs = navs
-                    .Where(n => !string.IsNullOrWhiteSpace(n.Isin) && targetsByNavKey.ContainsKey(n.Isin))
-                    .ToList();
-                if (matchedNavs.Count == 0)
-                {
-                    return Result<SyncSummaryResponse>.Success(summary, "No matching in-use mutual fund NAVs to sync");
-                }
-
                 var instrumentIds = targetsByNavKey.Values
                     .SelectMany(v => v.Select(t => t.InstrumentId))
                     .Distinct()
                     .ToList();
-                
-                // Check for existing prices based on the dates returned by the provider
-                var datesToCheck = matchedNavs.Select(n => n.AsOf.ToUniversalTime().Date).Distinct().ToList();
-                var existingPriceEntries = await _context.PriceHistories
-                    .Where(ph => instrumentIds.Contains(ph.InstrumentId) && datesToCheck.Contains(ph.Date.Date))
-                    .Select(ph => new { ph.InstrumentId, ph.Date })
-                    .ToListAsync(ct);
 
-                var existingPriceSet = new HashSet<string>(
-                    existingPriceEntries.Select(x => $"{x.InstrumentId}_{x.Date:yyyy-MM-dd}"));
-                var instrumentPricesToUpdate = new Dictionary<Guid, decimal>();
-
-                foreach (var nav in matchedNavs)
+                if (await AllTargetsRefreshedTodayAsync(instrumentIds, ct))
                 {
-                    var targets = targetsByNavKey[nav.Isin];
+                    summary.Skipped = instrumentIds.Count;
+                    return Result<SyncSummaryResponse>.Success(summary, "In-use mutual fund NAVs already refreshed today");
+                }
 
-                    var normalizedDate = nav.AsOf.ToUniversalTime().Date;
-                    foreach (var target in targets)
+                var lockKey = $"amfi:sync-all:{DateTime.UtcNow:yyyyMMdd}";
+                return await _refreshGate.RunAsync(lockKey, localCt =>
+                    _distributedLock.RunAsync(lockKey, async innerCt =>
                     {
-                        var key = $"{target.InstrumentId}_{normalizedDate:yyyy-MM-dd}";
-
-                        if (existingPriceSet.Contains(key))
+                        if (await AllTargetsRefreshedTodayAsync(instrumentIds, innerCt))
                         {
-                            summary.Skipped++;
-                            continue;
+                            summary.Skipped = instrumentIds.Count;
+                            return Result<SyncSummaryResponse>.Success(summary, "In-use mutual fund NAVs already refreshed today");
                         }
 
-                        _context.PriceHistories.Add(new PriceHistory
-                        {
-                            Id = Guid.NewGuid(),
-                            InstrumentId = target.InstrumentId,
-                            Price = nav.Nav,
-                            Date = DateTime.SpecifyKind(normalizedDate, DateTimeKind.Utc),
-                            Source = nav.Source ?? string.Empty,
-                            CreatedAt = DateTime.UtcNow
-                        });
-
-                        instrumentPricesToUpdate[target.InstrumentId] = nav.Nav;
-                        summary.Inserted++;
-                        existingPriceSet.Add(key); // Prevent duplicate inserts in same batch
+                        var navs = await _navProvider.GetAllNavsAsync(innerCt);
+                    if (navs.Count == 0)
+                    {
+                        summary.Errors.Add("Provider returned no NAV entries");
+                        return Result<SyncSummaryResponse>.Success(summary, "No NAVs to sync");
                     }
-                }
 
-                await _context.SaveChangesAsync(ct);
+                    var matchedNavs = navs
+                        .Where(n => !string.IsNullOrWhiteSpace(n.Isin) && targetsByNavKey.ContainsKey(n.Isin))
+                        .ToList();
+                    if (matchedNavs.Count == 0)
+                    {
+                        return Result<SyncSummaryResponse>.Success(summary, "No matching in-use mutual fund NAVs to sync");
+                    }
+
+                    // Check for existing prices based on the dates returned by the provider
+                    var datesToCheck = matchedNavs.Select(n => n.AsOf.ToUniversalTime().Date).Distinct().ToList();
+                    var existingPriceEntries = await _context.PriceHistories
+                        .Where(ph => instrumentIds.Contains(ph.InstrumentId) && datesToCheck.Contains(ph.Date.Date))
+                        .Select(ph => new { ph.InstrumentId, ph.Date })
+                        .ToListAsync(innerCt);
+
+                    var existingPriceSet = new HashSet<string>(
+                        existingPriceEntries.Select(x => $"{x.InstrumentId}_{x.Date:yyyy-MM-dd}"));
+                    var instrumentPricesToUpdate = new Dictionary<Guid, decimal>();
+
+                    foreach (var nav in matchedNavs)
+                    {
+                        var targets = targetsByNavKey[nav.Isin];
+
+                        var normalizedDate = nav.AsOf.ToUniversalTime().Date;
+                        foreach (var target in targets)
+                        {
+                            var key = $"{target.InstrumentId}_{normalizedDate:yyyy-MM-dd}";
+
+                            if (existingPriceSet.Contains(key))
+                            {
+                                summary.Skipped++;
+                                continue;
+                            }
+
+                            _context.PriceHistories.Add(new PriceHistory
+                            {
+                                Id = Guid.NewGuid(),
+                                InstrumentId = target.InstrumentId,
+                                Price = nav.Nav,
+                                Date = DateTime.SpecifyKind(normalizedDate, DateTimeKind.Utc),
+                                Source = nav.Source ?? string.Empty,
+                                CreatedAt = DateTime.UtcNow
+                            });
+
+                            instrumentPricesToUpdate[target.InstrumentId] = nav.Nav;
+                            summary.Inserted++;
+                            existingPriceSet.Add(key); // Prevent duplicate inserts in same batch
+                        }
+                    }
+
+                    await _context.SaveChangesAsync(innerCt);
                 
-                if (instrumentPricesToUpdate.Count > 0)
-                {
-                    await _holdingService.BulkUpdateCurrentPricesAsync(instrumentPricesToUpdate);
-                }
+                    if (instrumentPricesToUpdate.Count > 0)
+                    {
+                        await _holdingService.BulkUpdateCurrentPricesAsync(instrumentPricesToUpdate);
+                    }
 
-                return Result<SyncSummaryResponse>.Success(summary, $"NAV sync complete: {summary.Inserted} inserted, {summary.Skipped} skipped");
+                        return Result<SyncSummaryResponse>.Success(summary, $"NAV sync complete: {summary.Inserted} inserted, {summary.Skipped} skipped");
+                    }, localCt), ct);
             }
             catch (Exception ex)
             {
@@ -161,6 +184,21 @@ namespace Portivio.Application.Services.MarketData
                 summary.Errors.Add(ex.Message);
                 return Result<SyncSummaryResponse>.InternalServerError($"Error syncing NAVs: {ex.Message}");
             }
+        }
+
+        private async Task<bool> AllTargetsRefreshedTodayAsync(IReadOnlyCollection<Guid> instrumentIds, CancellationToken ct)
+        {
+            if (instrumentIds.Count == 0) return false;
+
+            var today = DateTime.UtcNow.Date;
+            var tomorrow = today.AddDays(1);
+            var refreshedToday = await _context.PriceHistories
+                .Where(ph => instrumentIds.Contains(ph.InstrumentId) && ph.CreatedAt >= today && ph.CreatedAt < tomorrow)
+                .Select(ph => ph.InstrumentId)
+                .Distinct()
+                .CountAsync(ct);
+
+            return refreshedToday == instrumentIds.Count;
         }
 
         private async Task<Dictionary<string, List<NavSyncTarget>>> GetMutualFundNavTargetsInUseAsync(CancellationToken ct)

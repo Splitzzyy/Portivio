@@ -101,6 +101,8 @@ public static class ApplicationServicesExtensions
         services.AddScoped<ILivePriceApiStockProvider, LivePriceApiStockProvider>();
         services.AddScoped<IMutualFundNavProvider, AmfiNavProvider>();
         services.AddScoped<IStandardRateProvider, ConfigStandardRateProvider>();
+        services.AddSingleton<IMarketDataRefreshGate, MarketDataRefreshGate>();
+        services.AddScoped<IMarketDataDistributedLock, PostgresAdvisoryMarketDataLock>();
         services.AddSingleton<IGoldRateProvider, GoldRateProvider>();
         services.AddScoped<IMarketDataService, MarketDataService>();
         services.AddScoped<IStandardRateService, StandardRateService>();

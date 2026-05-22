@@ -7,6 +7,7 @@ namespace Portivio.Application.Services.MarketData
         public AmfiOptions Amfi { get; set; } = new();
         public StandardRatesOptions StandardRates { get; set; } = new();
         public GoldOptions Gold { get; set; } = new();
+        public RefreshOptions Refresh { get; set; } = new();
     }
 
     public class GoldOptions
@@ -35,5 +36,11 @@ namespace Portivio.Application.Services.MarketData
         public string Bank { get; set; } = string.Empty;
         public int TenureMonths { get; set; }
         public decimal RatePercent { get; set; }
+    }
+
+    public class RefreshOptions
+    {
+        public int StockQuoteTtlMinutes { get; set; } = 10;
+        public int AdvisoryLockWaitSeconds { get; set; } = 30;
     }
 }
