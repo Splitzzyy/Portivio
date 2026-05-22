@@ -91,6 +91,13 @@ public static class ApplicationServicesExtensions
             client.DefaultRequestHeaders.UserAgent.ParseAdd("Portivio/1.0");
         });
 
+        services.AddHttpClient(GoldRateProvider.HttpClientName, (sp, client) =>
+        {
+            var opts = sp.GetRequiredService<IOptions<MarketDataOptions>>().Value;
+            client.Timeout = TimeSpan.FromSeconds(Math.Max(5, opts.Gold.TimeoutSeconds));
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Portivio/1.0");
+        });
+
         services.AddScoped<ILivePriceApiStockProvider, LivePriceApiStockProvider>();
         services.AddScoped<IMutualFundNavProvider, AmfiNavProvider>();
         services.AddScoped<IStandardRateProvider, ConfigStandardRateProvider>();

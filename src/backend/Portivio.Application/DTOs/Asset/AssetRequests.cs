@@ -106,7 +106,7 @@ namespace Portivio.Application.DTOs.Asset
 
     public class AddGoldRequest
     {
-        public string Form { get; set; } = "Coin";
+        public string Form { get; set; } = "Digital";
         public string Purity { get; set; } = "24K";
         public decimal WeightGrams { get; set; }
         public decimal RatePerGram { get; set; }
@@ -117,7 +117,7 @@ namespace Portivio.Application.DTOs.Asset
 
     public class UpdateGoldRequest
     {
-        public string Form { get; set; } = "Coin";
+        public string Form { get; set; } = "Digital";
         public string Purity { get; set; } = "24K";
         public decimal WeightGrams { get; set; }
         public decimal RatePerGram { get; set; }

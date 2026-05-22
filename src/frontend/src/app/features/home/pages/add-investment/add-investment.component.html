@@ -336,9 +336,9 @@
             <div class="ai-field full">
               <label>Gold type <span class="req">*</span></label>
               <div class="segmented">
-                <button type="button" [class.on]="goldForm.subtype === 'Digital'" (click)="goldForm.subtype = 'Digital'" [disabled]="isInstrumentSelectionLocked">Digital</button>
-                <button type="button" [class.on]="goldForm.subtype === 'Physical'" (click)="goldForm.subtype = 'Physical'" [disabled]="isInstrumentSelectionLocked">Physical</button>
-                <button type="button" [class.on]="goldForm.subtype === 'SGB'" (click)="goldForm.subtype = 'SGB'" [disabled]="isInstrumentSelectionLocked">SGB</button>
+                <button type="button" [class.on]="goldForm.subtype === 'Digital'" (click)="onGoldSubtypeChange('Digital')" [disabled]="isInstrumentSelectionLocked">Digital</button>
+                <button type="button" [class.on]="goldForm.subtype === 'Physical'" (click)="onGoldSubtypeChange('Physical')" [disabled]="isInstrumentSelectionLocked">Physical</button>
+                <button type="button" [class.on]="goldForm.subtype === 'SGB'" (click)="onGoldSubtypeChange('SGB')" [disabled]="isInstrumentSelectionLocked">SGB</button>
               </div>
             </div>
 
@@ -362,11 +362,12 @@
 
             <div class="ai-field">
               <label>Purity</label>
-              <select [(ngModel)]="goldForm.purity" name="goldPurity">
+              <select [(ngModel)]="goldForm.purity" name="goldPurity" [disabled]="isDigitalGold">
                 <option value="24K">24K (999)</option>
                 <option value="22K">22K (916)</option>
                 <option value="18K">18K (750)</option>
               </select>
+              <div class="hint" *ngIf="isDigitalGold">Digital gold is always 24K</div>
             </div>
 
             <div class="ai-field" [class.invalid]="errors['date']">
@@ -396,7 +397,7 @@
             <div class="grow">
               <div>
                 <div class="label">Type</div>
-                <div class="small">{{ goldForm.subtype }}</div>
+                <div class="small">{{ goldForm.subtype }} · {{ isDigitalGold ? '24K' : goldForm.purity }}</div>
               </div>
               <div>
                 <div class="label">Rate / gram</div>

@@ -291,7 +291,7 @@ namespace Portivio.Tests.Services
         }
 
         [Fact]
-        public async Task RefreshProfileAsync_PullsGoldRateFromConfig_BeforeRecompute()
+        public async Task RefreshProfileAsync_PullsGoldRateFromProvider_BeforeRecompute()
         {
             using var context = CreateInMemoryDbContext();
             var (user, profile, instrument) = SeedGoldHolding(context, purity: "24K");
@@ -309,7 +309,7 @@ namespace Portivio.Tests.Services
             var result = await service.RefreshProfileAsync(user.Id, profile.Id);
 
             Assert.True(result.IsSuccess);
-            Assert.True(await context.PriceHistories.AnyAsync(p => p.InstrumentId == instrument.Id && p.Source == "config"));
+            Assert.True(await context.PriceHistories.AnyAsync(p => p.InstrumentId == instrument.Id && p.Source == GoldRateProvider.SourceTag));
             var holding = await context.Holdings.FirstAsync(h => h.InstrumentId == instrument.Id);
             Assert.Equal(7480m, holding.CurrentPrice);
             Assert.Equal(74_800m, holding.MarketValue);   // 10 grams × 7480
@@ -377,7 +377,7 @@ namespace Portivio.Tests.Services
         }
 
         [Fact]
-        public async Task RunDailyRefreshAsync_AppliesGoldRateFromOptions()
+        public async Task RunDailyRefreshAsync_AppliesGoldRateFromProvider()
         {
             using var context = CreateInMemoryDbContext();
 
@@ -459,7 +459,7 @@ namespace Portivio.Tests.Services
 
             Assert.True(result.IsSuccess);
             Assert.True(result.Data!.PricesUpdated >= 1);
-            Assert.True(await context.PriceHistories.AnyAsync(p => p.InstrumentId == instrument.Id && p.Source == "config"));
+            Assert.True(await context.PriceHistories.AnyAsync(p => p.InstrumentId == instrument.Id && p.Source == GoldRateProvider.SourceTag));
             var holding = await context.Holdings.FirstAsync(h => h.InstrumentId == instrument.Id);
             Assert.Equal(7480m, holding.CurrentPrice);
             Assert.Equal(74800m, holding.MarketValue);     // 10 * 7480

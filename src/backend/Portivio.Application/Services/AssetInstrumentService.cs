@@ -341,10 +341,11 @@ namespace Portivio.Application.Services
                 return Result<AssetIngestResponse>.BadRequest("RatePerGram must be greater than zero");
 
             var assetType = await GetOrCreateAssetTypeAsync("Gold", ct);
-            var purityNorm = req.Purity.Trim().ToUpperInvariant();
-            var formNorm = req.Form.Trim().ToUpperInvariant();
+            var formNorm = NormalizeGoldForm(req.Form);
+            var purityNorm = NormalizeGoldPurity(req.Form, req.Purity);
             var symbol = $"GOLD:{purityNorm}:{formNorm}";
-            var name = $"Gold {req.Purity} {req.Form}";
+            var formDisplay = FormatGoldForm(formNorm);
+            var name = $"Gold {purityNorm} {formDisplay}";
 
             var instrument = await GetOrCreateInstrumentAsync(
                 name: name,
@@ -357,7 +358,7 @@ namespace Portivio.Application.Services
                 priceSourceKey: null,
                 metadata: JsonDocument.Parse(JsonSerializer.Serialize(new
                 {
-                    form = req.Form.Trim(),
+                    form = formDisplay,
                     purity = purityNorm,
                     makingChargesInr = req.MakingChargesInr
                 })),
@@ -753,11 +754,12 @@ namespace Portivio.Application.Services
                 if (transaction == null)
                     return Result<AssetIngestResponse>.NotFound("Gold investment not found");
 
-                var purityNorm = req.Purity.Trim().ToUpperInvariant();
-                var formNorm = req.Form.Trim().ToUpperInvariant();
+                var formNorm = NormalizeGoldForm(req.Form);
+                var purityNorm = NormalizeGoldPurity(req.Form, req.Purity);
+                var formDisplay = FormatGoldForm(formNorm);
                 var totalCost = (req.WeightGrams * req.RatePerGram) + req.MakingChargesInr;
 
-                instrument.Name = $"Gold {req.Purity} {req.Form}";
+                instrument.Name = $"Gold {purityNorm} {formDisplay}";
                 instrument.Symbol = $"GOLD:{purityNorm}:{formNorm}";
                 instrument.Isin = null;
                 instrument.Currency = "INR";
@@ -765,7 +767,7 @@ namespace Portivio.Application.Services
                 instrument.PriceSourceKey = null;
                 instrument.Metadata = JsonDocument.Parse(JsonSerializer.Serialize(new
                 {
-                    form = req.Form.Trim(),
+                    form = formDisplay,
                     purity = purityNorm,
                     makingChargesInr = req.MakingChargesInr
                 }));
@@ -912,6 +914,22 @@ namespace Portivio.Application.Services
             var parts = symbol.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             return parts.Length >= 2 ? parts[1].ToUpperInvariant() : GenerateInstrumentSlot();
         }
+
+        private static string NormalizeGoldForm(string? form)
+            => string.IsNullOrWhiteSpace(form) ? "DIGITAL" : form.Trim().ToUpperInvariant();
+
+        private static string NormalizeGoldPurity(string? form, string? purity)
+        {
+            var formNorm = NormalizeGoldForm(form);
+            if (formNorm == "DIGITAL") return "24K";
+            return string.IsNullOrWhiteSpace(purity) ? "24K" : purity.Trim().ToUpperInvariant();
+        }
+
+        private static string FormatGoldForm(string value)
+            => value == "SGB" ? "SGB" : ToTitleCase(value);
+
+        private static string ToTitleCase(string value)
+            => value.Length == 0 ? value : char.ToUpperInvariant(value[0]) + value[1..].ToLowerInvariant();
 
         private async Task<AssetType> GetOrCreateAssetTypeAsync(string name, CancellationToken ct)
         {

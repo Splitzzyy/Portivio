@@ -371,7 +371,7 @@ namespace Portivio.Application.Services
                 InstrumentId = inst.Id,
                 Price = rate.Value,
                 Date = DateTime.SpecifyKind(today, DateTimeKind.Utc),
-                Source = "config",
+                Source = GoldRateProvider.SourceTag,
                 CreatedAt = DateTime.UtcNow
             });
             await _context.SaveChangesAsync(ct);

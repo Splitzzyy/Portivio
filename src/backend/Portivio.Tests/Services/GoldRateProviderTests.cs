@@ -1,59 +1,64 @@
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging.Abstractions;
 using Portivio.Application.Services.MarketData;
+using System.Net;
 using Xunit;
 
 namespace Portivio.Tests.Services
 {
     public class GoldRateProviderTests
     {
-        private static IGoldRateProvider Build(decimal rate24K, decimal multiplier22K = 0.9167m)
+        private const decimal XauInrPrice = 232700.488m;
+
+        private static IGoldRateProvider Build(
+            string json = "{\"price\":232700.488}",
+            HttpStatusCode statusCode = HttpStatusCode.OK,
+            decimal purity22KMultiplier = 0.916m)
         {
             var options = new MarketDataOptions
             {
-                Gold = new GoldOptions { RatePerGram24K = rate24K, Purity22KMultiplier = multiplier22K }
+                Gold = new GoldOptions
+                {
+                    PriceUrl = "https://api.gold-api.com/price/XAU/INR",
+                    TroyOunceGrams = 31.1035m,
+                    Purity22KMultiplier = purity22KMultiplier
+                }
             };
             var monitor = new TestOptionsMonitor<MarketDataOptions>(options);
-            return new GoldRateProvider(monitor);
+            var factory = new TestHttpClientFactory(new HttpClient(new TestHandler(json, statusCode)));
+            return new GoldRateProvider(monitor, factory, NullLogger<GoldRateProvider>.Instance);
         }
 
         [Fact]
-        public async Task Returns_Configured_Rate_For_24K()
+        public async Task Returns_Api_Price_Converted_To_Per_Gram_For_24K()
         {
-            var provider = Build(rate24K: 7480m);
+            var provider = Build();
             var rate = await provider.GetRatePerGramAsync("24K");
-            Assert.Equal(7480m, rate);
+            Assert.Equal(XauInrPrice / 31.1035m, rate);
         }
 
         [Fact]
-        public async Task Returns_Multiplier_Adjusted_Rate_For_22K()
+        public async Task Returns_22K_Rate_Using_Configured_Multiplier()
         {
-            var provider = Build(rate24K: 7480m, multiplier22K: 0.9167m);
+            var provider = Build(purity22KMultiplier: 0.916m);
             var rate = await provider.GetRatePerGramAsync("22K");
-            Assert.Equal(7480m * 0.9167m, rate);
+            Assert.Equal((XauInrPrice / 31.1035m) * 0.916m, rate);
         }
 
         [Fact]
-        public async Task Returns_Null_For_Unknown_Purity()
+        public async Task Returns_Null_For_Unsupported_Purity()
         {
-            var provider = Build(rate24K: 7480m);
+            var provider = Build();
             Assert.Null(await provider.GetRatePerGramAsync("18K"));
             Assert.Null(await provider.GetRatePerGramAsync(""));
         }
 
         [Fact]
-        public async Task Returns_Null_When_Rate_Not_Configured()
+        public async Task Returns_Null_When_Api_Price_Is_Not_Usable()
         {
-            var provider = Build(rate24K: 0m);
+            var provider = Build(json: "{\"price\":0}");
             Assert.Null(await provider.GetRatePerGramAsync("24K"));
             Assert.Null(await provider.GetRatePerGramAsync("22K"));
-        }
-
-        [Fact]
-        public async Task Purity_Is_Case_Insensitive()
-        {
-            var provider = Build(rate24K: 7480m);
-            Assert.Equal(7480m, await provider.GetRatePerGramAsync("24k"));
-            Assert.Equal(7480m, await provider.GetRatePerGramAsync(" 24K "));
         }
 
         private sealed class TestOptionsMonitor<T> : IOptionsMonitor<T>
@@ -62,6 +67,38 @@ namespace Portivio.Tests.Services
             public T CurrentValue { get; }
             public T Get(string? name) => CurrentValue;
             public IDisposable? OnChange(Action<T, string?> listener) => null;
+        }
+
+        private sealed class TestHttpClientFactory : IHttpClientFactory
+        {
+            private readonly HttpClient _client;
+
+            public TestHttpClientFactory(HttpClient client)
+            {
+                _client = client;
+            }
+
+            public HttpClient CreateClient(string name) => _client;
+        }
+
+        private sealed class TestHandler : HttpMessageHandler
+        {
+            private readonly string _json;
+            private readonly HttpStatusCode _statusCode;
+
+            public TestHandler(string json, HttpStatusCode statusCode)
+            {
+                _json = json;
+                _statusCode = statusCode;
+            }
+
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                return Task.FromResult(new HttpResponseMessage(_statusCode)
+                {
+                    Content = new StringContent(_json)
+                });
+            }
         }
     }
 }

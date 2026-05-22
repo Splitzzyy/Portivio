@@ -151,7 +151,11 @@ public sealed class AssetControllerTests : IClassFixture<AssetControllerTests.As
                 userId,
                 profileId,
                 instrumentId,
-                It.Is<UpdateGoldRequest>(r => r.Form == req.Form && r.Purity == req.Purity),
+                It.Is<UpdateGoldRequest>(r =>
+                    r.Form == req.Form &&
+                    r.Purity == req.Purity &&
+                    r.WeightGrams == req.WeightGrams &&
+                    r.RatePerGram == req.RatePerGram),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<AssetIngestResponse>.Success(res));
 

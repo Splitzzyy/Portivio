@@ -339,6 +339,15 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
     return g > 0 ? a / g : 0;
   }
 
+  get isDigitalGold(): boolean {
+    return this.goldForm.subtype === 'Digital';
+  }
+
+  onGoldSubtypeChange(subtype: string): void {
+    this.goldForm.subtype = subtype;
+    if (subtype === 'Digital') this.goldForm.purity = '24K';
+  }
+
   get fdTenureYears(): number {
     if (!this.fdRdForm.startDate || !this.fdRdForm.maturityDate) return 0;
     const ms = new Date(this.fdRdForm.maturityDate).getTime()
@@ -502,7 +511,7 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
         const a = Number(this.goldForm.amount) || 0;
         const req = {
           form: this.goldForm.subtype,
-          purity: this.goldForm.purity,
+          purity: this.isDigitalGold ? '24K' : this.goldForm.purity,
           weightGrams: g,
           ratePerGram: g > 0 ? a / g : 0,
           makingChargesInr: 0,
@@ -677,6 +686,8 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
         break;
       case 'GOLD':
         this.goldForm.subtype = this.resolveGoldSubtype(this.modalData.instrumentName);
+        this.goldForm.purity = this.modalData.instrumentSymbol?.includes(':22K:') ? '22K' : '24K';
+        if (this.goldForm.subtype === 'Digital') this.goldForm.purity = '24K';
         this.goldForm.grams = q;
         this.goldForm.amount = String((this.modalData.quantity || 0) * (this.modalData.price || 0));
         break;
@@ -755,7 +766,7 @@ export class AddInvestmentComponent implements OnInit, OnDestroy {
       case 'GOLD': {
         const gold = this.modalData.asset as Partial<AddGoldRequest> | undefined;
         this.goldForm.subtype = gold?.form || this.resolveGoldSubtype(this.modalData.instrumentName || inst?.name);
-        this.goldForm.purity = gold?.purity || '24K';
+        this.goldForm.purity = this.goldForm.subtype === 'Digital' ? '24K' : (gold?.purity || '24K');
         if (tx) {
           this.goldForm.grams = String(tx.quantity ?? '');
           this.goldForm.amount = String(tx.amount ?? '');

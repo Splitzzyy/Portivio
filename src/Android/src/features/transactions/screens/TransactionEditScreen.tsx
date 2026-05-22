@@ -129,9 +129,10 @@ export function TransactionEditScreen({
             notes: data.notes,
           };
         } else if (assetType.includes('gold')) {
+          const form = data.form || 'Digital';
           req = {
-            form: data.form || 'Digital',
-            purity: data.purity || '24K',
+            form,
+            purity: form.toLowerCase() === 'digital' ? '24K' : (data.purity || '24K'),
             weightGrams: data.quantity,
             ratePerGram: data.price,
             makingChargesInr: 0,
@@ -227,7 +228,7 @@ export function TransactionEditScreen({
       return (
         <>
           <ControlledTextInput name="form" control={control} label="Form (Digital/Physical/SGB)" />
-          <ControlledTextInput name="purity" control={control} label="Purity (24K/22K)" />
+          <ControlledTextInput name="purity" control={control} label="Purity (Digital is 24K)" />
         </>
       );
     }

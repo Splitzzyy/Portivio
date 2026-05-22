@@ -11,8 +11,10 @@ namespace Portivio.Application.Services.MarketData
 
     public class GoldOptions
     {
-        public decimal RatePerGram24K { get; set; }
-        public decimal Purity22KMultiplier { get; set; } = 0.9167m;
+        public string PriceUrl { get; set; } = "https://api.gold-api.com/price/XAU/INR";
+        public int TimeoutSeconds { get; set; } = 10;
+        public decimal TroyOunceGrams { get; set; } = 31.1035m;
+        public decimal Purity22KMultiplier { get; set; } = 0.916m;
     }
 
     public class AmfiOptions

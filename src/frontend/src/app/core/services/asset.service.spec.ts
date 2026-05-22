@@ -124,7 +124,7 @@ describe('AssetService', () => {
   describe('updateGold', () => {
     const instrumentId = 'inst-g';
     const req: AddGoldRequest = {
-      form: 'Digital', purity: '24K',
+      form: 'SGB', purity: '22K',
       weightGrams: 8, ratePerGram: 7300, makingChargesInr: 0,
       date: '2025-01-01'
     };

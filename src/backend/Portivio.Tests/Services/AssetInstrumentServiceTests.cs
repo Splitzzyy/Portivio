@@ -444,8 +444,10 @@ namespace Portivio.Tests.Services
 
             Assert.True(result.IsSuccess);
             var updatedInstrument = await context.Instruments.FirstAsync(i => i.Id == instrument.Id);
-            Assert.Equal("Gold 22K Digital", updatedInstrument.Name);
-            Assert.Equal("GOLD:22K:DIGITAL", updatedInstrument.Symbol);
+            Assert.Equal("Gold 24K Digital", updatedInstrument.Name);
+            Assert.Equal("GOLD:24K:DIGITAL", updatedInstrument.Symbol);
+            Assert.True(updatedInstrument.Metadata!.RootElement.TryGetProperty("purity", out var purity));
+            Assert.Equal("24K", purity.GetString());
             Assert.True(updatedInstrument.Metadata!.RootElement.TryGetProperty("makingChargesInr", out var charges));
             Assert.Equal(200m, charges.GetDecimal());
 
