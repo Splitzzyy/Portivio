@@ -25,6 +25,21 @@ namespace Portivio.Tests.Services
 
         private static ILogger<MarketDataService> CreateMockLogger() => new Mock<ILogger<MarketDataService>>().Object;
 
+        private static MarketDataService BuildService(
+            PortivioDbContext context,
+            IMutualFundNavProvider navProvider,
+            IHoldingService holdingService)
+            => new(
+                context,
+                navProvider,
+                holdingService,
+                new MarketDataRefreshGate(),
+                new PostgresAdvisoryMarketDataLock(
+                    context,
+                    Microsoft.Extensions.Options.Options.Create(new MarketDataOptions()),
+                    Mock.Of<ILogger<PostgresAdvisoryMarketDataLock>>()),
+                CreateMockLogger());
+
         private static Profile SeedProfile(PortivioDbContext context)
         {
             var user = new User
@@ -99,7 +114,7 @@ namespace Portivio.Tests.Services
             mockHoldingService.Setup(h => h.BulkUpdateCurrentPricesAsync(It.IsAny<Dictionary<Guid, decimal>>()))
                 .ReturnsAsync(Result.Success());
 
-            var service = new MarketDataService(context, mockNavProvider.Object, mockHoldingService.Object, CreateMockLogger());
+            var service = BuildService(context, mockNavProvider.Object, mockHoldingService.Object);
 
             // Act
             var result = await service.SyncAllNavsAsync();
@@ -172,7 +187,7 @@ namespace Portivio.Tests.Services
 
             var mockHoldingService = new Mock<IHoldingService>();
 
-            var service = new MarketDataService(context, mockNavProvider.Object, mockHoldingService.Object, CreateMockLogger());
+            var service = BuildService(context, mockNavProvider.Object, mockHoldingService.Object);
 
             // Act
             var result = await service.SyncAllNavsAsync();
@@ -182,6 +197,67 @@ namespace Portivio.Tests.Services
             Assert.Equal(0, result.Data!.Inserted);
             Assert.Equal(1, result.Data!.Skipped);
             
+            mockHoldingService.Verify(h => h.BulkUpdateCurrentPricesAsync(It.IsAny<Dictionary<Guid, decimal>>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task SyncAllNavsAsync_WhenAllInUseFundsAlreadyRefreshedToday_DoesNotCallProvider()
+        {
+            using var context = CreateInMemoryDbContext();
+            var profile = SeedProfile(context);
+
+            var assetType = new AssetType { Id = Guid.NewGuid(), Name = "Mutual Fund" };
+            var instrument = new Instrument
+            {
+                Id = Guid.NewGuid(),
+                AssetTypeId = assetType.Id,
+                Name = "Existing Fund",
+                Symbol = "INF123",
+                Currency = "INR",
+                Category = AssetCategory.MutualFund,
+                PriceSource = PriceSource.AmfiNav
+            };
+            context.AssetTypes.Add(assetType);
+            context.Instruments.Add(instrument);
+            context.Holdings.Add(new Holding
+            {
+                Id = Guid.NewGuid(),
+                ProfileId = profile.Id,
+                InstrumentId = instrument.Id,
+                Quantity = 10m,
+                AvgPrice = 100m,
+                CurrentPrice = 100m,
+                MarketValue = 1000m,
+                UnrealizedPnL = 0m,
+                LastUpdated = DateTime.UtcNow.AddDays(-1)
+            });
+            context.PriceHistories.Add(new PriceHistory
+            {
+                Id = Guid.NewGuid(),
+                InstrumentId = instrument.Id,
+                Price = 149m,
+                Date = DateTime.SpecifyKind(DateTime.UtcNow.Date.AddDays(-1), DateTimeKind.Utc),
+                Source = "AMFI",
+                CreatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            var mockNavProvider = new Mock<IMutualFundNavProvider>();
+            mockNavProvider.Setup(p => p.GetAllNavsAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<MutualFundNav>
+                {
+                    new MutualFundNav("INF123", "Existing Fund", 150.5m, DateTime.UtcNow, "AMFI")
+                });
+
+            var mockHoldingService = new Mock<IHoldingService>();
+            var service = BuildService(context, mockNavProvider.Object, mockHoldingService.Object);
+
+            var result = await service.SyncAllNavsAsync();
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(0, result.Data!.Inserted);
+            Assert.Equal(1, result.Data!.Skipped);
+            mockNavProvider.Verify(p => p.GetAllNavsAsync(It.IsAny<CancellationToken>()), Times.Never);
             mockHoldingService.Verify(h => h.BulkUpdateCurrentPricesAsync(It.IsAny<Dictionary<Guid, decimal>>()), Times.Never);
         }
 
@@ -208,7 +284,7 @@ namespace Portivio.Tests.Services
             var mockNavProvider = new Mock<IMutualFundNavProvider>();
             var mockHoldingService = new Mock<IHoldingService>();
 
-            var service = new MarketDataService(context, mockNavProvider.Object, mockHoldingService.Object, CreateMockLogger());
+            var service = BuildService(context, mockNavProvider.Object, mockHoldingService.Object);
 
             var result = await service.SyncAllNavsAsync();
 
@@ -266,7 +342,7 @@ namespace Portivio.Tests.Services
             mockHoldingService.Setup(h => h.BulkUpdateCurrentPricesAsync(It.IsAny<Dictionary<Guid, decimal>>()))
                 .ReturnsAsync(Result.Success());
 
-            var service = new MarketDataService(context, mockNavProvider.Object, mockHoldingService.Object, CreateMockLogger());
+            var service = BuildService(context, mockNavProvider.Object, mockHoldingService.Object);
 
             var result = await service.SyncAllNavsAsync();
 

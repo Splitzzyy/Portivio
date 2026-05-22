@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Portivio.Application.DTOs.Asset;
 using Portivio.Application.DTOs.Holding;
@@ -98,6 +99,12 @@ namespace Portivio.Tests.Services
                 NoopMarketData(),
                 NoopGoldRate(),
                 NoopLivePrice(),
+                new MarketDataRefreshGate(),
+                new PostgresAdvisoryMarketDataLock(
+                    context,
+                    Options.Create(new MarketDataOptions()),
+                    Mock.Of<ILogger<PostgresAdvisoryMarketDataLock>>()),
+                Options.Create(new MarketDataOptions()),
                 Mock.Of<ILogger<HoldingRecalculationService>>());
             return new AssetInstrumentService(context, ingest, profileAccess, recalc);
         }

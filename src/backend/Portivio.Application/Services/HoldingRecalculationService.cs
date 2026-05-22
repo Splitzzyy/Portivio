@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Portivio.Application.DTOs.Holding;
 using Portivio.Application.Results;
 using Portivio.Application.Services.Authorization;
@@ -35,6 +36,9 @@ namespace Portivio.Application.Services
         private readonly IMarketDataService _marketData;
         private readonly IGoldRateProvider _goldRate;
         private readonly ILivePriceApiStockProvider _livePrice;
+        private readonly IMarketDataRefreshGate _refreshGate;
+        private readonly IMarketDataDistributedLock _distributedLock;
+        private readonly IOptions<MarketDataOptions> _options;
         private readonly ILogger<HoldingRecalculationService> _logger;
 
         public HoldingRecalculationService(
@@ -44,6 +48,9 @@ namespace Portivio.Application.Services
             IMarketDataService marketData,
             IGoldRateProvider goldRate,
             ILivePriceApiStockProvider livePrice,
+            IMarketDataRefreshGate refreshGate,
+            IMarketDataDistributedLock distributedLock,
+            IOptions<MarketDataOptions> options,
             ILogger<HoldingRecalculationService> logger)
         {
             _context = context;
@@ -52,6 +59,9 @@ namespace Portivio.Application.Services
             _marketData = marketData;
             _goldRate = goldRate;
             _livePrice = livePrice;
+            _refreshGate = refreshGate;
+            _distributedLock = distributedLock;
+            _options = options;
             _logger = logger;
         }
 
@@ -99,15 +109,9 @@ namespace Portivio.Application.Services
                             break;
 
                         case PriceSource.LivePriceApi:
-                            var ticker = ResolveTicker(inst);
-                            var liveQuote = await _livePrice.GetQuoteAsync(ticker, ct);
-                            if (liveQuote is not null)
-                            {
-                                await UpsertLivePriceAsync(inst.Id, liveQuote.Price, liveQuote.AsOf, liveQuote.Source, ct);
-                                pricesUpdated++;
-                            }
-                            else
-                                pricesSkipped++;
+                            var liveUpdated = await TryUpsertLivePriceAsync(inst, ct);
+                            if (liveUpdated) pricesUpdated++;
+                            else pricesSkipped++;
                             break;
 
                         case PriceSource.Manual when inst.Category == AssetCategory.Gold:
@@ -257,12 +261,7 @@ namespace Portivio.Application.Services
                 {
                     try
                     {
-                        var ticker = ResolveTicker(inst);
-                        var quote = await _livePrice.GetQuoteAsync(ticker, ct);
-                        if (quote is not null)
-                            await UpsertLivePriceAsync(inst.Id, quote.Price, quote.AsOf, quote.Source, ct);
-                        else
-                            _logger.LogWarning("Live price unavailable during manual refresh. Ticker={Ticker}", ticker);
+                        await TryUpsertLivePriceAsync(inst, ct);
                     }
                     catch (Exception ex)
                     {
@@ -352,30 +351,87 @@ namespace Portivio.Application.Services
                 purity = purityProp.GetString();
             if (string.IsNullOrWhiteSpace(purity)) return false;
 
-            var rate = await _goldRate.GetRatePerGramAsync(purity!, ct);
-            if (rate is null || rate <= 0)
-            {
-                _logger.LogWarning("Gold rate unavailable. InstrumentId={InstrumentId} Symbol={Symbol} Purity={Purity}",
-                    inst.Id, inst.Symbol, purity);
-                return false;
-            }
-
             var today = DateTime.UtcNow.Date;
-            var alreadyToday = await _context.PriceHistories.AnyAsync(
-                ph => ph.InstrumentId == inst.Id && ph.Date.Date == today, ct);
-            if (alreadyToday) return false;
+            if (await HasPriceForDateAsync(inst.Id, today, ct))
+                return false;
 
-            _context.PriceHistories.Add(new PriceHistory
-            {
-                Id = Guid.NewGuid(),
-                InstrumentId = inst.Id,
-                Price = rate.Value,
-                Date = DateTime.SpecifyKind(today, DateTimeKind.Utc),
-                Source = GoldRateProvider.SourceTag,
-                CreatedAt = DateTime.UtcNow
-            });
-            await _context.SaveChangesAsync(ct);
-            return true;
+            var lockKey = $"gold:{inst.Id}:{today:yyyyMMdd}";
+            return await _refreshGate.RunAsync(lockKey, localCt =>
+                _distributedLock.RunAsync(lockKey, async innerCt =>
+                {
+                    if (await HasPriceForDateAsync(inst.Id, today, innerCt))
+                        return false;
+
+                    var rate = await _goldRate.GetRatePerGramAsync(purity!, innerCt);
+                    if (rate is null || rate <= 0)
+                    {
+                        _logger.LogWarning("Gold rate unavailable. InstrumentId={InstrumentId} Symbol={Symbol} Purity={Purity}",
+                            inst.Id, inst.Symbol, purity);
+                        return false;
+                    }
+
+                    _context.PriceHistories.Add(new PriceHistory
+                    {
+                        Id = Guid.NewGuid(),
+                        InstrumentId = inst.Id,
+                        Price = rate.Value,
+                        Date = DateTime.SpecifyKind(today, DateTimeKind.Utc),
+                        Source = GoldRateProvider.SourceTag,
+                        CreatedAt = DateTime.UtcNow
+                    });
+
+                    try
+                    {
+                        await _context.SaveChangesAsync(innerCt);
+                        return true;
+                    }
+                    catch (DbUpdateException)
+                    {
+                        if (await HasPriceForDateAsync(inst.Id, today, innerCt))
+                            return false;
+                        throw;
+                    }
+                }, localCt), ct);
+        }
+
+        private async Task<bool> TryUpsertLivePriceAsync(Instrument inst, CancellationToken ct)
+        {
+            if (await HasFreshLivePriceAsync(inst.Id, ct))
+                return false;
+
+            var ticker = ResolveTicker(inst);
+            var lockKey = $"live:{ticker}";
+            return await _refreshGate.RunAsync(lockKey, localCt =>
+                _distributedLock.RunAsync(lockKey, async innerCt =>
+                {
+                    if (await HasFreshLivePriceAsync(inst.Id, innerCt))
+                        return false;
+
+                    var quote = await _livePrice.GetQuoteAsync(ticker, innerCt);
+                    if (quote is null)
+                    {
+                        _logger.LogWarning("Live price unavailable during refresh. Ticker={Ticker}", ticker);
+                        return false;
+                    }
+
+                    await UpsertLivePriceAsync(inst.Id, quote.Price, quote.AsOf, quote.Source, innerCt);
+                    return true;
+                }, localCt), ct);
+        }
+
+        private async Task<bool> HasPriceForDateAsync(Guid instrumentId, DateTime date, CancellationToken ct)
+        {
+            var normalizedDate = date.ToUniversalTime().Date;
+            return await _context.PriceHistories.AnyAsync(
+                ph => ph.InstrumentId == instrumentId && ph.Date.Date == normalizedDate, ct);
+        }
+
+        private async Task<bool> HasFreshLivePriceAsync(Guid instrumentId, CancellationToken ct)
+        {
+            var ttlMinutes = Math.Max(1, _options.Value.Refresh.StockQuoteTtlMinutes);
+            var cutoff = DateTime.UtcNow.AddMinutes(-ttlMinutes);
+            return await _context.PriceHistories.AnyAsync(
+                ph => ph.InstrumentId == instrumentId && ph.CreatedAt >= cutoff, ct);
         }
 
         private async Task<List<Instrument>> GetDailyRefreshInstrumentsAsync(CancellationToken ct)
@@ -429,6 +485,7 @@ namespace Portivio.Application.Services
             {
                 existing.Price = price;
                 existing.Source = source;
+                existing.CreatedAt = DateTime.UtcNow;
             }
             else
             {

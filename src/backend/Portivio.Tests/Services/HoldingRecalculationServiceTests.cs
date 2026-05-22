@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Portivio.Application.DTOs.MarketData;
 using Portivio.Application.Results;
@@ -132,6 +133,17 @@ namespace Portivio.Tests.Services
             return (user, profile, instrument);
         }
 
+        private static async Task MarkPriceHistoryStaleAsync(PortivioDbContext context, params Guid[] instrumentIds)
+        {
+            var staleCreatedAt = DateTime.UtcNow.AddHours(-1);
+            var prices = await context.PriceHistories
+                .Where(p => instrumentIds.Contains(p.InstrumentId))
+                .ToListAsync();
+            foreach (var price in prices)
+                price.CreatedAt = staleCreatedAt;
+            await context.SaveChangesAsync();
+        }
+
         private static AssetStrategyResolver BuildResolver(PortivioDbContext context, params IAssetStrategy[] extra)
         {
             var list = new List<IAssetStrategy> { new EquityStrategy(context) };
@@ -152,6 +164,12 @@ namespace Portivio.Tests.Services
                 marketData ?? NoopMarketData(),
                 goldRate ?? NoopGoldRate(),
                 livePrice ?? Mock.Of<ILivePriceApiStockProvider>(),
+                new MarketDataRefreshGate(),
+                new PostgresAdvisoryMarketDataLock(
+                    context,
+                    Options.Create(new MarketDataOptions()),
+                    Mock.Of<ILogger<PostgresAdvisoryMarketDataLock>>()),
+                Options.Create(new MarketDataOptions()),
                 CreateMockLogger());
 
         // ---------- RefreshProfileAsync (slice #28) ----------
@@ -318,6 +336,66 @@ namespace Portivio.Tests.Services
         }
 
         [Fact]
+        public async Task RefreshProfileAsync_ReusesTodaysGoldPrice_WithoutCallingProvider()
+        {
+            using var context = CreateInMemoryDbContext();
+            var (user, profile, instrument) = SeedGoldHolding(context, purity: "24K");
+            context.PriceHistories.Add(new PriceHistory
+            {
+                Id = Guid.NewGuid(),
+                InstrumentId = instrument.Id,
+                Price = 7510m,
+                Date = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc),
+                Source = GoldRateProvider.SourceTag,
+                CreatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            var goldRate = new Mock<IGoldRateProvider>();
+            goldRate.Setup(g => g.GetRatePerGramAsync("24K", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(9999m);
+
+            var service = BuildService(
+                context,
+                marketData: NoopMarketData(),
+                goldRate: goldRate.Object,
+                extraStrategies: new GoldStrategy(context));
+
+            var result = await service.RefreshProfileAsync(user.Id, profile.Id);
+
+            Assert.True(result.IsSuccess);
+            var holding = await context.Holdings.FirstAsync(h => h.InstrumentId == instrument.Id);
+            Assert.Equal(7510m, holding.CurrentPrice);
+            goldRate.Verify(g => g.GetRatePerGramAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RefreshProfileAsync_ReusesFreshLivePrice_WithoutCallingProvider()
+        {
+            using var context = CreateInMemoryDbContext();
+            var (user, profile, instrument) = SeedEquityHolding(
+                context,
+                quantity: 10m,
+                avgPrice: 100m,
+                latestPriceHistory: 150m,
+                symbol: "FRESH",
+                priceDate: DateTime.UtcNow);
+
+            var livePrice = new Mock<ILivePriceApiStockProvider>();
+            livePrice.Setup(m => m.GetQuoteAsync("FRESH.NS", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new StockQuote("FRESH", 180m, DateTime.UtcNow, "LIVEPRICEAPI"));
+
+            var service = BuildService(context, livePrice: livePrice.Object);
+
+            var result = await service.RefreshProfileAsync(user.Id, profile.Id);
+
+            Assert.True(result.IsSuccess);
+            var holding = await context.Holdings.FirstAsync(h => h.InstrumentId == instrument.Id);
+            Assert.Equal(150m, holding.CurrentPrice);
+            livePrice.Verify(m => m.GetQuoteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
         public async Task RefreshProfileAsync_DoesNotDuplicate_GoldPriceHistory_OnSecondCallSameDay()
         {
             using var context = CreateInMemoryDbContext();
@@ -350,6 +428,7 @@ namespace Portivio.Tests.Services
             using var context = CreateInMemoryDbContext();
             var (_, profileGood, instGood) = SeedEquityHolding(context, 10m, 100m, latestPriceHistory: 150m, symbol: "GOOD");
             var (_, _, instBad) = SeedEquityHolding(context, 5m, 50m, latestPriceHistory: 55m, symbol: "BAD");
+            await MarkPriceHistoryStaleAsync(context, instGood.Id, instBad.Id);
 
             var market = new Mock<IMarketDataService>();
             market.Setup(m => m.SyncAllNavsAsync(It.IsAny<CancellationToken>()))
@@ -470,6 +549,7 @@ namespace Portivio.Tests.Services
         {
             using var context = CreateInMemoryDbContext();
             var (_, _, usedInstrument) = SeedEquityHolding(context, 10m, 100m, latestPriceHistory: 110m, symbol: "USED");
+            await MarkPriceHistoryStaleAsync(context, usedInstrument.Id);
 
             var assetType = await context.AssetTypes.FirstAsync(a => a.Name == "Equity");
             var unusedInstrument = new Instrument
